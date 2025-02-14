@@ -1,5 +1,7 @@
 local M = {}
 local utils = require("ssh.utils")
+print(vim.inspect(utils))
+print(vim.inspect(utils.refresh_servers))
 
 function M.setup()
 	-- Mount Server from List
