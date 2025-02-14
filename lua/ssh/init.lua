@@ -5,7 +5,6 @@
 --- Requires: sshfs
 --- Requires: ~/.ssh/config with Host entries
 ---- Example: require("ssh").check_and_mount("~/Remote")
----@diagnostic disable: undefined-global
 
 local M = {}
 local utils = require("ssh.utils")
@@ -13,7 +12,7 @@ local keymaps = require("ssh.keymaps")
 
 function M.setup()
 	utils.refresh_servers(false)
-	keymaps.setup_keymaps()
+	keymaps.setup()
 end
 
 return M

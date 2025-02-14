@@ -1,4 +1,3 @@
--- ~/.local/share/nvim/lazy/nvim-ssh/lua/ssh/util.lua
 local M = {}
 local ssh_servers = {}
 M.last_mount_point = nil

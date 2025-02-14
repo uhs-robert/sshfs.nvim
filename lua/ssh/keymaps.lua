@@ -1,4 +1,3 @@
--- keymaps.lua
 local M = {}
 local utils = require("ssh.utils")
 
