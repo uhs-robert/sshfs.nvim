@@ -4,6 +4,30 @@ local options = config.opts
 local ssh_servers = {}
 M.mounted_servers = {}
 
+--- Prompt user to select from choices using `vim.ui.select`
+---@param choices string[] List of choices (plain strings)
+---@param prompt string Prompt message to display
+---@param icon string|nil Optional icon to display for all items
+---@param callback function Function to call with the selected item
+function M.select_from_list(choices, prompt, icon, callback)
+	vim.ui.select(choices, {
+		prompt = prompt or "Select an Option:",
+		format_item = function(item)
+			if icon then
+				return icon .. " " .. item
+			else
+				return item
+			end
+		end,
+	}, function(choice)
+		if choice then
+			callback(choice)
+		else
+			vim.notify("Selection cancelled.", vim.log.levels.WARN)
+		end
+	end)
+end
+
 --- Store a mounted server path
 ---@param path string
 function M.add_mounted_server(path)
@@ -52,23 +76,6 @@ function M.get_ssh_config(notify)
 	end
 end
 
---- Prompt user to select from cached SSH servers
----@return string|nil
-function M.select_server()
-	if #ssh_servers == 0 then
-		vim.notify("No SSH servers found. Refresh with <leader>mr", vim.log.levels.ERROR)
-		return nil
-	end
-
-	local choices = {}
-	for i, server in ipairs(ssh_servers) do
-		table.insert(choices, i .. ". " .. server)
-	end
-
-	local choice = vim.fn.inputlist(choices)
-	return ssh_servers[choice]
-end
-
 --- Check if a directory is empty
 ---@param path string
 ---@return boolean
@@ -112,6 +119,27 @@ function M.unmount_server(mount_point)
 	end
 end
 
+--- Prompt user to select from cached SSH servers
+---@return string|nil
+function M.select_server()
+	if #ssh_servers == 0 then
+		vim.notify("No SSH servers found. Refresh with <leader>mr", vim.log.levels.ERROR)
+		return nil
+	end
+
+	local selected_server = nil
+	M.select_from_list(
+		ssh_servers,
+		"Select an SSH server:",
+		"🌐", -- Icon for all servers
+		function(choice)
+			selected_server = choice
+		end
+	)
+
+	return selected_server
+end
+
 --- Allow user to pick which mounted server to unmount
 function M.user_pick_unmount()
 	if #M.mounted_servers == 0 then
@@ -123,19 +151,14 @@ function M.user_pick_unmount()
 	if #M.mounted_servers == 1 then
 		M.unmount_server(M.mounted_servers[1])
 	else
-		local choices = {}
-		for i, path in ipairs(M.mounted_servers) do
-			table.insert(choices, i .. ". " .. path)
-		end
-
-		local choice = vim.fn.inputlist(choices)
-		local selected_path = M.mounted_servers[choice]
-
-		if selected_path then
-			M.unmount_server(selected_path)
-		else
-			vim.notify("Unmount cancelled", vim.log.levels.WARN)
-		end
+		M.select_from_list(
+			M.mounted_servers,
+			"Select a server to unmount:",
+			"📤", -- Use a global icon for all items
+			function(selected)
+				M.unmount_server(selected)
+			end
+		)
 	end
 end
 
@@ -201,19 +224,14 @@ function M.open_directory(path)
 		return
 	end
 
-	-- Prompt user for selection if multiple servers
-	local choices = {}
-	for i, mount_point in ipairs(M.mounted_servers) do
-		table.insert(choices, i .. ". " .. mount_point)
-	end
-	local choice = vim.fn.inputlist(choices)
-
-	local selected = M.mounted_servers[choice]
-	if selected then
-		open_path(selected)
-	else
-		vim.notify("Selection cancelled.", vim.log.levels.WARN)
-	end
+	-- Prompt user for selection if multiple servers are mounted
+	M.select_from_list(M.mounted_servers, "Select a mounted server to open:", "📂", function(selected)
+		if selected then
+			open_path(selected)
+		else
+			vim.notify("Selection cancelled.", vim.log.levels.WARN)
+		end
+	end)
 end
 
 return M
