@@ -9,7 +9,7 @@ function M.setup()
 	--Add leader map
 	local wk = require("which-key")
 	wk.add({
-		["<leader>m"] = { desc = "Mount", group = "Mount" },
+		["<leader>m"] = { group = "Mount" },
 	})
 
 	-- Select Server to Mount from List
