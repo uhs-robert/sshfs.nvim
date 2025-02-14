@@ -155,7 +155,6 @@ function M.user_pick_mount()
 
 	-- Mount Server or open in explorer if already mounted
 	if M.is_directory_empty(mount_point) then
-		vim.notify(mount_point .. ", Attempting to mount server...", vim.log.levels.WARN)
 		M.mount_server(server)
 		M.open_directory(mount_point)
 	else
@@ -170,7 +169,7 @@ end
 function M.open_directory(path)
 	-- Change directory to path
 	local function open_path(selected_path)
-		if path and vim.fn.isdirectory(selected_path) == 1 then
+		if selected_path and vim.fn.isdirectory(selected_path) == 1 then
 			vim.cmd("cd " .. selected_path)
 			-- Check if Snacks Explorer is available
 			local has_snacks = pcall(function()
