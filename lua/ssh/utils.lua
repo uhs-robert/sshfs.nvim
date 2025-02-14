@@ -105,8 +105,9 @@ function M.mount_server(server)
 end
 
 --- Unmount a server using fusermount
----@param mount_point string
-function M.unmount_server(mount_point)
+---@param server string
+function M.unmount_server(server)
+	local mount_point = M.get_mount_path(server)
 	local result = vim.fn.system("fusermount -zu " .. mount_point)
 	if vim.v.shell_error ~= 0 then
 		vim.notify("Failed to unmount: " .. result, vim.log.levels.ERROR)
@@ -222,7 +223,8 @@ function M.open_directory(path)
 	-- Prompt user for selection if multiple servers are mounted
 	M.select_from_list(M.mounted_servers, "Select a mounted server to open:", "📂", function(selected)
 		if selected then
-			open_path(selected)
+			local mount_point = M.get_mount_path(selected)
+			open_path(mount_point)
 		else
 			vim.notify("Selection cancelled.", vim.log.levels.WARN)
 		end
