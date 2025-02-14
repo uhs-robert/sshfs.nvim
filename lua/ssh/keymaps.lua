@@ -18,7 +18,7 @@ function M.setup_keymaps(ssh)
 	vim.keymap.set("n", "<leader>me", function()
 		if ssh.last_mount_point and vim.fn.isdirectory(ssh.last_mount_point) == 1 then
 			vim.notify("Opening last mount point: " .. ssh.last_mount_point, vim.log.levels.INFO)
-			ssh.open_explorer(M.last_mount_point)
+			ssh.open_explorer(ssh.last_mount_point)
 		else
 			local mount_point = vim.fn.input("Enter mount directory (default: ~/Remote): ", "~/Remote")
 			ssh.check_and_mount(mount_point)
