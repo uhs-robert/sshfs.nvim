@@ -1,7 +1,9 @@
 local M = {}
 local utils = require("ssh.utils")
-print(vim.inspect(utils))
-print(vim.inspect(utils.refresh_servers))
+if not utils then
+	vim.notify("Failed to load ssh.utils", vim.log.levels.ERROR)
+	return
+end
 
 function M.setup()
 	-- Mount Server from List
