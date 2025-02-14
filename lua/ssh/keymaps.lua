@@ -6,11 +6,7 @@ if not utils then
 end
 
 function M.setup()
-	--Add leader map
-	local wk = require("which-key")
-	wk.add({
-		{ "<leader>m", { desc = "Mount", group = "mount" } },
-	})
+	vim.keymap.set("n", "<leader>m", "<nop>", { desc = "Mount" })
 
 	-- Select Server to Mount from List
 	vim.keymap.set("n", "<leader>mm", function()
