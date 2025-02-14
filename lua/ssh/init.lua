@@ -100,7 +100,7 @@ end
 
 function M.setup()
 	M.refresh_servers()
-	keymaps.setup_keymaps()
+	keymaps.setup_keymaps(M)
 end
 
 return M
