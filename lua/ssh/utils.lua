@@ -113,6 +113,7 @@ function M.unmount_server(server)
 		vim.notify("Failed to unmount: " .. result, vim.log.levels.ERROR)
 	else
 		vim.notify("Unmounted: " .. mount_point, vim.log.levels.INFO)
+    vim.fn.delete(mount_point, "rf")
 	end
 end
 
