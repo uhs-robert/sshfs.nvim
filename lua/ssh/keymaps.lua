@@ -6,7 +6,7 @@ if not utils then
 end
 
 function M.setup()
-	vim.keymap.set("n", "<leader>m", "<nop>", { desc = "Mount" })
+	vim.keymap.set("n", "<leader>m", "<nop>", { desc = "mount" })
 
 	-- Select Server to Mount from List
 	vim.keymap.set("n", "<leader>mm", function()
