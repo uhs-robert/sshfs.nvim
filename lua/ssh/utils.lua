@@ -2,7 +2,7 @@ local M = {}
 local config = require("ssh.config")
 local options = config.opts
 local ssh_servers = {}
-M.mounted_servers = M.get_mounted_servers()
+M.mounted_servers = nil
 
 --- Get currently mounted servers by listing non-empty directories in mount directory
 function M.get_mounted_servers()
