@@ -119,25 +119,22 @@ function M.unmount_server(mount_point)
 	end
 end
 
---- Prompt user to select from cached SSH servers
----@return string|nil
-function M.select_server()
+--- Prompt user to select from cached SSH servers (async, callback)
+---@param callback function Function to call with selected server
+function M.select_server(callback)
 	if #ssh_servers == 0 then
 		vim.notify("No SSH servers found. Refresh with <leader>mr", vim.log.levels.ERROR)
-		return nil
+		return
 	end
 
-	local selected_server = nil
-	M.select_from_list(
-		ssh_servers,
-		"Select an SSH server:",
-		"🌐", -- Icon for all servers
-		function(choice)
-			selected_server = choice
+	M.select_from_list(ssh_servers, "Select an SSH server:", "🌐", function(choice)
+		if choice then
+			callback(choice)
+		else
+			vim.notify("Server selection cancelled.", vim.log.levels.WARN)
+			callback(nil)
 		end
-	)
-
-	return selected_server
+	end)
 end
 
 --- Allow user to pick which mounted server to unmount
@@ -164,26 +161,29 @@ end
 
 --- Check directory and mount if empty, otherwise explore
 function M.user_pick_mount()
-	-- Select server
-	local server = M.select_server()
-	if server == nil then
-		return vim.notify("Server selection cancelled", vim.log.levels.WARN)
-	end
-	local mount_point = M.get_mount_path(server)
+	-- Select server using callback
+	M.select_server(function(server)
+		if not server then
+			vim.notify("Server selection cancelled", vim.log.levels.WARN)
+			return
+		end
 
-	-- Ensure directory exists
-	if vim.fn.isdirectory(mount_point) == 0 then
-		vim.fn.mkdir(mount_point, "p")
-	end
+		local mount_point = M.get_mount_path(server)
 
-	-- Mount Server or open in explorer if already mounted
-	if M.is_directory_empty(mount_point) then
-		M.mount_server(server)
-		M.open_directory(mount_point)
-	else
-		vim.notify(mount_point .. ", Already mounted. Opening explorer...", vim.log.levels.WARN)
-		M.open_directory(mount_point)
-	end
+		-- Ensure directory exists
+		if vim.fn.isdirectory(mount_point) == 0 then
+			vim.fn.mkdir(mount_point, "p")
+		end
+
+		-- Mount server or open in explorer if already mounted
+		if M.is_directory_empty(mount_point) then
+			M.mount_server(server)
+			M.open_directory(mount_point)
+		else
+			vim.notify(mount_point .. ", Already mounted. Opening explorer...", vim.log.levels.WARN)
+			M.open_directory(mount_point)
+		end
+	end)
 end
 
 --- Open a directory (If Snacks Explorer exists then view directory too)
@@ -193,13 +193,10 @@ function M.open_directory(path)
 	-- Change directory to path
 	local function open_path(selected_path)
 		if selected_path and vim.fn.isdirectory(selected_path) == 1 then
-			vim.cmd("cd " .. selected_path)
-			-- Check if Snacks Explorer is available
-			local has_snacks = pcall(function()
-				return require("snacks").explorer.open
-			end)
-			if has_snacks then
-				require("snacks").explorer.open()
+			vim.cmd("cd " .. vim.fn.fnameescape(selected_path))
+			local has_snacks, snacks = pcall(require, "snacks")
+			if has_snacks and snacks.explorer and snacks.explorer.open then
+				snacks.explorer.open()
 			end
 		else
 			vim.notify("Invalid path: " .. selected_path, vim.log.levels.ERROR)
