@@ -17,8 +17,7 @@ local function normalize_options(opts)
 			opts.ssh_config[i] = vim.fn.expand(path)
 		end
 	else
-		vim.notify("ssh_config must be a string or a table of strings", vim.log.levels.WARN)
-		opts.ssh_config = { vim.fn.expand("~/.ssh/config") }
+		opts.ssh_config = M.opts.ssh_config
 	end
 end
 
