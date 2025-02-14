@@ -1,6 +1,6 @@
 local M = {}
 local config = require("ssh.config")
-local options = config.options
+local options = config.opts
 local ssh_servers = {}
 M.mounted_servers = {}
 
