@@ -1,6 +1,6 @@
 -- keymaps.lua
 local M = {}
-local utils = require("ssh.utils")
+local utils = require("nvim-ssh.utils")
 
 function M.setup()
 	-- Mount Server from List
