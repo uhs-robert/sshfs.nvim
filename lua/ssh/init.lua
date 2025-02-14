@@ -9,10 +9,10 @@
 
 local M = {}
 local keymaps = require("ssh.keymaps")
-local util = require("ssh.util")
+local utils = require("ssh.utils")
 
 function M.setup()
-	util.refresh_servers(false)
+	utils.refresh_servers(false)
 	keymaps.setup_keymaps()
 end
 
