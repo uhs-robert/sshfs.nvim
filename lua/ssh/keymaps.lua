@@ -16,15 +16,15 @@ function M.setup()
 		utils.user_pick_unmount()
 	end, { desc = "Unmount a SSH Server" })
 
-	-- Refresh Servers
+	--  Get SSH Server List from ~/.ssh/config
 	vim.keymap.set("n", "<leader>mr", function()
-		utils.refresh_servers(true)
+		utils.get_ssh_config(true)
 	end, { desc = "Reload SSH Server Config List" })
 
 	-- Open Mount Directory or Auto-Mount if Empty
 	vim.keymap.set("n", "<leader>me", function()
-		utils.open_explorer()
-	end, { desc = "Open Explorer in a Mounted Directory" })
+		utils.open_directory()
+	end, { desc = "Open Mounted Directory" })
 end
 
 return M

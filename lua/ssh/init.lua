@@ -1,17 +1,17 @@
 -- Author: Robert Hill
 -- Description: SSH utilities for mounting remote servers
 -- Usage: Use the check_and_mount function to mount a server if the directory is empty, otherwise explore the directory
---- Requires: snacks.nvim
 --- Requires: sshfs
---- Requires: ~/.ssh/config with Host entries
----- Example: require("ssh").check_and_mount("~/Remote")
+--- Optional: Snacks.explorer
 
 local M = {}
+local config = require("ssh.config")
 local utils = require("ssh.utils")
 local keymaps = require("ssh.keymaps")
 
-function M.setup()
-	utils.refresh_servers(false)
+function M.setup(user_opts)
+	config.setup(user_opts)
+	utils.get_ssh_config(false)
 	keymaps.setup()
 end
 
