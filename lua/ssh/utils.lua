@@ -225,7 +225,8 @@ function M.open_directory(path)
 
 	-- Handle single server case
 	if #M.mounted_servers == 1 then
-		open_path(M.mounted_servers[1])
+		local mount_point = M.get_mount_path(M.mounted_servers[1])
+		open_path(mount_point)
 		return
 	end
 
