@@ -8,8 +8,8 @@
 ---@diagnostic disable: undefined-global
 
 local M = {}
-local keymaps = require("nvim-ssh.keymaps")
-local utils = require("nvim-ssh.utils")
+local utils = require("ssh.utils")
+local keymaps = require("ssh.keymaps")
 
 function M.setup()
 	utils.refresh_servers(false)
