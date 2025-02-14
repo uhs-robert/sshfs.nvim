@@ -2,7 +2,24 @@ local M = {}
 local config = require("ssh.config")
 local options = config.opts
 local ssh_servers = {}
-M.mounted_servers = {}
+M.mounted_servers = M.get_mounted_servers()
+
+--- Get currently mounted servers by listing non-empty directories in mount directory
+function M.get_mounted_servers()
+	local servers = {}
+	local mount_dir = options.mount_directory
+
+	-- Get directories inside the mount directory
+	local dirs = vim.fn.glob(mount_dir .. "/*", false, true)
+	for _, dir in ipairs(dirs) do
+		if vim.fn.isdirectory(dir) == 1 and not M.is_directory_empty(dir) then
+			local server = vim.fn.fnamemodify(dir, ":t") -- Get directory name only
+			table.insert(servers, server)
+		end
+	end
+
+	return servers
+end
 
 --- Prompt user to select from choices using `vim.ui.select`
 ---@param choices string[] List of choices (plain strings)
@@ -26,25 +43,6 @@ function M.select_from_list(choices, prompt, icon, callback)
 			vim.notify("Selection cancelled.", vim.log.levels.WARN)
 		end
 	end)
-end
-
---- Store a mounted server path
----@param path string
-function M.add_mounted_server(path)
-	if not vim.tbl_contains(M.mounted_servers, path) then
-		table.insert(M.mounted_servers, path)
-	end
-end
-
---- Remove a mounted server path
----@param path string
-function M.remove_mounted_server(path)
-	for i, server in ipairs(M.mounted_servers) do
-		if server == path then
-			table.remove(M.mounted_servers, i)
-			break
-		end
-	end
 end
 
 --- Parse ~/.ssh/config for Host entries
@@ -103,7 +101,6 @@ function M.mount_server(server)
 		vim.notify("Failed to mount: " .. result, vim.log.levels.ERROR)
 	else
 		vim.notify("Mounted " .. server .. " at " .. mount_point, vim.log.levels.INFO)
-		M.add_mounted_server(mount_point)
 	end
 end
 
@@ -115,7 +112,6 @@ function M.unmount_server(mount_point)
 		vim.notify("Failed to unmount: " .. result, vim.log.levels.ERROR)
 	else
 		vim.notify("Unmounted: " .. mount_point, vim.log.levels.INFO)
-		M.remove_mounted_server(mount_point)
 	end
 end
 
@@ -139,6 +135,7 @@ end
 
 --- Allow user to pick which mounted server to unmount
 function M.user_pick_unmount()
+	M.mounted_servers = M.get_mounted_servers()
 	if #M.mounted_servers == 0 then
 		vim.notify("No mounted servers to unmount.", vim.log.levels.INFO)
 		return
@@ -210,6 +207,7 @@ function M.open_directory(path)
 	end
 
 	-- Check mounted servers
+	M.mounted_servers = M.get_mounted_servers()
 	if not M.mounted_servers or #M.mounted_servers == 0 then
 		vim.notify("No mounted servers available to explore.", vim.log.levels.INFO)
 		return
