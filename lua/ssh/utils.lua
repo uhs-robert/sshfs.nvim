@@ -108,12 +108,20 @@ end
 ---@param server string
 function M.unmount_server(server)
 	local mount_point = M.get_mount_path(server)
+
+	--Change directory to home if in mount_point
+	local cwd = vim.fn.getcwd()
+	if cwd:find(vim.pesc(mount_point), 1, true) then
+		vim.cmd("cd ~") -- Return to home if currently in mount path
+	end
+
+	--Unmount and delete directory
 	local result = vim.fn.system("fusermount -zu " .. mount_point)
 	if vim.v.shell_error ~= 0 then
 		vim.notify("Failed to unmount: " .. result, vim.log.levels.ERROR)
 	else
 		vim.notify("Unmounted: " .. mount_point, vim.log.levels.INFO)
-    vim.fn.delete(mount_point, "rf")
+		vim.fn.delete(mount_point, "rf")
 	end
 end
 
