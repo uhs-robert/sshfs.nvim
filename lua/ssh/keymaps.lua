@@ -1,3 +1,4 @@
+-- Custom keymaps
 local M = {}
 
 local default_prefix = "<leader>m"
