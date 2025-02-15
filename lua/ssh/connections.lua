@@ -172,6 +172,7 @@ M.unmount_host = function()
 		-- Change to home directory before unmounting
 		if mount_point and vim.loop.cwd() == mount_point then
 			vim.cmd("cd ~") -- Change to home directory before unmounting
+			vim.cmd("pwd")
 		end
 
 		-- Ensure mount_point is valid
