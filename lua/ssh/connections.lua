@@ -1,3 +1,5 @@
+-- Connections for ssh management
+
 local utils = require("ssh.utils")
 local ui = require("ssh.ui")
 local handler = require("ssh.handlers")
