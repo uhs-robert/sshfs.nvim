@@ -11,6 +11,11 @@ local sshfs_args = {}
 local sshfs_job_id = nil
 local mount_point = nil
 local current_host = nil
+local function clean_up_job()
+	sshfs_job_id = nil
+	mount_point = nil
+	current_host = nil
+end
 
 local M = {}
 
@@ -155,11 +160,7 @@ M.mount_host = function(host, mount_dir, ask_pass)
 				end)
 			end,
 			on_exit = function(_, _, data)
-				handler.on_exit_handler(data, mount_dir, skip_clean, function()
-					sshfs_job_id = nil
-					mount_point = nil
-					current_host = nil
-				end)
+				handler.on_exit_handler(data, mount_dir, skip_clean, clean_up_job)
 			end,
 		})
 	end
@@ -168,21 +169,22 @@ end
 
 M.unmount_host = function()
 	if sshfs_job_id then
-    	-- Ensure mount_point is valid
-	if mount_point and vim.fn.isdirectory(mount_point) == 1 then
-		local unmount_cmd = "fusermount -zu " .. mount_point
-		if vim.fn.has("mac") == 1 then
-			unmount_cmd = "umount " .. mount_point -- macOS uses `umount`
-		end
+		-- Ensure mount_point is valid
+		if mount_point and vim.fn.isdirectory(mount_point) == 1 then
+			local unmount_cmd = "fusermount -zu " .. mount_point
+			if vim.fn.has("mac") == 1 then
+				unmount_cmd = "umount " .. mount_point -- macOS uses `umount`
+			end
 
-		local success = vim.fn.system(unmount_cmd)
-		if vim.v.shell_error ~= 0 then
-			vim.notify("Failed to unmount: " .. success, vim.log.levels.ERROR)
-			return
+			local success = vim.fn.system(unmount_cmd)
+			if vim.v.shell_error ~= 0 then
+				vim.notify("Failed to unmount: " .. success, vim.log.levels.ERROR)
+				return
+			end
 		end
-	end
 		-- Kill the SSHFS process
 		vim.fn.jobstop(sshfs_job_id)
+		clean_up_job()
 	end
 end
 
