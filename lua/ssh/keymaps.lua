@@ -11,7 +11,7 @@ local default_keymaps = {
 	unmount = "u",
 }
 
-local utils = require("ssh.utils")
+local api = require("ssh.api")
 
 function M.setup(opts)
 	opts = opts or {}
@@ -29,20 +29,32 @@ function M.setup(opts)
 
 	-- Assign keymaps
 	vim.keymap.set("n", keymaps.mount, function()
-		utils.user_pick_mount()
+		api.mount()
 	end, { desc = "Mount a SSH Server" })
 
 	vim.keymap.set("n", keymaps.unmount, function()
-		utils.user_pick_unmount()
+		api.unmount()
 	end, { desc = "Unmount a SSH Server" })
 
+	vim.keymap.set("n", keymaps.edit, function()
+		api.open_directory()
+	end, { desc = "Edit ssh_configs" })
+
 	vim.keymap.set("n", keymaps.reload, function()
-		utils.get_ssh_config(true)
-	end, { desc = "Reload SSH Server Config List" })
+		api.reload()
+	end, { desc = "Reload ssh_configs" })
 
 	vim.keymap.set("n", keymaps.open, function()
-		utils.open_directory()
+		api.open_directory()
 	end, { desc = "Open Mounted Directory" })
+
+	vim.keymap.set("n", keymaps.find, function()
+		api.find_files()
+	end, { desc = "Find files in Directory" })
+
+	vim.keymap.set("n", keymaps.grep, function()
+		api.open_directory()
+	end, { desc = "Live GREP" })
 end
 
 return M

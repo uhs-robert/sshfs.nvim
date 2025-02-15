@@ -33,8 +33,8 @@ M.live_grep = function(opts)
 end
 
 -- Trigger open in explorer
-M.open_explorer = function(opts)
-	require("telescope").extensions["ssh"].open_explorer(opts)
+M.open_directory = function(opts)
+	require("telescope").extensions["ssh"].open_directory(opts)
 end
 
 return M
