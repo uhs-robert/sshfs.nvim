@@ -5,6 +5,7 @@ local default_prefix = "<leader>m"
 local default_keymaps = {
 	edit = "e",
 	find = "f",
+	grep = "g",
 	mount = "m",
 	open = "o",
 	reload = "r",
