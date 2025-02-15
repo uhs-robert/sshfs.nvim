@@ -168,6 +168,19 @@ end
 
 M.unmount_host = function()
 	if sshfs_job_id then
+    	-- Ensure mount_point is valid
+	if mount_point and vim.fn.isdirectory(mount_point) == 1 then
+		local unmount_cmd = "fusermount -zu " .. mount_point
+		if vim.fn.has("mac") == 1 then
+			unmount_cmd = "umount " .. mount_point -- macOS uses `umount`
+		end
+
+		local success = vim.fn.system(unmount_cmd)
+		if vim.v.shell_error ~= 0 then
+			vim.notify("Failed to unmount: " .. success, vim.log.levels.ERROR)
+			return
+		end
+	end
 		-- Kill the SSHFS process
 		vim.fn.jobstop(sshfs_job_id)
 	end
