@@ -1,30 +1,46 @@
 local M = {}
+
+local default_prefix = "<leader>m"
+
+local default_keymaps = {
+	edit = "e",
+	find = "f",
+	mount = "m",
+	open = "o",
+	reload = "r",
+	unmount = "u",
+}
+
 local utils = require("ssh.utils")
-if not utils then
-	vim.notify("Failed to load ssh.utils", vim.log.levels.ERROR)
-	return
-end
 
-function M.setup()
-	vim.keymap.set("n", "<leader>m", "<nop>", { desc = "mount" })
+function M.setup(opts)
+	opts = opts or {}
+	local user_keymaps = opts.keymaps or {}
+	local lead_prefix = opts.lead_prefix or default_prefix
 
-	-- Select Server to Mount from List
-	vim.keymap.set("n", "<leader>mm", function()
+	-- Merge and apply prefix dynamically
+	local keymaps = {}
+	for key, suffix in pairs(default_keymaps) do
+		keymaps[key] = user_keymaps[key] or (lead_prefix .. suffix)
+	end
+
+	-- Set prefix
+	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "SSH Mount Prefix" })
+
+	-- Assign keymaps
+	vim.keymap.set("n", keymaps.mount, function()
 		utils.user_pick_mount()
 	end, { desc = "Mount a SSH Server" })
 
-	-- Unmount Server
-	vim.keymap.set("n", "<leader>mu", function()
+	vim.keymap.set("n", keymaps.unmount, function()
 		utils.user_pick_unmount()
 	end, { desc = "Unmount a SSH Server" })
 
-	--  Get SSH Server List from ~/.ssh/config
-	vim.keymap.set("n", "<leader>mr", function()
+	vim.keymap.set("n", keymaps.reload, function()
 		utils.get_ssh_config(true)
 	end, { desc = "Reload SSH Server Config List" })
 
-	-- Open Mount Directory or Auto-Mount if Empty
-	vim.keymap.set("n", "<leader>me", function()
+	vim.keymap.set("n", keymaps.open, function()
 		utils.open_directory()
 	end, { desc = "Open Mounted Directory" })
 end
