@@ -15,7 +15,7 @@ end
 
 -- Allow config edit to be called via api
 M.edit = function(opts)
-	telescope_ssh.edit(opts)
+	telescope_ssh.edit(opts or {})
 end
 
 -- Allow configuration reload to be called via api
@@ -25,17 +25,17 @@ end
 
 -- Trigger remote find_files
 M.find_files = function(opts)
-	telescope_ssh.find_files(opts)
+	telescope_ssh.find_files(opts or {})
 end
 
 -- Trigger remote live_grep
 M.live_grep = function(opts)
-	telescope_ssh.live_grep(opts)
+	telescope_ssh.live_grep(opts or {})
 end
 
 -- Trigger open in explorer
 M.open_directory = function(opts)
-	telescope_ssh.open_directory(opts)
+	telescope_ssh.open_directory(opts or {})
 end
 
 return M
