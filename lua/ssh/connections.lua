@@ -1,6 +1,6 @@
 local utils = require("ssh.utils")
 local ui = require("ssh.ui")
-local handler = require("ssh.handler")
+local handler = require("ssh.handlers")
 
 local config = {}
 local hosts = {}
