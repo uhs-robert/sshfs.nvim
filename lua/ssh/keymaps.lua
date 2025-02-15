@@ -29,33 +29,13 @@ function M.setup(opts)
 	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "Mount" })
 
 	-- Assign keymaps
-	vim.keymap.set("n", keymaps.mount, function()
-		api.mount()
-	end, { desc = "Mount a SSH Server" })
-
-	vim.keymap.set("n", keymaps.unmount, function()
-		api.unmount()
-	end, { desc = "Unmount a SSH Server" })
-
-	vim.keymap.set("n", keymaps.edit, function()
-		api.open_directory()
-	end, { desc = "Edit ssh_configs" })
-
-	vim.keymap.set("n", keymaps.reload, function()
-		api.reload()
-	end, { desc = "Reload ssh_configs" })
-
-	vim.keymap.set("n", keymaps.open, function()
-		api.open_directory()
-	end, { desc = "Open Mounted Directory" })
-
-	vim.keymap.set("n", keymaps.find, function()
-		api.find_files()
-	end, { desc = "Find files in Directory" })
-
-	vim.keymap.set("n", keymaps.grep, function()
-		api.open_directory()
-	end, { desc = "Live GREP" })
+	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
+	vim.keymap.set("n", keymaps.unmount, api.unmount, { desc = "Unmount a SSH Server" })
+	vim.keymap.set("n", keymaps.edit, api.open_directory, { desc = "Edit ssh_configs" })
+	vim.keymap.set("n", keymaps.reload, api.reload, { desc = "Reload ssh_configs" })
+	vim.keymap.set("n", keymaps.open, api.open_directory, { desc = "Open Mounted Directory" })
+	vim.keymap.set("n", keymaps.find, api.find_files, { desc = "Find files in Directory" })
+	vim.keymap.set("n", keymaps.grep, api.open_directory, { desc = "Live GREP" })
 end
 
 return M
