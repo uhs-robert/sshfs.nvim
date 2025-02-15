@@ -169,6 +169,11 @@ end
 
 M.unmount_host = function()
 	if sshfs_job_id then
+		-- Change to home directory before unmounting
+		if mount_point and vim.loop.cwd() == mount_point then
+			vim.cmd("cd ~") -- Change to home directory before unmounting
+		end
+
 		-- Ensure mount_point is valid
 		if mount_point and vim.fn.isdirectory(mount_point) == 1 then
 			local unmount_cmd = "fusermount -zu " .. mount_point
