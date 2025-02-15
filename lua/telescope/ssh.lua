@@ -259,7 +259,7 @@ local function find_files(opts)
 			search_dirs[k] = vim.fn.expand(v)
 		end
 	end
-	local cwd = opts.cwd or vim.luv.cwd()
+	local cwd = opts.cwd or vim.loop.cwd()
 	pickers
 		.new(opts, {
 			prompt_title = "Remote Find Files",
@@ -387,7 +387,7 @@ local function live_grep(opts)
 	-- TODO: Handle if server does not have RIPGREP
 
 	local search_dirs = opts.search_dirs
-	opts.cwd = opts.cwd and vim.fn.expand(opts.cwd) or vim.luv.cwd()
+	opts.cwd = opts.cwd and vim.fn.expand(opts.cwd) or vim.loop.cwd()
 
 	if search_dirs then
 		for i, path in ipairs(search_dirs) do

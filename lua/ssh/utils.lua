@@ -4,8 +4,8 @@ local M = {}
 
 M.setup_sshfs = function(config)
 	local sshfs_folder = config.mounts.base_dir
-	if not vim.luv.fs_stat(sshfs_folder) then
-		vim.luv.fs_mkdir(sshfs_folder, tonumber("700", 8), function(err)
+	if not vim.loop.fs_stat(sshfs_folder) then
+		vim.loop.fs_mkdir(sshfs_folder, tonumber("700", 8), function(err)
 			if err then
 				vim.notify("Error creating mount base dir (" .. sshfs_folder .. "):", err)
 				return
@@ -15,7 +15,7 @@ M.setup_sshfs = function(config)
 end
 
 M.file_exists = function(path)
-	local _, error = vim.luv.fs_stat(path)
+	local _, error = vim.loop.fs_stat(path)
 	return error == nil
 end
 
@@ -23,7 +23,7 @@ M.setup_mount_dir = function(mount_dir, callback)
 	log.line("util", "Setting up mount directory " .. mount_dir)
 	if not M.file_exists(mount_dir) then
 		log.line("util", "Creating mount directory " .. mount_dir)
-		local success = vim.luv.fs_mkdir(mount_dir, tonumber("700", 8))
+		local success = vim.loop.fs_mkdir(mount_dir, tonumber("700", 8))
 		if not success then
 			vim.notify("Error creating mount directory (" .. mount_dir .. ").")
 		else
@@ -38,7 +38,7 @@ M.cleanup_mount_dir = function(mount_dir, callback)
 	log.line("util", "Cleaning up mount directory " .. mount_dir)
 	if M.file_exists(mount_dir) then
 		log.line("util", "Removing mount directory " .. mount_dir)
-		local success = vim.luv.fs_rmdir(mount_dir)
+		local success = vim.loop.fs_rmdir(mount_dir)
 		if not success then
 			vim.notify("Error cleaning up mount directory (" .. mount_dir .. ").")
 		else

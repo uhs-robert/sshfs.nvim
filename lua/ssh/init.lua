@@ -1,4 +1,5 @@
 -- Author: Robert Hill
+-- Fork of nosduco/remote-sshfs.nvim
 -- Description: SSH utilities for mounting remote servers
 
 local M = {}
