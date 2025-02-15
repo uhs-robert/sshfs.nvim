@@ -10,6 +10,15 @@ M.sshfs_wrapper = function(data, mount_dir, callback)
 	if output == "" or string.match(output, "read:") then
 		return
 	end
+
+	-- If process was intentionally stopped, do not report "Connection failed"
+	if
+		string.match(output, "Transport endpoint is not connected") or string.match(output, "Connection to .* closed")
+	then
+		vim.notify("SSHFS unmounted successfully.", vim.log.levels.INFO)
+		return
+	end
+
 	if string.match(output, "ssh_askpass") then
 		M.askpass_handler(callback)
 	elseif string.match(output, "Authenticated") then
