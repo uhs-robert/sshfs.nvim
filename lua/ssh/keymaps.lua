@@ -1,32 +1,42 @@
+-- Custom keymaps
 local M = {}
-local utils = require("ssh.utils")
-if not utils then
-	vim.notify("Failed to load ssh.utils", vim.log.levels.ERROR)
-	return
-end
 
-function M.setup()
-	vim.keymap.set("n", "<leader>m", "<nop>", { desc = "mount" })
+local default_prefix = "<leader>m"
 
-	-- Select Server to Mount from List
-	vim.keymap.set("n", "<leader>mm", function()
-		utils.user_pick_mount()
-	end, { desc = "Mount a SSH Server" })
+local default_keymaps = {
+	edit = "e",
+	find = "f",
+	grep = "g",
+	mount = "m",
+	open = "o",
+	reload = "r",
+	unmount = "u",
+}
 
-	-- Unmount Server
-	vim.keymap.set("n", "<leader>mu", function()
-		utils.user_pick_unmount()
-	end, { desc = "Unmount a SSH Server" })
+local api = require("ssh.api")
 
-	--  Get SSH Server List from ~/.ssh/config
-	vim.keymap.set("n", "<leader>mr", function()
-		utils.get_ssh_config(true)
-	end, { desc = "Reload SSH Server Config List" })
+function M.setup(opts)
+	opts = opts or {}
+	local user_keymaps = opts.keymaps or {}
+	local lead_prefix = opts.lead_prefix or default_prefix
 
-	-- Open Mount Directory or Auto-Mount if Empty
-	vim.keymap.set("n", "<leader>me", function()
-		utils.open_directory()
-	end, { desc = "Open Mounted Directory" })
+	-- Merge and apply prefix dynamically
+	local keymaps = {}
+	for key, suffix in pairs(default_keymaps) do
+		keymaps[key] = user_keymaps[key] or (lead_prefix .. suffix)
+	end
+
+	-- Set prefix
+	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "Mount" })
+
+	-- Assign keymaps
+	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
+	vim.keymap.set("n", keymaps.unmount, api.unmount, { desc = "Unmount a SSH Server" })
+	vim.keymap.set("n", keymaps.edit, api.edit, { desc = "Edit ssh_configs" })
+	vim.keymap.set("n", keymaps.reload, api.reload, { desc = "Reload ssh_configs" })
+	vim.keymap.set("n", keymaps.open, api.open_directory, { desc = "Open Mounted Directory" })
+	vim.keymap.set("n", keymaps.find, api.find_files, { desc = "Find files in Directory" })
+	vim.keymap.set("n", keymaps.grep, api.live_grep, { desc = "Live GREP" })
 end
 
 return M
