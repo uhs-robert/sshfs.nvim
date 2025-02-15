@@ -11,9 +11,11 @@ M.sshfs_wrapper = function(data, mount_dir, callback)
 		return
 	end
 
-	-- If process was intentionally stopped, do not report "Connection failed"
+	-- Ignore expected disconnection messages
 	if
-		string.match(output, "Transport endpoint is not connected") or string.match(output, "Connection to .* closed")
+		string.match(output, "Transport endpoint is not connected")
+		or string.match(output, "Connection to .* closed")
+		or string.match(output, "Killed by signal 15")
 	then
 		vim.notify("SSHFS unmounted successfully.", vim.log.levels.INFO)
 		return
