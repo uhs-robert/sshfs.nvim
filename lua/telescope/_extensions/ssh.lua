@@ -185,6 +185,7 @@ local function find_files(opts)
 		elseif command_exists_on_remote("where", current_host["Name"]) then
 			return { "ssh", current_host["Name"], "where", "/r", ".", "*" }
 		end
+		return {}
 	end)()
 
 	if not find_command then
