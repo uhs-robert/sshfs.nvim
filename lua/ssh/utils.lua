@@ -113,4 +113,8 @@ M.change_directory = function(path)
 	vim.notify("Directory changed to " .. path)
 end
 
+M.normalize_path = function(path)
+	return path:gsub("[\\/]$", "")
+end
+
 return M
