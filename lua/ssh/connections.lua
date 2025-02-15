@@ -172,9 +172,11 @@ M.unmount_host = function()
 		-- Change to home directory before unmounting if inside mount_point
 		vim.notify("Current mount_point: " .. (mount_point or "nil"), vim.log.levels.INFO)
 
-		if mount_point and string.find(vim.loop.cwd(), mount_point, 1, true) == 1 then
-			vim.cmd("cd ~") -- Change to home directory before unmounting
+		if mount_point and string.find(normalize_path(vim.loop.cwd()), normalize_path(mount_point), 1, true) == 1 then
+			vim.cmd("cd ~") -- Change to home directory
+			vim.cmd("pwd") -- Print new working directory for debugging
 		end
+
 		-- Ensure mount_point is valid
 		if mount_point and vim.fn.isdirectory(mount_point) == 1 then
 			local unmount_cmd = "fusermount -zu " .. mount_point
