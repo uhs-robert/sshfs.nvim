@@ -73,20 +73,14 @@ M.setup_commands = function()
 	end, {})
 end
 
---local config = require("ssh.config")
-
 function M.setup(user_opts)
 	local opts = user_opts and vim.tbl_deep_extend("force", default_opts, user_opts) or default_opts
-	require("ssh.utils").setup(opts)
 	require("ssh.connections").setup(opts)
-	require("ssh.handlers").setup(opts)
 	require("ssh.ui").setup(opts)
+	require("ssh.handlers").setup(opts)
+	require("ssh.log").setup(opts)
 	require("ssh.keymaps").setup(opts)
 	M.setup_commands()
-
-	--config.setup(opts)
-	--require("ssh.utils").get_ssh_config(false)
-	--require("ssh.keymaps").setup()
 end
 
 return M
