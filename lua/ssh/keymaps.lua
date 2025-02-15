@@ -31,11 +31,11 @@ function M.setup(opts)
 	-- Assign keymaps
 	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
 	vim.keymap.set("n", keymaps.unmount, api.unmount, { desc = "Unmount a SSH Server" })
-	vim.keymap.set("n", keymaps.edit, api.open_directory, { desc = "Edit ssh_configs" })
+	vim.keymap.set("n", keymaps.edit, api.edit, { desc = "Edit ssh_configs" })
 	vim.keymap.set("n", keymaps.reload, api.reload, { desc = "Reload ssh_configs" })
 	vim.keymap.set("n", keymaps.open, api.open_directory, { desc = "Open Mounted Directory" })
 	vim.keymap.set("n", keymaps.find, api.find_files, { desc = "Find files in Directory" })
-	vim.keymap.set("n", keymaps.grep, api.open_directory, { desc = "Live GREP" })
+	vim.keymap.set("n", keymaps.grep, api.live_grep, { desc = "Live GREP" })
 end
 
 return M
