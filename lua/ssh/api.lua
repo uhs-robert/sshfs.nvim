@@ -1,10 +1,11 @@
 local connections = require("ssh.connections")
+local telescope_ssh = require("telescope").extensions["ssh"]
 
 local M = {}
 
 -- Allow connection to be called via api
 M.mount = function(opts)
-	require("telescope").extensions["ssh"].connect(opts)
+	telescope_ssh.connect(opts)
 end
 
 -- Allow disconnection to be called via api
@@ -14,7 +15,7 @@ end
 
 -- Allow config edit to be called via api
 M.edit = function(opts)
-	require("telescope").extensions["ssh"].edit(opts)
+	telescope_ssh.edit(opts)
 end
 
 -- Allow configuration reload to be called via api
@@ -24,17 +25,17 @@ end
 
 -- Trigger remote find_files
 M.find_files = function(opts)
-	require("telescope").extensions["ssh"].find_files(opts)
+	telescope_ssh.find_files(opts)
 end
 
 -- Trigger remote live_grep
 M.live_grep = function(opts)
-	require("telescope").extensions["ssh"].live_grep(opts)
+	telescope_ssh.live_grep(opts)
 end
 
 -- Trigger open in explorer
 M.open_directory = function(opts)
-	require("telescope").extensions["ssh"].open_directory(opts)
+	telescope_ssh.open_directory(opts)
 end
 
 return M
