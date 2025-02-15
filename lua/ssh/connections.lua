@@ -172,7 +172,10 @@ M.unmount_host = function()
 		-- Change to home directory before unmounting if inside mount_point
 		vim.notify("Current mount_point: " .. (mount_point or "nil"), vim.log.levels.INFO)
 
-		if mount_point and string.find(normalize_path(vim.loop.cwd()), normalize_path(mount_point), 1, true) == 1 then
+		if
+			mount_point
+			and string.find(utils.normalize_path(vim.loop.cwd()), utils.normalize_path(mount_point), 1, true) == 1
+		then
 			vim.cmd("cd ~") -- Change to home directory
 			vim.cmd("pwd") -- Print new working directory for debugging
 		end
