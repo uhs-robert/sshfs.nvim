@@ -27,7 +27,7 @@ function M.setup(opts)
 	end
 
 	-- Set prefix
-	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "mount" })
+	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "mount", group = "search" })
 
 	-- Assign keymaps
 	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
