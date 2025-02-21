@@ -38,12 +38,12 @@ function M.setup(opts)
 	vim.keymap.set("n", keymaps.find, api.find_files, { desc = "Find files in Directory" })
 	vim.keymap.set("n", keymaps.grep, api.live_grep, { desc = "Live GREP" })
 
-	-- ✅ Check if which-key is installed before registering the group with an icon
+	-- Check if which-key is installed before registering the group with an icon
 	local ok, wk = pcall(require, "which-key")
 	if ok then
 		wk.add({
-			["<leader>m"] = { icon = "", group = "mount" },
-		}, { mode = "n" })
+			{ "<leader>m", icon = "", group = "mount" },
+		})
 	end
 end
 
