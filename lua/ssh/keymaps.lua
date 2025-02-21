@@ -42,7 +42,7 @@ function M.setup(opts)
 	local ok, wk = pcall(require, "which-key")
 	if ok then
 		wk.add({
-			{ "<leader>m", icon = "󰌘", group = "mount" },
+			{ "<leader>m", icon = { icon = "󰌘", color = "yellow", h1 = "WhichKey" }, group = "mount" },
 		})
 	end
 end
