@@ -54,9 +54,9 @@ function M.get_current_connection()
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	if #mounts > 0 then
 		-- Return first active mount as the current connection
-		return { 
-			host = { Name = mounts[1].alias }, 
-			mount_point = mounts[1].path 
+		return {
+			host = { Name = mounts[1].alias },
+			mount_point = mounts[1].path,
 		}
 	end
 
@@ -71,15 +71,15 @@ function M.get_all_connections()
 	end
 
 	local mounts = ssh_mount.list_active_mounts(base_dir)
-	
+
 	local connections = {}
 	for _, mount in ipairs(mounts) do
 		table.insert(connections, {
 			host = { Name = mount.alias },
-			mount_point = mount.path
+			mount_point = mount.path,
 		})
 	end
-	
+
 	return connections
 end
 
@@ -110,9 +110,9 @@ function M.connect(host)
 	}
 
 	-- Attempt authentication and mounting
-	vim.notify("Connecting to " .. host.Name .. "...", vim.log.levels.INFO)
 	local user_sshfs_args = config.connections and config.connections.sshfs_args
-	local success, result = ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, mount_to_root, user_sshfs_args)
+	local success, result =
+		ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, mount_to_root, user_sshfs_args)
 
 	if success then
 		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
@@ -184,7 +184,7 @@ function M._handle_post_connect(mount_dir)
 	if config.ui and config.ui.file_picker and config.ui.file_picker.auto_open_on_mount ~= false then
 		local picker_module = require("nvim_ssh.ui.picker")
 		local success, picker_name = picker_module.try_open_file_picker(mount_dir, config.ui)
-		
+
 		if success then
 			vim.notify("Opened " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.INFO)
 		end

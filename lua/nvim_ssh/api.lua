@@ -41,7 +41,7 @@ end
 -- Unmount SSH host - smart handling for multiple mounts
 M.unmount = function()
 	local all_connections = connections.get_all_connections()
-	
+
 	if #all_connections == 0 then
 		vim.notify("No active mounts to disconnect", vim.log.levels.WARN)
 		return
@@ -105,7 +105,7 @@ end
 -- Browse remote files - smart handling for multiple mounts
 M.browse = function(opts)
 	local all_connections = connections.get_all_connections()
-	
+
 	if #all_connections == 0 then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
@@ -123,17 +123,14 @@ M.grep = function(pattern, opts)
 	M.live_grep(pattern, opts)
 end
 
-
 -- List all active mounts and open file picker for selected mount
 M.list_mounts = function()
 	picker.pick_mount(function(selected_mount)
 		if selected_mount then
 			local config = get_ui_config()
 			local success, picker_name = picker.try_open_file_picker(selected_mount.path, config)
-			
-			if success then
-				vim.notify("Opened " .. picker_name .. " for: " .. selected_mount.path, vim.log.levels.INFO)
-			else
+
+			if not success then
 				vim.notify("Could not open file picker for: " .. selected_mount.path, vim.log.levels.WARN)
 			end
 		end
