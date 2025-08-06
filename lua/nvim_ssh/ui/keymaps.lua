@@ -5,7 +5,6 @@ local default_prefix = "<leader>m"
 
 local default_keymaps = {
 	edit = "e",
-	find = "f",
 	grep = "g",
 	list = "l",
 	mount = "m",
@@ -36,7 +35,6 @@ function M.setup(opts)
 	vim.keymap.set("n", keymaps.edit, api.edit, { desc = "Edit ssh_configs" })
 	vim.keymap.set("n", keymaps.reload, api.reload, { desc = "Reload ssh_configs" })
 	vim.keymap.set("n", keymaps.open, api.browse, { desc = "Browse Mounted Directory" })
-	vim.keymap.set("n", keymaps.find, api.find_files, { desc = "Find files in Directory" })
 	vim.keymap.set("n", keymaps.grep, api.live_grep, { desc = "Live GREP" })
 	vim.keymap.set("n", keymaps.list, api.list_mounts, { desc = "List Active Mounts" })
 

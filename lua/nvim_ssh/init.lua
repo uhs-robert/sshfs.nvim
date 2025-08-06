@@ -65,9 +65,6 @@ M.setup_commands = function()
 		api.unmount()
 	end, { desc = "Disconnect from current SSH host" })
 
-	vim.api.nvim_create_user_command("SSHFindFiles", function()
-		api.find_files()
-	end, { desc = "Find files on remote host" })
 
 	vim.api.nvim_create_user_command("SSHLiveGrep", function(opts)
 		local pattern = opts.args and opts.args ~= "" and opts.args or nil

@@ -31,9 +31,8 @@ Use sshfs to mount remote servers in nvim for editing and viewing
 - `:SSHDisconnect` - Disconnect from current host
 - `:SSHEdit` - Edit SSH config files
 - `:SSHReload` - Reload SSH configuration
-- `:SSHFindFiles` - Change to remote directory for browsing with your preferred explorer
 - `:SSHLiveGrep [pattern]` - Change to remote directory and set search pattern for your preferred search tool
-- `:SSHBrowse` - Alias for SSHFindFiles
+- `:SSHBrowse` - Browse remote files using your preferred file explorer
 - `:SSHGrep [pattern]` - Alias for SSHLiveGrep
 
 ## Architecture
@@ -64,7 +63,7 @@ The architecture separates concerns clearly, making the codebase maintainable, t
 
 After connecting to a host with `:SSHConnect`, the plugin mounts the remote filesystem locally. You can then:
 
-1. **Browse files**: Use `:SSHFindFiles` to change to the remote directory, then use your preferred file explorer:
+1. **Browse files**: Use `:SSHBrowse` to browse remote files with your preferred file explorer:
    - Telescope: `:Telescope find_files`
    - Oil: `:Oil`
    - Snacks: `:lua Snacks.dashboard()`
