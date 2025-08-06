@@ -1,7 +1,3 @@
--- Author: Robert Hill
--- Fork of nosduco/remote-sshfs.nvim
--- Description: SSH utilities for mounting remote servers
-
 local M = {}
 local ssh_config = require("nvim_ssh.core.config")
 
@@ -26,9 +22,7 @@ local default_opts = {
 		},
 	},
 	ui = {
-		select_prompts = true,
 		file_picker = {
-			auto_open = true,
 			auto_open_on_mount = true, -- Auto-open file picker after mounting (default: true)
 			preferred_picker = "auto", -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
 			fallback_to_netrw = true,
@@ -105,7 +99,6 @@ function M.setup(user_opts)
 	connections.setup(opts)
 
 	-- Setup other modules
-	require("nvim_ssh.ui.prompts").setup(opts.ui or {})
 	require("nvim_ssh.utils.log").setup(opts)
 	require("nvim_ssh.ui.keymaps").setup(opts)
 
@@ -115,12 +108,12 @@ function M.setup(user_opts)
 			callback = function()
 				local connections = require("nvim_ssh.core.connections")
 				local all_connections = connections.get_all_connections()
-				
+
 				for _, connection in ipairs(all_connections) do
 					connections.disconnect_specific(connection)
 				end
 			end,
-			desc = "Cleanup SSH mounts on exit"
+			desc = "Cleanup SSH mounts on exit",
 		})
 	end
 

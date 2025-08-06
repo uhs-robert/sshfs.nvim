@@ -3,7 +3,6 @@ local ssh_config = require("nvim_ssh.core.config")
 local ssh_mount = require("nvim_ssh.core.mount")
 local ssh_auth = require("nvim_ssh.core.auth")
 local ssh_cache = require("nvim_ssh.core.cache")
-local ui = require("nvim_ssh.ui.prompts")
 
 local M = {}
 
@@ -185,8 +184,8 @@ function M._handle_post_connect(mount_dir)
 		local picker_module = require("nvim_ssh.ui.picker")
 		local success, picker_name = picker_module.try_open_file_picker(mount_dir, config.ui)
 
-		if success then
-			vim.notify("Opened " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.INFO)
+		if not success then
+			vim.notify("Failed to open " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.ERROR)
 		end
 	end
 end

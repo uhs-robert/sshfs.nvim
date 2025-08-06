@@ -98,7 +98,7 @@ local function try_ranger(cwd)
 		ranger.open(true)
 		return true
 	end
-	
+
 	-- Try rnvimr as alternative
 	local rnvimr_ok = pcall(function()
 		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
@@ -118,7 +118,7 @@ end
 -- Main function to try opening file picker
 function M.try_open_file_picker(cwd, config)
 	local file_picker_config = config.file_picker or {}
-	local auto_open = file_picker_config.auto_open ~= false -- default true
+	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
 	local fallback_to_netrw = file_picker_config.fallback_to_netrw ~= false -- default true
 
@@ -248,7 +248,7 @@ end
 -- Main function to try opening search picker
 function M.try_open_search_picker(cwd, pattern, config)
 	local file_picker_config = config.file_picker or {}
-	local auto_open = file_picker_config.auto_open ~= false -- default true
+	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
 
 	if not auto_open then
@@ -422,16 +422,8 @@ function M.browse_remote_files(opts)
 	-- Try to auto-open file picker
 	local success, picker_name = M.try_open_file_picker(target_dir, config)
 
-	if success then
-		vim.notify("Opened " .. picker_name .. " file browser for: " .. target_dir, vim.log.levels.INFO)
-	else
-		-- Fallback to old behavior
-		vim.cmd("cd " .. vim.fn.fnameescape(target_dir))
-		vim.notify("Changed to remote directory: " .. target_dir, vim.log.levels.INFO)
-		vim.notify(
-			"Reason: " .. picker_name .. ". Please open your preferred file explorer manually.",
-			vim.log.levels.WARN
-		)
+	if not success then
+		vim.notify("Failed to open " .. picker_name .. ". Please open manually.", vim.log.levels.WARN)
 	end
 end
 
@@ -480,10 +472,7 @@ function M.grep_remote_files(pattern, opts)
 				vim.log.levels.INFO
 			)
 		else
-			vim.notify(
-				"Opened " .. picker_name .. " search interface in: " .. search_dir,
-				vim.log.levels.INFO
-			)
+			vim.notify("Opened " .. picker_name .. " search interface in: " .. search_dir, vim.log.levels.INFO)
 		end
 	else
 		-- Fallback to old behavior
@@ -495,10 +484,7 @@ function M.grep_remote_files(pattern, opts)
 				vim.log.levels.INFO
 			)
 		else
-			vim.notify(
-				"Changed to remote directory: " .. search_dir,
-				vim.log.levels.INFO
-			)
+			vim.notify("Changed to remote directory: " .. search_dir, vim.log.levels.INFO)
 		end
 		vim.notify(
 			"Reason: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.",
@@ -507,41 +493,40 @@ function M.grep_remote_files(pattern, opts)
 	end
 end
 
-
 -- Mount selection picker using vim.ui.select
 function M.pick_mount(callback)
 	local connections = require("nvim_ssh.core.connections")
 	local ssh_mount = require("nvim_ssh.core.mount")
-	
+
 	-- Get configuration to determine mount base directory
 	local config = {}
 	local config_ok, init_module = pcall(require, "nvim_ssh")
 	if config_ok and init_module._config then
 		config = init_module._config
 	end
-	
+
 	local base_dir = config.mounts and config.mounts.base_dir
 	if not base_dir then
 		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
 		return
 	end
-	
+
 	local mounts = ssh_mount.list_active_mounts(base_dir)
-	
+
 	if not mounts or #mounts == 0 then
 		vim.notify("No active SSH mounts found", vim.log.levels.WARN)
 		return
 	end
-	
+
 	local mount_list = {}
 	local mount_map = {}
-	
+
 	for _, mount in ipairs(mounts) do
 		local display = mount.alias .. " (" .. mount.path .. ")"
 		table.insert(mount_list, display)
 		mount_map[display] = mount
 	end
-	
+
 	vim.ui.select(mount_list, {
 		prompt = "Select mount to navigate to:",
 		format_item = function(item)
@@ -558,40 +543,40 @@ end
 function M.pick_mount_to_unmount(callback)
 	local connections = require("nvim_ssh.core.connections")
 	local ssh_mount = require("nvim_ssh.core.mount")
-	
+
 	-- Get configuration to determine mount base directory
 	local config = {}
 	local config_ok, init_module = pcall(require, "nvim_ssh")
 	if config_ok and init_module._config then
 		config = init_module._config
 	end
-	
+
 	local base_dir = config.mounts and config.mounts.base_dir
 	if not base_dir then
 		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
 		return
 	end
-	
+
 	local mounts = ssh_mount.list_active_mounts(base_dir)
-	
+
 	if not mounts or #mounts == 0 then
 		vim.notify("No active SSH mounts to disconnect", vim.log.levels.WARN)
 		return
 	end
-	
+
 	local mount_list = {}
 	local mount_map = {}
-	
+
 	for _, mount in ipairs(mounts) do
 		local display = mount.alias .. " (" .. mount.path .. ")"
 		table.insert(mount_list, display)
 		-- Create connection object compatible with disconnect_specific
 		mount_map[display] = {
 			host = { Name = mount.alias },
-			mount_point = mount.path
+			mount_point = mount.path,
 		}
 	end
-	
+
 	vim.ui.select(mount_list, {
 		prompt = "Select mount to disconnect:",
 		format_item = function(item)

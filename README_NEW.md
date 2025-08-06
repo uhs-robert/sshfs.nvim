@@ -49,7 +49,6 @@ This plugin uses a clean, modular architecture organized by functional domains:
 
 ### User Interface (`ui/`)
 - `picker.lua` - Native UI components for host/file selection
-- `prompts.lua` - User prompts and confirmations
 - `keymaps.lua` - Keyboard shortcut definitions
 
 ### Utilities (`utils/`)
