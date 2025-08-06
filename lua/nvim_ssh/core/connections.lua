@@ -40,6 +40,8 @@ function M.is_connected()
 		return false
 	end
 
+	-- Normalize base_dir to remove trailing slash for consistency
+	base_dir = base_dir:gsub("/$", "")
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	return #mounts > 0
 end
@@ -51,6 +53,8 @@ function M.get_current_connection()
 		return { host = nil, mount_point = nil }
 	end
 
+	-- Normalize base_dir to remove trailing slash for consistency
+	base_dir = base_dir:gsub("/$", "")
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	if #mounts > 0 then
 		-- Return first active mount as the current connection
