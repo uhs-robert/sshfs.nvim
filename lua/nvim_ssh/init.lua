@@ -17,24 +17,19 @@ local default_opts = {
 		},
 	},
 	mounts = {
-		base_dir = vim.fn.expand("$HOME") .. "/mnt/",
+		base_dir = vim.fn.expand("$HOME") .. "/mnt",
 		unmount_on_exit = true,
 	},
 	handlers = {
-		on_connect = {
-			change_dir = true,
-		},
 		on_disconnect = {
 			clean_mount_folders = true,
 		},
 	},
 	ui = {
-		confirm = {
-			change_dir = false,
-		},
 		select_prompts = true,
 		file_picker = {
 			auto_open = true,
+			auto_open_on_mount = true, -- Auto-open file picker after mounting (default: true)
 			preferred_picker = "auto", -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
 			fallback_to_netrw = true,
 		},

@@ -40,8 +40,6 @@ function M.is_connected()
 		return false
 	end
 
-	-- Normalize base_dir to remove trailing slash for consistency
-	base_dir = base_dir:gsub("/$", "")
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	return #mounts > 0
 end
@@ -53,8 +51,6 @@ function M.get_current_connection()
 		return { host = nil, mount_point = nil }
 	end
 
-	-- Normalize base_dir to remove trailing slash for consistency
-	base_dir = base_dir:gsub("/$", "")
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	if #mounts > 0 then
 		-- Return first active mount as the current connection
@@ -74,8 +70,6 @@ function M.get_all_connections()
 		return {}
 	end
 
-	-- Normalize base_dir to remove trailing slash for consistency
-	base_dir = base_dir:gsub("/$", "")
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	
 	local connections = {}
@@ -91,7 +85,7 @@ end
 
 -- Connect to a remote host
 function M.connect(host)
-	local mount_dir = config.mounts.base_dir:gsub("/$", "") .. "/" .. host.Name
+	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
 
 	-- Check if already mounted
 	if ssh_mount.is_mount_active(mount_dir, mount_dir) then
@@ -183,26 +177,16 @@ function M.reload()
 	vim.notify("SSH configuration reloaded", vim.log.levels.INFO)
 end
 
--- Handle post-connection actions (directory change, etc.)
+-- Handle post-connection actions (auto-open file picker)
 function M._handle_post_connect(mount_dir)
-	if not config.handlers or not config.handlers.on_connect or not config.handlers.on_connect.change_dir then
-		return
-	end
-
-	local should_confirm = config.ui and config.ui.confirm and config.ui.confirm.change_dir
-
-	if should_confirm then
-		local prompt = "Change current directory to remote server?"
-		ui.prompt_yes_no(prompt, function(response)
-			ui.clear_prompt()
-			if response == "y" then
-				vim.cmd("cd " .. mount_dir)
-				vim.notify("Directory changed to " .. mount_dir)
-			end
-		end)
-	else
-		vim.cmd("cd " .. mount_dir)
-		vim.notify("Directory changed to " .. mount_dir)
+	-- Auto-open file picker if enabled
+	if config.ui and config.ui.file_picker and config.ui.file_picker.auto_open_on_mount ~= false then
+		local picker_module = require("nvim_ssh.ui.picker")
+		local success, picker_name = picker_module.try_open_file_picker(mount_dir, config.ui)
+		
+		if success then
+			vim.notify("Opened " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.INFO)
+		end
 	end
 end
 

@@ -3,6 +3,16 @@ local picker = require("nvim_ssh.ui.picker")
 
 local M = {}
 
+-- Helper function to get UI config consistently
+local function get_ui_config()
+	local config = {}
+	local config_ok, init_module = pcall(require, "nvim_ssh")
+	if config_ok and init_module._config then
+		config = init_module._config.ui or {}
+	end
+	return config
+end
+
 -- Connect to SSH host - use picker if no host provided, otherwise connect directly
 M.connect = function(host)
 	if host then
@@ -114,12 +124,18 @@ M.grep = function(pattern, opts)
 end
 
 
--- List all active mounts and allow jumping to selected mount
+-- List all active mounts and open file picker for selected mount
 M.list_mounts = function()
 	picker.pick_mount(function(selected_mount)
 		if selected_mount then
-			vim.cmd("cd " .. vim.fn.fnameescape(selected_mount.path))
-			vim.notify("Changed directory to: " .. selected_mount.path, vim.log.levels.INFO)
+			local config = get_ui_config()
+			local success, picker_name = picker.try_open_file_picker(selected_mount.path, config)
+			
+			if success then
+				vim.notify("Opened " .. picker_name .. " for: " .. selected_mount.path, vim.log.levels.INFO)
+			else
+				vim.notify("Could not open file picker for: " .. selected_mount.path, vim.log.levels.WARN)
+			end
 		end
 	end)
 end

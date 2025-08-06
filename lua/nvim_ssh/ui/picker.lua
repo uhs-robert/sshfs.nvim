@@ -526,8 +526,6 @@ function M.pick_mount(callback)
 		return
 	end
 	
-	-- Normalize base_dir to remove trailing slash for consistency
-	base_dir = base_dir:gsub("/$", "")
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	
 	if not mounts or #mounts == 0 then
@@ -574,8 +572,6 @@ function M.pick_mount_to_unmount(callback)
 		return
 	end
 	
-	-- Normalize base_dir to remove trailing slash for consistency
-	base_dir = base_dir:gsub("/$", "")
 	local mounts = ssh_mount.list_active_mounts(base_dir)
 	
 	if not mounts or #mounts == 0 then
