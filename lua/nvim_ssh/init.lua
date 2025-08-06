@@ -33,6 +33,11 @@ local default_opts = {
 			change_dir = false,
 		},
 		select_prompts = true,
+		file_picker = {
+			auto_open = true,
+			preferred_picker = "auto", -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "netrw"
+			fallback_to_netrw = true,
+		},
 	},
 	log = {
 		enable = false,
@@ -92,6 +97,9 @@ end
 
 function M.setup(user_opts)
 	local opts = user_opts and vim.tbl_deep_extend("force", default_opts, user_opts) or default_opts
+
+	-- Store config for access by other modules
+	M._config = opts
 
 	-- Initialize the connections module
 	local connections = require("nvim_ssh.core.connections")

@@ -3,6 +3,198 @@ local ssh_config = require("nvim_ssh.core.config")
 
 local M = {}
 
+-- File picker detection and auto-launch functions
+local function try_telescope_files(cwd)
+	local ok, telescope = pcall(require, "telescope.builtin")
+	if ok and telescope.find_files then
+		telescope.find_files({ cwd = cwd })
+		return true
+	end
+	return false
+end
+
+local function try_oil(cwd)
+	local ok, oil = pcall(require, "oil")
+	if ok and oil.open then
+		oil.open(cwd)
+		return true
+	end
+	return false
+end
+
+local function try_neo_tree(cwd)
+	local ok = pcall(vim.cmd, "Neotree filesystem reveal dir=" .. vim.fn.fnameescape(cwd))
+	return ok
+end
+
+local function try_nvim_tree(cwd)
+	local ok = pcall(function()
+		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		vim.cmd("NvimTreeOpen")
+	end)
+	return ok
+end
+
+local function try_snacks_files(cwd)
+	local ok, snacks = pcall(require, "snacks")
+	if ok and snacks.picker and snacks.picker.files then
+		snacks.picker.files({ cwd = cwd })
+		return true
+	end
+	return false
+end
+
+local function try_fzf_lua_files(cwd)
+	local ok, fzf = pcall(require, "fzf-lua")
+	if ok and fzf.files then
+		fzf.files({ cwd = cwd })
+		return true
+	end
+	return false
+end
+
+local function try_netrw(cwd)
+	local ok = pcall(function()
+		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		vim.cmd("Explore")
+	end)
+	return ok
+end
+
+-- Main function to try opening file picker
+function M.try_open_file_picker(cwd, config)
+	local file_picker_config = config.file_picker or {}
+	local auto_open = file_picker_config.auto_open ~= false -- default true
+	local preferred = file_picker_config.preferred_picker or "auto"
+	local fallback_to_netrw = file_picker_config.fallback_to_netrw ~= false -- default true
+
+	if not auto_open then
+		return false, "Auto-open disabled"
+	end
+
+	-- Try preferred picker first if specified
+	if preferred ~= "auto" then
+		local pickers = {
+			telescope = try_telescope_files,
+			oil = try_oil,
+			["neo-tree"] = try_neo_tree,
+			["nvim-tree"] = try_nvim_tree,
+			snacks = try_snacks_files,
+			["fzf-lua"] = try_fzf_lua_files,
+			netrw = try_netrw,
+		}
+		local picker_fn = pickers[preferred]
+		if picker_fn and picker_fn(cwd) then
+			return true, preferred
+		end
+	end
+
+	-- Auto-detect available pickers in order of preference
+	local pickers_order = {
+		{ name = "telescope", fn = try_telescope_files },
+		{ name = "oil", fn = try_oil },
+		{ name = "neo-tree", fn = try_neo_tree },
+		{ name = "nvim-tree", fn = try_nvim_tree },
+		{ name = "snacks", fn = try_snacks_files },
+		{ name = "fzf-lua", fn = try_fzf_lua_files },
+	}
+
+	for _, picker in ipairs(pickers_order) do
+		if picker.fn(cwd) then
+			return true, picker.name
+		end
+	end
+
+	-- Fallback to netrw if enabled
+	if fallback_to_netrw and try_netrw(cwd) then
+		return true, "netrw"
+	end
+
+	return false, "No file picker available"
+end
+
+-- Search picker detection and auto-launch functions
+local function try_telescope_live_grep(cwd, pattern)
+	local ok, telescope = pcall(require, "telescope.builtin")
+	if ok and telescope.live_grep then
+		telescope.live_grep({ cwd = cwd, default_text = pattern })
+		return true
+	end
+	return false
+end
+
+local function try_snacks_grep(cwd, pattern)
+	local ok, snacks = pcall(require, "snacks")
+	if ok and snacks.picker and snacks.picker.grep then
+		snacks.picker.grep({ cwd = cwd, search = pattern })
+		return true
+	end
+	return false
+end
+
+local function try_fzf_lua_live_grep(cwd, pattern)
+	local ok, fzf = pcall(require, "fzf-lua")
+	if ok and fzf.live_grep then
+		fzf.live_grep({ cwd = cwd, query = pattern })
+		return true
+	end
+	return false
+end
+
+local function try_builtin_grep(cwd, pattern)
+	local ok = pcall(function()
+		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		if pattern and pattern ~= "" then
+			vim.fn.setreg("/", pattern)
+			vim.cmd("grep -r " .. vim.fn.shellescape(pattern) .. " .")
+		else
+			vim.cmd("grep -r . .")
+		end
+	end)
+	return ok
+end
+
+-- Main function to try opening search picker
+function M.try_open_search_picker(cwd, pattern, config)
+	local file_picker_config = config.file_picker or {}
+	local auto_open = file_picker_config.auto_open ~= false -- default true
+	local preferred = file_picker_config.preferred_picker or "auto"
+
+	if not auto_open then
+		return false, "Auto-open disabled"
+	end
+
+	-- Try preferred picker first if specified
+	if preferred ~= "auto" then
+		local pickers = {
+			telescope = function() return try_telescope_live_grep(cwd, pattern) end,
+			snacks = function() return try_snacks_grep(cwd, pattern) end,
+			["fzf-lua"] = function() return try_fzf_lua_live_grep(cwd, pattern) end,
+			builtin = function() return try_builtin_grep(cwd, pattern) end,
+		}
+		local picker_fn = pickers[preferred]
+		if picker_fn and picker_fn() then
+			return true, preferred
+		end
+	end
+
+	-- Auto-detect available search pickers in order of preference
+	local search_pickers = {
+		{ name = "telescope", fn = function() return try_telescope_live_grep(cwd, pattern) end },
+		{ name = "snacks", fn = function() return try_snacks_grep(cwd, pattern) end },
+		{ name = "fzf-lua", fn = function() return try_fzf_lua_live_grep(cwd, pattern) end },
+		{ name = "builtin", fn = function() return try_builtin_grep(cwd, pattern) end },
+	}
+
+	for _, picker in ipairs(search_pickers) do
+		if picker.fn() then
+			return true, picker.name
+		end
+	end
+
+	return false, "No search picker available"
+end
+
 -- Host selection picker using vim.ui.select
 function M.pick_host(callback)
 	local connections = require("nvim_ssh.core.connections")
@@ -70,7 +262,7 @@ function M.pick_ssh_config(callback)
 	end)
 end
 
--- Browse remote files by changing to mount directory
+-- Browse remote files using auto-detected file picker
 function M.browse_remote_files(opts)
 	opts = opts or {}
 	local connections = require("nvim_ssh.core.connections")
@@ -89,7 +281,6 @@ function M.browse_remote_files(opts)
 		return
 	end
 
-	-- Change to the mount directory and let user use their preferred explorer
 	local target_dir = opts.dir or mount_point
 
 	-- Check if directory exists and is accessible
@@ -99,13 +290,27 @@ function M.browse_remote_files(opts)
 		return
 	end
 
-	-- Change working directory to mount point
-	vim.cmd("cd " .. vim.fn.fnameescape(target_dir))
-	vim.notify("Changed to remote directory: " .. target_dir, vim.log.levels.INFO)
-	vim.notify("Use your preferred file explorer (telescope, snacks, oil, etc.) to browse files", vim.log.levels.INFO)
+	-- Get UI configuration from init
+	local config = {}
+	local config_ok, init_module = pcall(require, "nvim_ssh")
+	if config_ok and init_module._config then
+		config = init_module._config.ui or {}
+	end
+
+	-- Try to auto-open file picker
+	local success, picker_name = M.try_open_file_picker(target_dir, config)
+
+	if success then
+		vim.notify("Opened " .. picker_name .. " file browser for: " .. target_dir, vim.log.levels.INFO)
+	else
+		-- Fallback to old behavior
+		vim.cmd("cd " .. vim.fn.fnameescape(target_dir))
+		vim.notify("Changed to remote directory: " .. target_dir, vim.log.levels.INFO)
+		vim.notify("Reason: " .. picker_name .. ". Please open your preferred file explorer manually.", vim.log.levels.WARN)
+	end
 end
 
--- Search remote files with user's preferred method
+-- Search remote files using auto-detected search picker
 function M.grep_remote_files(pattern, opts)
 	opts = opts or {}
 	local connections = require("nvim_ssh.core.connections")
@@ -131,7 +336,6 @@ function M.grep_remote_files(pattern, opts)
 		return
 	end
 
-	-- Change to mount directory
 	local search_dir = opts.dir or mount_point
 	local stat = vim.uv.fs_stat(search_dir)
 	if not stat or stat.type ~= "directory" then
@@ -139,16 +343,25 @@ function M.grep_remote_files(pattern, opts)
 		return
 	end
 
-	vim.cmd("cd " .. vim.fn.fnameescape(search_dir))
+	-- Get UI configuration from init
+	local config = {}
+	local config_ok, init_module = pcall(require, "nvim_ssh")
+	if config_ok and init_module._config then
+		config = init_module._config.ui or {}
+	end
 
-	-- Set up search pattern in vim register for easy access
-	vim.fn.setreg("/", pattern)
+	-- Try to auto-open search picker
+	local success, picker_name = M.try_open_search_picker(search_dir, pattern, config)
 
-	vim.notify(
-		"Changed to remote directory. Search pattern '" .. pattern .. "' set in search register.",
-		vim.log.levels.INFO
-	)
-	vim.notify("Use :grep, :vimgrep, telescope live_grep, or your preferred search tool", vim.log.levels.INFO)
+	if success then
+		vim.notify("Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. search_dir, vim.log.levels.INFO)
+	else
+		-- Fallback to old behavior
+		vim.cmd("cd " .. vim.fn.fnameescape(search_dir))
+		vim.fn.setreg("/", pattern)
+		vim.notify("Changed to remote directory. Search pattern '" .. pattern .. "' set in search register.", vim.log.levels.INFO)
+		vim.notify("Reason: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.", vim.log.levels.WARN)
+	end
 end
 
 return M
