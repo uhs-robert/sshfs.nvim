@@ -181,7 +181,11 @@ end
 local function try_telescope_live_grep(cwd, pattern)
 	local ok, telescope = pcall(require, "telescope.builtin")
 	if ok and telescope.live_grep then
-		telescope.live_grep({ cwd = cwd, default_text = pattern })
+		local opts = { cwd = cwd }
+		if pattern and pattern ~= "" then
+			opts.default_text = pattern
+		end
+		telescope.live_grep(opts)
 		return true
 	end
 	return false
@@ -190,7 +194,11 @@ end
 local function try_snacks_grep(cwd, pattern)
 	local ok, snacks = pcall(require, "snacks")
 	if ok and snacks.picker and snacks.picker.grep then
-		snacks.picker.grep({ cwd = cwd, search = pattern })
+		local opts = { cwd = cwd }
+		if pattern and pattern ~= "" then
+			opts.search = pattern
+		end
+		snacks.picker.grep(opts)
 		return true
 	end
 	return false
@@ -199,7 +207,11 @@ end
 local function try_fzf_lua_live_grep(cwd, pattern)
 	local ok, fzf = pcall(require, "fzf-lua")
 	if ok and fzf.live_grep then
-		fzf.live_grep({ cwd = cwd, query = pattern })
+		local opts = { cwd = cwd }
+		if pattern and pattern ~= "" then
+			opts.query = pattern
+		end
+		fzf.live_grep(opts)
 		return true
 	end
 	return false
@@ -208,7 +220,11 @@ end
 local function try_mini_grep(cwd, pattern)
 	local ok, mini_pick = pcall(require, "mini.pick")
 	if ok and mini_pick.builtin and mini_pick.builtin.grep_live then
-		mini_pick.builtin.grep_live({ source = { cwd = cwd } }, { default_text = pattern })
+		local opts = {}
+		if pattern and pattern ~= "" then
+			opts.default_text = pattern
+		end
+		mini_pick.builtin.grep_live({ source = { cwd = cwd } }, opts)
 		return true
 	end
 	return false
@@ -221,7 +237,9 @@ local function try_builtin_grep(cwd, pattern)
 			vim.fn.setreg("/", pattern)
 			vim.cmd("grep -r " .. vim.fn.shellescape(pattern) .. " .")
 		else
-			vim.cmd("grep -r . .")
+			-- Open empty quickfix window for manual search
+			vim.cmd("copen")
+			vim.notify("Ready to search in " .. cwd .. ". Use :grep <pattern> to search.", vim.log.levels.INFO)
 		end
 	end)
 	return ok
@@ -427,12 +445,7 @@ function M.grep_remote_files(pattern, opts)
 		return
 	end
 
-	if not pattern or pattern == "" then
-		pattern = vim.fn.input("Search pattern: ")
-		if not pattern or pattern == "" then
-			return
-		end
-	end
+	-- Allow empty pattern to open search interface without initial query
 
 	local connection = connections.get_current_connection()
 	local host = connection.host
@@ -461,18 +474,32 @@ function M.grep_remote_files(pattern, opts)
 	local success, picker_name = M.try_open_search_picker(search_dir, pattern, config)
 
 	if success then
-		vim.notify(
-			"Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. search_dir,
-			vim.log.levels.INFO
-		)
+		if pattern and pattern ~= "" then
+			vim.notify(
+				"Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. search_dir,
+				vim.log.levels.INFO
+			)
+		else
+			vim.notify(
+				"Opened " .. picker_name .. " search interface in: " .. search_dir,
+				vim.log.levels.INFO
+			)
+		end
 	else
 		-- Fallback to old behavior
 		vim.cmd("cd " .. vim.fn.fnameescape(search_dir))
-		vim.fn.setreg("/", pattern)
-		vim.notify(
-			"Changed to remote directory. Search pattern '" .. pattern .. "' set in search register.",
-			vim.log.levels.INFO
-		)
+		if pattern and pattern ~= "" then
+			vim.fn.setreg("/", pattern)
+			vim.notify(
+				"Changed to remote directory. Search pattern '" .. pattern .. "' set in search register.",
+				vim.log.levels.INFO
+			)
+		else
+			vim.notify(
+				"Changed to remote directory: " .. search_dir,
+				vim.log.levels.INFO
+			)
+		end
 		vim.notify(
 			"Reason: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.",
 			vim.log.levels.WARN
