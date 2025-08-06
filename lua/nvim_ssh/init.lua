@@ -3,21 +3,21 @@
 -- Description: SSH utilities for mounting remote servers
 
 local M = {}
+local ssh_config = require("ssh.core.config")
 
 local default_opts = {
 	connections = {
-		ssh_configs = {
-			vim.fn.expand("$HOME") .. "/.ssh/config",
-			"/etc/ssh/ssh_config",
-			-- "/path/to/custom/ssh_config"
-		},
+		ssh_configs = ssh_config.get_default_ssh_configs(),
 		sshfs_args = {
 			"-o reconnect",
 			"-o ConnectTimeout=5",
+			"-o compression=true",
+			"-o server_alive_interval=15",
+			"-o server_alive_count_max=3",
 		},
 	},
 	mounts = {
-		base_dir = vim.fn.expand("$HOME") .. "/.sshfs/",
+		base_dir = vim.fn.expand("$HOME") .. "/mnt/",
 		unmount_on_exit = true,
 	},
 	handlers = {
@@ -48,39 +48,60 @@ local default_opts = {
 M.setup_commands = function()
 	local api = require("ssh.api")
 
-	-- Create commands to connect/edit/reload/disconnect/find_files/live_grep
+	-- Create commands
 	vim.api.nvim_create_user_command("SSHConnect", function(opts)
 		if opts.args and opts.args ~= "" then
-			local host = require("ssh.utils").parse_host_from_command(opts.args)
+			local host = ssh_config.parse_host_from_command(opts.args)
 			api.connect(host)
 		else
 			api.connect()
 		end
 	end, { nargs = "?", desc = "Remotely connect to host via picker or command as argument." })
+
 	vim.api.nvim_create_user_command("SSHEdit", function()
 		api.edit()
-	end, {})
+	end, { desc = "Edit SSH config files" })
+
 	vim.api.nvim_create_user_command("SSHReload", function()
 		api.reload()
-	end, {})
+	end, { desc = "Reload SSH configuration" })
+
 	vim.api.nvim_create_user_command("SSHDisconnect", function()
 		api.unmount()
-	end, {})
+	end, { desc = "Disconnect from current SSH host" })
+
 	vim.api.nvim_create_user_command("SSHFindFiles", function()
 		api.find_files()
-	end, {})
-	vim.api.nvim_create_user_command("SSHLiveGrep", function()
-		api.live_grep()
-	end, {})
+	end, { desc = "Find files on remote host" })
+
+	vim.api.nvim_create_user_command("SSHLiveGrep", function(opts)
+		local pattern = opts.args and opts.args ~= "" and opts.args or nil
+		api.live_grep(pattern)
+	end, { nargs = "?", desc = "Search text in remote files" })
+
+	vim.api.nvim_create_user_command("SSHBrowse", function()
+		api.browse()
+	end, { desc = "Browse remote files" })
+
+	vim.api.nvim_create_user_command("SSHGrep", function(opts)
+		local pattern = opts.args and opts.args ~= "" and opts.args or nil
+		api.grep(pattern)
+	end, { nargs = "?", desc = "Search text in remote files (alias)" })
 end
 
 function M.setup(user_opts)
 	local opts = user_opts and vim.tbl_deep_extend("force", default_opts, user_opts) or default_opts
-	require("ssh.connections").setup(opts)
-	require("ssh.ui").setup(opts)
-	require("ssh.handlers").setup(opts)
-	require("ssh.log").setup(opts)
-	require("ssh.keymaps").setup(opts)
+
+	-- Initialize the connections module
+	local connections = require("ssh.core.connections")
+	connections.setup(opts)
+
+	-- Setup other modules
+	require("ssh.ui.prompts").setup(opts)
+	require("ssh.utils.log").setup(opts)
+	require("ssh.ui.keymaps").setup(opts)
+
+	-- Create user commands
 	M.setup_commands()
 end
 
