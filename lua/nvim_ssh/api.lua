@@ -87,4 +87,14 @@ M.grep = function(pattern, opts)
 	M.live_grep(pattern, opts)
 end
 
+-- List all active mounts and allow jumping to selected mount
+M.list_mounts = function()
+	picker.pick_mount(function(selected_mount)
+		if selected_mount then
+			vim.cmd("cd " .. vim.fn.fnameescape(selected_mount.path))
+			vim.notify("Changed directory to: " .. selected_mount.path, vim.log.levels.INFO)
+		end
+	end)
+end
+
 return M

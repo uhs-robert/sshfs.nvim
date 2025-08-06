@@ -507,4 +507,52 @@ function M.grep_remote_files(pattern, opts)
 	end
 end
 
+-- Mount selection picker using vim.ui.select
+function M.pick_mount(callback)
+	local connections = require("nvim_ssh.core.connections")
+	local ssh_mount = require("nvim_ssh.core.mount")
+	
+	-- Get configuration to determine mount base directory
+	local config = {}
+	local config_ok, init_module = pcall(require, "nvim_ssh")
+	if config_ok and init_module._config then
+		config = init_module._config
+	end
+	
+	local base_dir = config.mounts and config.mounts.base_dir
+	if not base_dir then
+		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
+		return
+	end
+	
+	-- Normalize base_dir to remove trailing slash for consistency
+	base_dir = base_dir:gsub("/$", "")
+	local mounts = ssh_mount.list_active_mounts(base_dir)
+	
+	if not mounts or #mounts == 0 then
+		vim.notify("No active SSH mounts found", vim.log.levels.WARN)
+		return
+	end
+	
+	local mount_list = {}
+	local mount_map = {}
+	
+	for _, mount in ipairs(mounts) do
+		local display = mount.alias .. " (" .. mount.path .. ")"
+		table.insert(mount_list, display)
+		mount_map[display] = mount
+	end
+	
+	vim.ui.select(mount_list, {
+		prompt = "Select mount to navigate to:",
+		format_item = function(item)
+			return item
+		end,
+	}, function(choice)
+		if choice and mount_map[choice] then
+			callback(mount_map[choice])
+		end
+	end)
+end
+
 return M
