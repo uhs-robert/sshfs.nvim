@@ -43,7 +43,9 @@ function M.is_connected()
 		return false
 	end
 
-	return ssh_mount.is_mount_active(current_connection.mount_point, config.mounts.base_dir)
+	-- Get base directory from config or use current mount point's parent
+	local base_dir = (config.mounts and config.mounts.base_dir) or vim.fn.fnamemodify(current_connection.mount_point, ":h")
+	return ssh_mount.is_mount_active(current_connection.mount_point, base_dir)
 end
 
 -- Get current connection info
@@ -164,4 +166,3 @@ function M._handle_post_connect(mount_dir)
 end
 
 return M
-

@@ -1,23 +1,5 @@
 local M = {}
 
-function M.parse_sshfs_mounts(mount_output, mount_dir)
-	local mounts = {}
-	if not mount_output or mount_output == "" then
-		return mounts
-	end
-
-	local root_escaped = mount_dir:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
-	local pattern = "^.+%son%s(" .. root_escaped .. "/.-)%s+type%s+fuse%.sshfs"
-
-	for line in mount_output:gmatch("[^\r\n]+") do
-		local path = line:match(pattern)
-		if path then
-			mounts[#mounts + 1] = path
-		end
-	end
-
-	return mounts
-end
 
 function M.is_directory_empty(path)
 	local handle = vim.uv.fs_scandir(path)
@@ -42,14 +24,18 @@ function M.is_mount_active(mount_path, mount_dir)
 		return not M.is_directory_empty(mount_path)
 	end
 
-	local mounts = M.parse_sshfs_mounts(result, mount_dir)
-	for _, mounted_path in ipairs(mounts) do
-		if mounted_path == mount_path then
+	-- Look for the specific mount path in the mount output
+	local mount_path_escaped = mount_path:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+	local pattern = "%s+" .. mount_path_escaped .. "%s+type%s+fuse%.sshfs"
+	
+	for line in result:gmatch("[^\r\n]+") do
+		if line:match(pattern) then
 			return true
 		end
 	end
 
-	return false
+	-- If not found in mount output, fall back to directory check
+	return not M.is_directory_empty(mount_path)
 end
 
 function M.list_active_mounts(mount_dir)
@@ -67,12 +53,18 @@ function M.list_active_mounts(mount_dir)
 		end
 		return mounts
 	end
-	local mount_paths = M.parse_sshfs_mounts(result, mount_dir)
 
-	for _, path in ipairs(mount_paths) do
-		local alias = path:match("([^/]+)$")
-		if alias then
-			table.insert(mounts, { alias = alias, path = path })
+	-- Look for sshfs mounts in the specified mount directory
+	local mount_dir_escaped = mount_dir:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+	local pattern = "%s+(" .. mount_dir_escaped .. "/[^%s]+)%s+type%s+fuse%.sshfs"
+	
+	for line in result:gmatch("[^\r\n]+") do
+		local path = line:match(pattern)
+		if path then
+			local alias = path:match("([^/]+)$")
+			if alias then
+				table.insert(mounts, { alias = alias, path = path })
+			end
 		end
 	end
 
