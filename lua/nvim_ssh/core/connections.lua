@@ -28,12 +28,12 @@ end
 function M.get_hosts()
 	local ssh_configs = config.connections.ssh_configs or ssh_config.get_default_ssh_configs()
 
-	if ssh_cache.is_cache_valid(ssh_configs) then
+	if ssh_cache.is_cache_valid(ssh_configs, nil) then
 		return ssh_cache.get_cached_hosts() or {}
 	end
 
 	local hosts = ssh_config.parse_hosts_from_configs(ssh_configs)
-	ssh_cache.update_cache(hosts, ssh_configs)
+	ssh_cache.update_cache(hosts, ssh_configs, nil)
 	return hosts
 end
 

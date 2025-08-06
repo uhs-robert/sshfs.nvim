@@ -32,6 +32,7 @@ local default_opts = {
 		confirm = {
 			change_dir = false,
 		},
+		select_prompts = true,
 	},
 	log = {
 		enable = false,
@@ -97,7 +98,7 @@ function M.setup(user_opts)
 	connections.setup(opts)
 
 	-- Setup other modules
-	require("nvim_ssh.ui.prompts").setup(opts)
+	require("nvim_ssh.ui.prompts").setup(opts.ui or {})
 	require("nvim_ssh.utils.log").setup(opts)
 	require("nvim_ssh.ui.keymaps").setup(opts)
 

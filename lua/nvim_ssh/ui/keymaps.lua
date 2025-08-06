@@ -30,7 +30,7 @@ function M.setup(opts)
 	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "mount" })
 
 	-- Assign keymaps
-	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Seever" })
+	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
 	vim.keymap.set("n", keymaps.unmount, api.unmount, { desc = "Unmount a SSH Server" })
 	vim.keymap.set("n", keymaps.edit, api.edit, { desc = "Edit ssh_configs" })
 	vim.keymap.set("n", keymaps.reload, api.reload, { desc = "Reload ssh_configs" })

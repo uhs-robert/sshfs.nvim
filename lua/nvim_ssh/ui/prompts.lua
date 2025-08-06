@@ -29,7 +29,7 @@ M.prompt_yes_no = function(prompt_input, callback)
 end
 
 M.clear_prompt = function()
-	if vim.opt.cmdheight._value ~= 0 then
+	if vim.o.cmdheight ~= 0 then
 		vim.cmd("normal! :")
 	end
 end
