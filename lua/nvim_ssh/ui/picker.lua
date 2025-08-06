@@ -53,6 +53,15 @@ local function try_fzf_lua_files(cwd)
 	return false
 end
 
+local function try_mini_files(cwd)
+	local ok, mini_pick = pcall(require, "mini.pick")
+	if ok and mini_pick.builtin and mini_pick.builtin.files then
+		mini_pick.builtin.files({ source = { cwd = cwd } })
+		return true
+	end
+	return false
+end
+
 local function try_netrw(cwd)
 	local ok = pcall(function()
 		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
@@ -76,11 +85,12 @@ function M.try_open_file_picker(cwd, config)
 	if preferred ~= "auto" then
 		local pickers = {
 			telescope = try_telescope_files,
+			snacks = try_snacks_files,
 			oil = try_oil,
 			["neo-tree"] = try_neo_tree,
 			["nvim-tree"] = try_nvim_tree,
-			snacks = try_snacks_files,
 			["fzf-lua"] = try_fzf_lua_files,
+			mini = try_mini_files,
 			netrw = try_netrw,
 		}
 		local picker_fn = pickers[preferred]
@@ -97,6 +107,7 @@ function M.try_open_file_picker(cwd, config)
 		{ name = "nvim-tree", fn = try_nvim_tree },
 		{ name = "snacks", fn = try_snacks_files },
 		{ name = "fzf-lua", fn = try_fzf_lua_files },
+		{ name = "mini", fn = try_mini_files },
 	}
 
 	for _, picker in ipairs(pickers_order) do
@@ -141,6 +152,15 @@ local function try_fzf_lua_live_grep(cwd, pattern)
 	return false
 end
 
+local function try_mini_grep(cwd, pattern)
+	local ok, mini_pick = pcall(require, "mini.pick")
+	if ok and mini_pick.builtin and mini_pick.builtin.grep_live then
+		mini_pick.builtin.grep_live({ source = { cwd = cwd } }, { default_text = pattern })
+		return true
+	end
+	return false
+end
+
 local function try_builtin_grep(cwd, pattern)
 	local ok = pcall(function()
 		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
@@ -167,10 +187,21 @@ function M.try_open_search_picker(cwd, pattern, config)
 	-- Try preferred picker first if specified
 	if preferred ~= "auto" then
 		local pickers = {
-			telescope = function() return try_telescope_live_grep(cwd, pattern) end,
-			snacks = function() return try_snacks_grep(cwd, pattern) end,
-			["fzf-lua"] = function() return try_fzf_lua_live_grep(cwd, pattern) end,
-			builtin = function() return try_builtin_grep(cwd, pattern) end,
+			telescope = function()
+				return try_telescope_live_grep(cwd, pattern)
+			end,
+			snacks = function()
+				return try_snacks_grep(cwd, pattern)
+			end,
+			["fzf-lua"] = function()
+				return try_fzf_lua_live_grep(cwd, pattern)
+			end,
+			mini = function()
+				return try_mini_grep(cwd, pattern)
+			end,
+			builtin = function()
+				return try_builtin_grep(cwd, pattern)
+			end,
 		}
 		local picker_fn = pickers[preferred]
 		if picker_fn and picker_fn() then
@@ -180,10 +211,36 @@ function M.try_open_search_picker(cwd, pattern, config)
 
 	-- Auto-detect available search pickers in order of preference
 	local search_pickers = {
-		{ name = "telescope", fn = function() return try_telescope_live_grep(cwd, pattern) end },
-		{ name = "snacks", fn = function() return try_snacks_grep(cwd, pattern) end },
-		{ name = "fzf-lua", fn = function() return try_fzf_lua_live_grep(cwd, pattern) end },
-		{ name = "builtin", fn = function() return try_builtin_grep(cwd, pattern) end },
+		{
+			name = "telescope",
+			fn = function()
+				return try_telescope_live_grep(cwd, pattern)
+			end,
+		},
+		{
+			name = "snacks",
+			fn = function()
+				return try_snacks_grep(cwd, pattern)
+			end,
+		},
+		{
+			name = "fzf-lua",
+			fn = function()
+				return try_fzf_lua_live_grep(cwd, pattern)
+			end,
+		},
+		{
+			name = "mini",
+			fn = function()
+				return try_mini_grep(cwd, pattern)
+			end,
+		},
+		{
+			name = "builtin",
+			fn = function()
+				return try_builtin_grep(cwd, pattern)
+			end,
+		},
 	}
 
 	for _, picker in ipairs(search_pickers) do
@@ -306,7 +363,10 @@ function M.browse_remote_files(opts)
 		-- Fallback to old behavior
 		vim.cmd("cd " .. vim.fn.fnameescape(target_dir))
 		vim.notify("Changed to remote directory: " .. target_dir, vim.log.levels.INFO)
-		vim.notify("Reason: " .. picker_name .. ". Please open your preferred file explorer manually.", vim.log.levels.WARN)
+		vim.notify(
+			"Reason: " .. picker_name .. ". Please open your preferred file explorer manually.",
+			vim.log.levels.WARN
+		)
 	end
 end
 
@@ -354,13 +414,22 @@ function M.grep_remote_files(pattern, opts)
 	local success, picker_name = M.try_open_search_picker(search_dir, pattern, config)
 
 	if success then
-		vim.notify("Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. search_dir, vim.log.levels.INFO)
+		vim.notify(
+			"Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. search_dir,
+			vim.log.levels.INFO
+		)
 	else
 		-- Fallback to old behavior
 		vim.cmd("cd " .. vim.fn.fnameescape(search_dir))
 		vim.fn.setreg("/", pattern)
-		vim.notify("Changed to remote directory. Search pattern '" .. pattern .. "' set in search register.", vim.log.levels.INFO)
-		vim.notify("Reason: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.", vim.log.levels.WARN)
+		vim.notify(
+			"Changed to remote directory. Search pattern '" .. pattern .. "' set in search register.",
+			vim.log.levels.INFO
+		)
+		vim.notify(
+			"Reason: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.",
+			vim.log.levels.WARN
+		)
 	end
 end
 

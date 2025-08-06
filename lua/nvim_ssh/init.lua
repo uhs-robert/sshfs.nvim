@@ -35,7 +35,7 @@ local default_opts = {
 		select_prompts = true,
 		file_picker = {
 			auto_open = true,
-			preferred_picker = "auto", -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "netrw"
+			preferred_picker = "auto", -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "netrw"
 			fallback_to_netrw = true,
 		},
 	},
