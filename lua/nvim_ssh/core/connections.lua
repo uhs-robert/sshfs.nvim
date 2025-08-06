@@ -111,7 +111,8 @@ function M.connect(host)
 
 	-- Attempt authentication and mounting
 	vim.notify("Connecting to " .. host.Name .. "...", vim.log.levels.INFO)
-	local success, result = ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, mount_to_root)
+	local user_sshfs_args = config.connections and config.connections.sshfs_args
+	local success, result = ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, mount_to_root, user_sshfs_args)
 
 	if success then
 		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)

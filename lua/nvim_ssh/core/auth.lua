@@ -1,6 +1,6 @@
 local M = {}
 
-local function get_sshfs_options(auth_type, ssh_options)
+local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 	ssh_options = ssh_options or {}
 
 	local options = {
@@ -9,6 +9,16 @@ local function get_sshfs_options(auth_type, ssh_options)
 		string.format("ServerAliveInterval=%d", ssh_options.server_alive_interval or 15),
 		string.format("ServerAliveCountMax=%d", ssh_options.server_alive_count_max or 3),
 	}
+
+	-- Add user-configured sshfs args
+	if user_sshfs_args then
+		for _, arg in ipairs(user_sshfs_args) do
+			if arg:match("^%-o%s+(.+)") then
+				local opt = arg:match("^%-o%s+(.+)")
+				table.insert(options, opt)
+			end
+		end
+	end
 
 	if ssh_options.dir_cache then
 		vim.list_extend(options, {
@@ -27,9 +37,9 @@ local function get_sshfs_options(auth_type, ssh_options)
 	return options
 end
 
-function M.try_key_authentication(host, mount_point, ssh_options, mount_to_root)
+function M.try_key_authentication(host, mount_point, ssh_options, mount_to_root, user_sshfs_args)
 	mount_to_root = mount_to_root or false
-	local options = get_sshfs_options("key", ssh_options)
+	local options = get_sshfs_options("key", ssh_options, user_sshfs_args)
 
 	local remote_path = host.Name
 	if host.User then
@@ -48,10 +58,10 @@ function M.try_key_authentication(host, mount_point, ssh_options, mount_to_root)
 	return vim.v.shell_error == 0, result
 end
 
-function M.try_password_authentication(host, mount_point, ssh_options, mount_to_root, max_attempts)
+function M.try_password_authentication(host, mount_point, ssh_options, mount_to_root, max_attempts, user_sshfs_args)
 	mount_to_root = mount_to_root or false
 	max_attempts = max_attempts or 3
-	local options = get_sshfs_options("password", ssh_options)
+	local options = get_sshfs_options("password", ssh_options, user_sshfs_args)
 
 	local remote_path = host.Name
 	if host.User then
@@ -89,15 +99,15 @@ function M.try_password_authentication(host, mount_point, ssh_options, mount_to_
 	return false, "Authentication failed after " .. max_attempts .. " attempts"
 end
 
-function M.authenticate_and_mount(host, mount_point, ssh_options, mount_to_root)
-	local success, result = M.try_key_authentication(host, mount_point, ssh_options, mount_to_root)
+function M.authenticate_and_mount(host, mount_point, ssh_options, mount_to_root, user_sshfs_args)
+	local success, result = M.try_key_authentication(host, mount_point, ssh_options, mount_to_root, user_sshfs_args)
 
 	if success then
 		return true, "Key authentication successful"
 	end
 
 	vim.notify("Key authentication failed, trying password authentication...", vim.log.levels.INFO)
-	return M.try_password_authentication(host, mount_point, ssh_options, mount_to_root)
+	return M.try_password_authentication(host, mount_point, ssh_options, mount_to_root, nil, user_sshfs_args)
 end
 
 function M.prompt_mount_location()

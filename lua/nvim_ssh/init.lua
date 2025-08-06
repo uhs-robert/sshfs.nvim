@@ -35,7 +35,7 @@ local default_opts = {
 		},
 	},
 	log = {
-		enable = false,
+		enabled = false,
 		truncate = false,
 		types = {
 			all = false,
@@ -108,6 +108,21 @@ function M.setup(user_opts)
 	require("nvim_ssh.ui.prompts").setup(opts.ui or {})
 	require("nvim_ssh.utils.log").setup(opts)
 	require("nvim_ssh.ui.keymaps").setup(opts)
+
+	-- Setup exit handler if enabled
+	if opts.mounts.unmount_on_exit then
+		vim.api.nvim_create_autocmd("VimLeave", {
+			callback = function()
+				local connections = require("nvim_ssh.core.connections")
+				local all_connections = connections.get_all_connections()
+				
+				for _, connection in ipairs(all_connections) do
+					connections.disconnect_specific(connection)
+				end
+			end,
+			desc = "Cleanup SSH mounts on exit"
+		})
+	end
 
 	-- Create user commands
 	M.setup_commands()
