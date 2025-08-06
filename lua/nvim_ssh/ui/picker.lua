@@ -62,6 +62,51 @@ local function try_mini_files(cwd)
 	return false
 end
 
+-- Neovim plugin-based file managers
+local function try_yazi(cwd)
+	local ok, yazi = pcall(require, "yazi")
+	if ok and yazi.yazi then
+		yazi.yazi({ open_for_directories = true }, cwd)
+		return true
+	end
+	return false
+end
+
+local function try_lf(cwd)
+	local ok, lf = pcall(require, "lf")
+	if ok and lf.start then
+		lf.start(cwd)
+		return true
+	end
+	return false
+end
+
+local function try_nnn(cwd)
+	local ok = pcall(require, "nnn")
+	if ok then
+		-- nnn.nvim uses a command interface
+		local success = pcall(vim.cmd, "NnnPicker " .. vim.fn.fnameescape(cwd))
+		return success
+	end
+	return false
+end
+
+local function try_ranger(cwd)
+	-- Try ranger.nvim first
+	local ok, ranger = pcall(require, "ranger-nvim")
+	if ok and ranger.open then
+		ranger.open(true)
+		return true
+	end
+	
+	-- Try rnvimr as alternative
+	local rnvimr_ok = pcall(function()
+		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		vim.cmd("RnvimrToggle")
+	end)
+	return rnvimr_ok
+end
+
 local function try_netrw(cwd)
 	local ok = pcall(function()
 		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
@@ -91,6 +136,10 @@ function M.try_open_file_picker(cwd, config)
 			["nvim-tree"] = try_nvim_tree,
 			["fzf-lua"] = try_fzf_lua_files,
 			mini = try_mini_files,
+			yazi = try_yazi,
+			lf = try_lf,
+			nnn = try_nnn,
+			ranger = try_ranger,
 			netrw = try_netrw,
 		}
 		local picker_fn = pickers[preferred]
@@ -108,6 +157,10 @@ function M.try_open_file_picker(cwd, config)
 		{ name = "snacks", fn = try_snacks_files },
 		{ name = "fzf-lua", fn = try_fzf_lua_files },
 		{ name = "mini", fn = try_mini_files },
+		{ name = "yazi", fn = try_yazi },
+		{ name = "lf", fn = try_lf },
+		{ name = "nnn", fn = try_nnn },
+		{ name = "ranger", fn = try_ranger },
 	}
 
 	for _, picker in ipairs(pickers_order) do
