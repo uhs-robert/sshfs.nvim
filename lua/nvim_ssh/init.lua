@@ -11,9 +11,9 @@ local default_opts = {
 		sshfs_args = {
 			"-o reconnect",
 			"-o ConnectTimeout=5",
-			"-o compression=true",
-			"-o server_alive_interval=15",
-			"-o server_alive_count_max=3",
+			"-o compression=yes",
+			"-o ServerAliveInterval=15",
+			"-o ServerAliveCountMax=3",
 		},
 	},
 	mounts = {

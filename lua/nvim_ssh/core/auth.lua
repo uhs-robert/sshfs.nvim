@@ -3,14 +3,9 @@ local M = {}
 local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 	ssh_options = ssh_options or {}
 
-	local options = {
-		"reconnect",
-		string.format("compression=%s", ssh_options.compression and "yes" or "no"),
-		string.format("ServerAliveInterval=%d", ssh_options.server_alive_interval or 15),
-		string.format("ServerAliveCountMax=%d", ssh_options.server_alive_count_max or 3),
-	}
+	local options = {}
 
-	-- Add user-configured sshfs args
+	-- Add user-configured sshfs args first (so they take precedence)
 	if user_sshfs_args then
 		for _, arg in ipairs(user_sshfs_args) do
 			if arg:match("^%-o%s+(.+)") then
@@ -20,6 +15,7 @@ local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 		end
 	end
 
+	-- Add optional dir_cache options if configured
 	if ssh_options.dir_cache then
 		vim.list_extend(options, {
 			"dir_cache=yes",
@@ -28,6 +24,7 @@ local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 		})
 	end
 
+	-- Add auth-specific options (essential for authentication to work)
 	if auth_type == "key" then
 		table.insert(options, "BatchMode=yes")
 	elseif auth_type == "password" then
