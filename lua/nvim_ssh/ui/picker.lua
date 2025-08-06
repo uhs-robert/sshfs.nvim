@@ -507,6 +507,7 @@ function M.grep_remote_files(pattern, opts)
 	end
 end
 
+
 -- Mount selection picker using vim.ui.select
 function M.pick_mount(callback)
 	local connections = require("nvim_ssh.core.connections")

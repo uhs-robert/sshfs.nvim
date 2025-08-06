@@ -87,6 +87,7 @@ M.grep = function(pattern, opts)
 	M.live_grep(pattern, opts)
 end
 
+
 -- List all active mounts and allow jumping to selected mount
 M.list_mounts = function()
 	picker.pick_mount(function(selected_mount)

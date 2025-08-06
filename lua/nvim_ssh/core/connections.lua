@@ -46,7 +46,7 @@ function M.is_connected()
 	return #mounts > 0
 end
 
--- Get current connection info
+-- Get current connection info (first mount for backward compatibility)
 function M.get_current_connection()
 	local base_dir = config.mounts and config.mounts.base_dir
 	if not base_dir then
@@ -67,14 +67,37 @@ function M.get_current_connection()
 	return { host = nil, mount_point = nil }
 end
 
--- Connect to a remote host
-function M.connect(host)
-	-- Disconnect existing connection first
-	if M.is_connected() then
-		M.disconnect()
+-- Get all active connections
+function M.get_all_connections()
+	local base_dir = config.mounts and config.mounts.base_dir
+	if not base_dir then
+		return {}
 	end
 
+	-- Normalize base_dir to remove trailing slash for consistency
+	base_dir = base_dir:gsub("/$", "")
+	local mounts = ssh_mount.list_active_mounts(base_dir)
+	
+	local connections = {}
+	for _, mount in ipairs(mounts) do
+		table.insert(connections, {
+			host = { Name = mount.alias },
+			mount_point = mount.path
+		})
+	end
+	
+	return connections
+end
+
+-- Connect to a remote host
+function M.connect(host)
 	local mount_dir = config.mounts.base_dir:gsub("/$", "") .. "/" .. host.Name
+
+	-- Check if already mounted
+	if ssh_mount.is_mount_active(mount_dir, mount_dir) then
+		vim.notify("Host " .. host.Name .. " is already mounted at " .. mount_dir, vim.log.levels.WARN)
+		return true
+	end
 
 	-- Ensure mount directory exists
 	if not ssh_mount.ensure_mount_directory(mount_dir) then
