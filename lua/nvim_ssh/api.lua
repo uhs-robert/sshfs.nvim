@@ -1,5 +1,5 @@
-local connections = require("ssh.core.connections")
-local picker = require("ssh.ui.picker")
+local connections = require("nvim_ssh.core.connections")
+local picker = require("nvim_ssh.ui.picker")
 
 local M = {}
 

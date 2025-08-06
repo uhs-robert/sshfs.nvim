@@ -1,9 +1,9 @@
 -- Modern SSH connection management using ssh-core modules
-local ssh_config = require("ssh.core.config")
-local ssh_mount = require("ssh.core.mount")
-local ssh_auth = require("ssh.core.auth")
-local ssh_cache = require("ssh.core.cache")
-local ui = require("ssh.ui.prompts")
+local ssh_config = require("nvim_ssh.core.config")
+local ssh_mount = require("nvim_ssh.core.mount")
+local ssh_auth = require("nvim_ssh.core.auth")
+local ssh_cache = require("nvim_ssh.core.cache")
+local ui = require("nvim_ssh.ui.prompts")
 
 local M = {}
 

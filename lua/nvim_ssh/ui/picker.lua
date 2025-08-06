@@ -1,11 +1,11 @@
 -- Native pickers using vim.ui.select - no external dependencies
-local ssh_config = require("ssh.core.config")
+local ssh_config = require("nvim_ssh.core.config")
 
 local M = {}
 
 -- Host selection picker using vim.ui.select
 function M.pick_host(callback)
-	local connections = require("ssh.core.connections")
+	local connections = require("nvim_ssh.core.connections")
 	local hosts = connections.get_hosts()
 
 	if not hosts or vim.tbl_count(hosts) == 0 then
@@ -73,7 +73,7 @@ end
 -- Browse remote files by changing to mount directory
 function M.browse_remote_files(opts)
 	opts = opts or {}
-	local connections = require("ssh.core.connections")
+	local connections = require("nvim_ssh.core.connections")
 
 	if not connections.is_connected() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -108,7 +108,7 @@ end
 -- Search remote files with user's preferred method
 function M.grep_remote_files(pattern, opts)
 	opts = opts or {}
-	local connections = require("ssh.core.connections")
+	local connections = require("nvim_ssh.core.connections")
 
 	if not connections.is_connected() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)

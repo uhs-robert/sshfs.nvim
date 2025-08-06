@@ -3,7 +3,7 @@
 -- Description: SSH utilities for mounting remote servers
 
 local M = {}
-local ssh_config = require("ssh.core.config")
+local ssh_config = require("nvim_ssh.core.config")
 
 local default_opts = {
 	connections = {
@@ -46,7 +46,7 @@ local default_opts = {
 }
 
 M.setup_commands = function()
-	local api = require("ssh.api")
+	local api = require("nvim_ssh.api")
 
 	-- Create commands
 	vim.api.nvim_create_user_command("SSHConnect", function(opts)
@@ -93,13 +93,13 @@ function M.setup(user_opts)
 	local opts = user_opts and vim.tbl_deep_extend("force", default_opts, user_opts) or default_opts
 
 	-- Initialize the connections module
-	local connections = require("ssh.core.connections")
+	local connections = require("nvim_ssh.core.connections")
 	connections.setup(opts)
 
 	-- Setup other modules
-	require("ssh.ui.prompts").setup(opts)
-	require("ssh.utils.log").setup(opts)
-	require("ssh.ui.keymaps").setup(opts)
+	require("nvim_ssh.ui.prompts").setup(opts)
+	require("nvim_ssh.utils.log").setup(opts)
+	require("nvim_ssh.ui.keymaps").setup(opts)
 
 	-- Create user commands
 	M.setup_commands()
