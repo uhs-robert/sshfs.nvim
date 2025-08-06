@@ -9,10 +9,6 @@ local M = {}
 
 -- Plugin configuration
 local config = {}
-local current_connection = {
-	host = nil,
-	mount_point = nil,
-}
 
 -- Initialize plugin with configuration
 function M.setup(opts)
@@ -39,18 +35,32 @@ end
 
 -- Check if currently connected to a remote host
 function M.is_connected()
-	if not current_connection.host or not current_connection.mount_point then
+	local base_dir = config.mounts and config.mounts.base_dir
+	if not base_dir then
 		return false
 	end
 
-	-- Get base directory from config or use current mount point's parent
-	local base_dir = (config.mounts and config.mounts.base_dir) or vim.fn.fnamemodify(current_connection.mount_point, ":h")
-	return ssh_mount.is_mount_active(current_connection.mount_point, base_dir)
+	local mounts = ssh_mount.list_active_mounts(base_dir)
+	return #mounts > 0
 end
 
 -- Get current connection info
 function M.get_current_connection()
-	return current_connection
+	local base_dir = config.mounts and config.mounts.base_dir
+	if not base_dir then
+		return { host = nil, mount_point = nil }
+	end
+
+	local mounts = ssh_mount.list_active_mounts(base_dir)
+	if #mounts > 0 then
+		-- Return first active mount as the current connection
+		return { 
+			host = { Name = mounts[1].alias }, 
+			mount_point = mounts[1].path 
+		}
+	end
+
+	return { host = nil, mount_point = nil }
 end
 
 -- Connect to a remote host
@@ -83,10 +93,6 @@ function M.connect(host)
 	local success, result = ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, mount_to_root)
 
 	if success then
-		-- Update connection state
-		current_connection.host = host
-		current_connection.mount_point = mount_dir
-
 		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
 
 		-- Handle post-connection actions
@@ -101,13 +107,14 @@ end
 
 -- Disconnect from current host
 function M.disconnect()
-	if not current_connection.mount_point then
+	local connection = M.get_current_connection()
+	if not connection.mount_point then
 		vim.notify("No active connection to disconnect", vim.log.levels.WARN)
 		return false
 	end
 
-	local mount_point = current_connection.mount_point
-	local host_name = current_connection.host and current_connection.host.Name or "unknown"
+	local mount_point = connection.mount_point
+	local host_name = connection.host and connection.host.Name or "unknown"
 
 	-- Change directory if currently inside mount point
 	local cwd = vim.uv.cwd()
@@ -126,9 +133,6 @@ function M.disconnect()
 			ssh_mount.cleanup_mount_directory(mount_point)
 		end
 
-		-- Clear connection state
-		current_connection.host = nil
-		current_connection.mount_point = nil
 		return true
 	else
 		vim.notify("Failed to disconnect from " .. host_name, vim.log.levels.ERROR)
