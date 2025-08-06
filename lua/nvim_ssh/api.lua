@@ -28,9 +28,24 @@ M.disconnect = function()
 	connections.disconnect()
 end
 
--- Unmount SSH host (alias for disconnect)
+-- Unmount SSH host - smart handling for multiple mounts
 M.unmount = function()
-	connections.disconnect()
+	local all_connections = connections.get_all_connections()
+	
+	if #all_connections == 0 then
+		vim.notify("No active mounts to disconnect", vim.log.levels.WARN)
+		return
+	elseif #all_connections == 1 then
+		-- Single mount: disconnect directly
+		connections.disconnect_specific(all_connections[1])
+	else
+		-- Multiple mounts: show picker to select which to unmount
+		picker.pick_mount_to_unmount(function(selected_mount)
+			if selected_mount then
+				connections.disconnect_specific(selected_mount)
+			end
+		end)
+	end
 end
 
 -- Check connection status
@@ -77,9 +92,20 @@ M.live_grep = function(pattern, opts)
 	picker.grep_remote_files(pattern, opts)
 end
 
--- Browse remote files (alias for find_files)
+-- Browse remote files - smart handling for multiple mounts
 M.browse = function(opts)
-	M.find_files(opts)
+	local all_connections = connections.get_all_connections()
+	
+	if #all_connections == 0 then
+		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
+		return
+	elseif #all_connections == 1 then
+		-- Single mount: browse directly
+		M.find_files(opts)
+	else
+		-- Multiple mounts: show picker to select which mount to browse
+		M.list_mounts()
+	end
 end
 
 -- Search remote files (alias for live_grep)

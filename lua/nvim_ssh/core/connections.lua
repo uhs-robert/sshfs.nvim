@@ -132,11 +132,21 @@ function M.connect(host)
 	end
 end
 
--- Disconnect from current host
+-- Disconnect from current host (backward compatibility)
 function M.disconnect()
 	local connection = M.get_current_connection()
 	if not connection.mount_point then
 		vim.notify("No active connection to disconnect", vim.log.levels.WARN)
+		return false
+	end
+
+	return M.disconnect_specific(connection)
+end
+
+-- Disconnect from specific connection
+function M.disconnect_specific(connection)
+	if not connection or not connection.mount_point then
+		vim.notify("Invalid connection to disconnect", vim.log.levels.WARN)
 		return false
 	end
 

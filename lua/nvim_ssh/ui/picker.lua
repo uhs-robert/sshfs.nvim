@@ -556,4 +556,56 @@ function M.pick_mount(callback)
 	end)
 end
 
+-- Mount selection picker for unmounting using vim.ui.select
+function M.pick_mount_to_unmount(callback)
+	local connections = require("nvim_ssh.core.connections")
+	local ssh_mount = require("nvim_ssh.core.mount")
+	
+	-- Get configuration to determine mount base directory
+	local config = {}
+	local config_ok, init_module = pcall(require, "nvim_ssh")
+	if config_ok and init_module._config then
+		config = init_module._config
+	end
+	
+	local base_dir = config.mounts and config.mounts.base_dir
+	if not base_dir then
+		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
+		return
+	end
+	
+	-- Normalize base_dir to remove trailing slash for consistency
+	base_dir = base_dir:gsub("/$", "")
+	local mounts = ssh_mount.list_active_mounts(base_dir)
+	
+	if not mounts or #mounts == 0 then
+		vim.notify("No active SSH mounts to disconnect", vim.log.levels.WARN)
+		return
+	end
+	
+	local mount_list = {}
+	local mount_map = {}
+	
+	for _, mount in ipairs(mounts) do
+		local display = mount.alias .. " (" .. mount.path .. ")"
+		table.insert(mount_list, display)
+		-- Create connection object compatible with disconnect_specific
+		mount_map[display] = {
+			host = { Name = mount.alias },
+			mount_point = mount.path
+		}
+	end
+	
+	vim.ui.select(mount_list, {
+		prompt = "Select mount to disconnect:",
+		format_item = function(item)
+			return item
+		end,
+	}, function(choice)
+		if choice and mount_map[choice] then
+			callback(mount_map[choice])
+		end
+	end)
+end
+
 return M
