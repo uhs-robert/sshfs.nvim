@@ -58,7 +58,7 @@ function M.connect(host)
 		M.disconnect()
 	end
 
-	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
+	local mount_dir = config.mounts.base_dir:gsub("/$", "") .. "/" .. host.Name
 
 	-- Ensure mount directory exists
 	if not ssh_mount.ensure_mount_directory(mount_dir) then
