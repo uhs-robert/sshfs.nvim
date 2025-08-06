@@ -319,13 +319,7 @@ function M.pick_host(callback)
 	local host_map = {}
 
 	for name, host in pairs(hosts) do
-		local display = name
-		if host.User then
-			display = host.User .. "@" .. name
-		end
-		if host.Port then
-			display = display .. ":" .. host.Port
-		end
+		local display = name -- Just use the alias/hostname
 
 		table.insert(host_list, display)
 		host_map[display] = host
