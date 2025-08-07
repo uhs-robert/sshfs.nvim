@@ -65,12 +65,6 @@ M.setup_commands = function()
 		api.unmount()
 	end, { desc = "Disconnect from current SSH host" })
 
-
-	vim.api.nvim_create_user_command("SSHLiveGrep", function(opts)
-		local pattern = opts.args and opts.args ~= "" and opts.args or nil
-		api.live_grep(pattern)
-	end, { nargs = "?", desc = "Search text in remote files" })
-
 	vim.api.nvim_create_user_command("SSHBrowse", function()
 		api.browse()
 	end, { desc = "Browse remote files" })
@@ -78,8 +72,7 @@ M.setup_commands = function()
 	vim.api.nvim_create_user_command("SSHGrep", function(opts)
 		local pattern = opts.args and opts.args ~= "" and opts.args or nil
 		api.grep(pattern)
-	end, { nargs = "?", desc = "Search text in remote files (alias)" })
-
+	end, { nargs = "?", desc = "Search text in remote files" })
 end
 
 function M.setup(user_opts)

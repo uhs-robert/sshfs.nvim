@@ -92,16 +92,6 @@ M.find_files = function(opts)
 	picker.browse_remote_files(opts)
 end
 
--- Search text in remote files using native grep
-M.live_grep = function(pattern, opts)
-	if not connections.is_connected() then
-		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
-		return
-	end
-
-	picker.grep_remote_files(pattern, opts)
-end
-
 -- Browse remote files - smart handling for multiple mounts
 M.browse = function(opts)
 	local all_connections = connections.get_all_connections()
@@ -118,9 +108,14 @@ M.browse = function(opts)
 	end
 end
 
--- Search remote files (alias for live_grep)
+-- Search text in remote files using picker or native grep
 M.grep = function(pattern, opts)
-	M.live_grep(pattern, opts)
+	if not connections.is_connected() then
+		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
+		return
+	end
+
+	picker.grep_remote_files(pattern, opts)
 end
 
 -- List all active mounts and open file picker for selected mount
