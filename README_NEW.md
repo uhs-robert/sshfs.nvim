@@ -2,6 +2,10 @@
 
 Use sshfs to mount remote servers in nvim for editing and viewing
 
+
+https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11
+
+
 ## Features
 
 - **Zero external dependencies** - Uses only native Neovim UI components
