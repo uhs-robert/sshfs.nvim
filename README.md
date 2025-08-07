@@ -5,17 +5,25 @@
 [![GitHub stars](https://img.shields.io/github/stars/uhs-robert/sshfs.nvim?style=social)](https://github.com/uhs-robert/sshfs.nvim/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/uhs-robert/sshfs.nvim)](https://github.com/uhs-robert/sshfs.nvim/issues)
 
-A minimal, fast **SSHFS** integration for **NeoVim**: use your preferred file picker, tools, and edit remote files without leaving your editor.
+A minimal, fast **SSHFS** integration for **NeoVim** that **works with YOUR setup**. No forced dependencies. Use your preferred file picker, search tools, and workflow to edit remote files without leaving your editor.
 
-Mount any host from your `~/.ssh/config`, or add custom hosts, and browse remote files as if they were local. Jump between your local machine and remote mounts with a keystroke.
+**🎯 Smart Integration**: Automatically detects and launches **telescope**, **oil**, **neo-tree**, **nvim-tree**, **snacks**, **fzf-lua**, **mini**, **yazi**, **lf**, **nnn**, **ranger**, or **netrw**. Your workflow, your choice.
+
+Mount any host from your `~/.ssh/config` and browse remote files as if they were local. Jump between your local machine and remote mounts with a keystroke.
 
 <https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11>
 
 ## ✨ Features
 
-- **Zero external dependencies** - No telescope, plenary, or other plugin dependencies required
-- **Smart picker auto-detection** - Automatically detects and launches your preferred file pickers
-- **Extensive picker support** - Supports telescope, oil, neo-tree, nvim-tree, snacks, fzf-lua, mini, yazi, lf, nnn, ranger, with netrw fallback
+### 🎯 **Works With Your Existing Setup**
+
+- **Smart picker auto-detection** - Automatically detects and launches YOUR preferred file pickers
+- **Universal compatibility** - Supports **telescope**, **oil**, **neo-tree**, **nvim-tree**, **snacks**, **fzf-lua**, **mini**, **yazi**, **lf**, **nnn**, **ranger**, with **netrw** fallback
+- **Search integration** - Auto-launches your preferred search tool (telescope live_grep, snacks grep, fzf-lua live_grep, mini grep_live, or built-in grep)
+- **Zero forced dependencies** - No telescope, plenary, or other plugin dependencies required
+
+### 🏗️ **Modern Architecture**
+
 - **Modern Neovim APIs** - Built for Neovim 0.10+ with vim.uv
 - **Robust authentication** - Key authentication with password fallback mechanisms
 - **Modular architecture** - Clean separation of core functionality, UI components, and utilities
@@ -124,14 +132,14 @@ require("sshfs").setup({
       fallback_to_netrw = true,  -- fallback to netrw if no picker is available
     },
   },
-  lead_prefix = "<leader>s", -- change keymap prefix (default: <leader>m)
+  lead_prefix = "<leader>m", -- change keymap prefix (default: <leader>m)
   keymaps = {
-    mount = "<leader>sm",
-    unmount = "<leader>su",
-    edit = "<leader>se",
-    reload = "<leader>sr",
-    open = "<leader>so",
-    grep = "<leader>sg",
+    mount = "<leader>mm",
+    unmount = "<leader>mu",
+    edit = "<leader>me",
+    reload = "<leader>mr",
+    open = "<leader>mo",
+    grep = "<leader>mg",
   },
   log = {
     enabled = false,
@@ -198,18 +206,15 @@ After connecting to a host with `:SSHConnect`, the plugin mounts the remote file
 
    - **Auto-detected pickers**: telescope, oil, neo-tree, nvim-tree, snacks, fzf-lua, mini, yazi, lf, nnn, ranger
    - **Fallback**: netrw if no other picker is available
+   - **Your choice**: Configure `preferred_picker = "yazi"` to force a specific picker
 
 2. **Search files**: Use `:SSHGrep [pattern]` to automatically launch your preferred search tool:
    - **Auto-detected search**: telescope live_grep, snacks grep, fzf-lua live_grep, mini grep_live
    - **Fallback**: built-in grep with quickfix list
 
-The plugin intelligently detects what you have installed and launches it automatically, respecting your existing Neovim setup and preferences.
+**🎯 The Magic**: The plugin intelligently detects what you have installed and launches it automatically, respecting your existing Neovim setup and preferences. No configuration required, it just works with whatever you're already using.
 
 ## 💡 Tips and Performance
 
 - If key authentication fails, the plugin will prompt for a password up to 3 times before giving up.
 - SSH keys vastly speed up repeated mounts (no password prompt), leverage your `ssh_config` rather than manually adding hosts to make this as easy as possible.
-
-## 📜 License
-
-This plugin is released under the MIT license. Please see the [LICENSE](https://github.com/uhs-robert/sshfs.nvim?tab=MIT-1-ov-file) file for details.
