@@ -5,7 +5,9 @@
 [![GitHub stars](https://img.shields.io/github/stars/uhs-robert/sshfs.nvim?style=social)](https://github.com/uhs-robert/sshfs.nvim/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/uhs-robert/sshfs.nvim)](https://github.com/uhs-robert/sshfs.nvim/issues)
 
-Use sshfs to mount remote servers in nvim for editing and viewing
+A minimal, fast **SSHFS** integration for **NeoVim**: use your preferred file picker, tools, and edit remote files without leaving your editor.
+
+Mount any host from your `~/.ssh/config`, or add custom hosts, and browse remote files as if they were local. Jump between your local machine and remote mounts with a keystroke.
 
 <https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11>
 
