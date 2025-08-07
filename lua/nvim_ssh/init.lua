@@ -80,9 +80,6 @@ M.setup_commands = function()
 		api.grep(pattern)
 	end, { nargs = "?", desc = "Search text in remote files (alias)" })
 
-	vim.api.nvim_create_user_command("SSHListMounts", function()
-		api.list_mounts()
-	end, { desc = "List all mounted SSH directories and jump to selected one" })
 end
 
 function M.setup(user_opts)
