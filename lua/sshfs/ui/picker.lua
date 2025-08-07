@@ -1,5 +1,5 @@
 -- Native pickers using vim.ui.select - no external dependencies
-local ssh_config = require("nvim_ssh.core.config")
+local ssh_config = require("sshfs.core.config")
 
 local M = {}
 
@@ -325,7 +325,7 @@ end
 
 -- Host selection picker using vim.ui.select
 function M.pick_host(callback)
-	local connections = require("nvim_ssh.core.connections")
+	local connections = require("sshfs.core.connections")
 	local hosts = connections.get_hosts()
 
 	if not hosts or vim.tbl_count(hosts) == 0 then
@@ -387,7 +387,7 @@ end
 -- Browse remote files using auto-detected file picker
 function M.browse_remote_files(opts)
 	opts = opts or {}
-	local connections = require("nvim_ssh.core.connections")
+	local connections = require("sshfs.core.connections")
 
 	if not connections.is_connected() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -414,7 +414,7 @@ function M.browse_remote_files(opts)
 
 	-- Get UI configuration from init
 	local config = {}
-	local config_ok, init_module = pcall(require, "nvim_ssh")
+	local config_ok, init_module = pcall(require, "sshfs")
 	if config_ok and init_module._config then
 		config = init_module._config.ui or {}
 	end
@@ -430,7 +430,7 @@ end
 -- Search remote files using auto-detected search picker
 function M.grep_remote_files(pattern, opts)
 	opts = opts or {}
-	local connections = require("nvim_ssh.core.connections")
+	local connections = require("sshfs.core.connections")
 
 	if not connections.is_connected() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -457,7 +457,7 @@ function M.grep_remote_files(pattern, opts)
 
 	-- Get UI configuration from init
 	local config = {}
-	local config_ok, init_module = pcall(require, "nvim_ssh")
+	local config_ok, init_module = pcall(require, "sshfs")
 	if config_ok and init_module._config then
 		config = init_module._config.ui or {}
 	end
@@ -495,12 +495,12 @@ end
 
 -- Mount selection picker using vim.ui.select
 function M.pick_mount(callback)
-	local connections = require("nvim_ssh.core.connections")
-	local ssh_mount = require("nvim_ssh.core.mount")
+	local connections = require("sshfs.core.connections")
+	local ssh_mount = require("sshfs.core.mount")
 
 	-- Get configuration to determine mount base directory
 	local config = {}
-	local config_ok, init_module = pcall(require, "nvim_ssh")
+	local config_ok, init_module = pcall(require, "sshfs")
 	if config_ok and init_module._config then
 		config = init_module._config
 	end
@@ -541,12 +541,12 @@ end
 
 -- Mount selection picker for unmounting using vim.ui.select
 function M.pick_mount_to_unmount(callback)
-	local connections = require("nvim_ssh.core.connections")
-	local ssh_mount = require("nvim_ssh.core.mount")
+	local connections = require("sshfs.core.connections")
+	local ssh_mount = require("sshfs.core.mount")
 
 	-- Get configuration to determine mount base directory
 	local config = {}
-	local config_ok, init_module = pcall(require, "nvim_ssh")
+	local config_ok, init_module = pcall(require, "sshfs")
 	if config_ok and init_module._config then
 		config = init_module._config
 	end

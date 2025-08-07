@@ -1,8 +1,8 @@
 -- Modern SSH connection management using ssh-core modules
-local ssh_config = require("nvim_ssh.core.config")
-local ssh_mount = require("nvim_ssh.core.mount")
-local ssh_auth = require("nvim_ssh.core.auth")
-local ssh_cache = require("nvim_ssh.core.cache")
+local ssh_config = require("sshfs.core.config")
+local ssh_mount = require("sshfs.core.mount")
+local ssh_auth = require("sshfs.core.auth")
+local ssh_cache = require("sshfs.core.cache")
 
 local M = {}
 
@@ -181,7 +181,7 @@ end
 function M._handle_post_connect(mount_dir)
 	-- Auto-open file picker if enabled
 	if config.ui and config.ui.file_picker and config.ui.file_picker.auto_open_on_mount ~= false then
-		local picker_module = require("nvim_ssh.ui.picker")
+		local picker_module = require("sshfs.ui.picker")
 		local success, picker_name = picker_module.try_open_file_picker(mount_dir, config.ui)
 
 		if not success then

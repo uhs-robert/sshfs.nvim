@@ -1,12 +1,12 @@
-local connections = require("nvim_ssh.core.connections")
-local picker = require("nvim_ssh.ui.picker")
+local connections = require("sshfs.core.connections")
+local picker = require("sshfs.ui.picker")
 
 local M = {}
 
 -- Helper function to get UI config consistently
 local function get_ui_config()
 	local config = {}
-	local config_ok, init_module = pcall(require, "nvim_ssh")
+	local config_ok, init_module = pcall(require, "sshfs")
 	if config_ok and init_module._config then
 		config = init_module._config.ui or {}
 	end

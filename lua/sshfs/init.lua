@@ -1,5 +1,5 @@
 local M = {}
-local ssh_config = require("nvim_ssh.core.config")
+local ssh_config = require("sshfs.core.config")
 
 local default_opts = {
 	connections = {
@@ -41,7 +41,7 @@ local default_opts = {
 }
 
 M.setup_commands = function()
-	local api = require("nvim_ssh.api")
+	local api = require("sshfs.api")
 
 	-- Create commands
 	vim.api.nvim_create_user_command("SSHConnect", function(opts)
@@ -82,18 +82,18 @@ function M.setup(user_opts)
 	M._config = opts
 
 	-- Initialize the connections module
-	local connections = require("nvim_ssh.core.connections")
+	local connections = require("sshfs.core.connections")
 	connections.setup(opts)
 
 	-- Setup other modules
-	require("nvim_ssh.utils.log").setup(opts)
-	require("nvim_ssh.ui.keymaps").setup(opts)
+	require("sshfs.utils.log").setup(opts)
+	require("sshfs.ui.keymaps").setup(opts)
 
 	-- Setup exit handler if enabled
 	if opts.mounts.unmount_on_exit then
 		vim.api.nvim_create_autocmd("VimLeave", {
 			callback = function()
-				local connections = require("nvim_ssh.core.connections")
+				local connections = require("sshfs.core.connections")
 				local all_connections = connections.get_all_connections()
 
 				for _, connection in ipairs(all_connections) do

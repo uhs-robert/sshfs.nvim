@@ -1,9 +1,9 @@
-# 🚀 nvim-ssh
+# 🚀 sshfs.nvim
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Neovim](https://img.shields.io/badge/NeoVim-0.10+-57A143?logo=neovim)](https://neovim.io/)
-[![GitHub stars](https://img.shields.io/github/stars/uhs-robert/nvim-ssh?style=social)](https://github.com/uhs-robert/nvim-ssh/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/uhs-robert/nvim-ssh)](https://github.com/uhs-robert/nvim-ssh/issues)
+[![GitHub stars](https://img.shields.io/github/stars/uhs-robert/sshfs.nvim?style=social)](https://github.com/uhs-robert/sshfs.nvim/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/uhs-robert/sshfs.nvim)](https://github.com/uhs-robert/sshfs.nvim/issues)
 
 Use sshfs to mount remote servers in nvim for editing and viewing
 
@@ -34,7 +34,7 @@ Use sshfs to mount remote servers in nvim for editing and viewing
 
 ```lua
 {
-  "uhs-robert/nvim-ssh",
+  "uhs-robert/sshfs.nvim",
   opts = {
     -- Refer to the configuration section below
     -- or leave empty for defaults
@@ -46,9 +46,9 @@ Use sshfs to mount remote servers in nvim for editing and viewing
 
 ```lua
 use {
-  "uhs-robert/nvim-ssh",
+  "uhs-robert/sshfs.nvim",
   config = function()
-    require("nvim_ssh").setup({
+    require("sshfs").setup({
       -- Your configuration here
     })
   end
@@ -58,13 +58,13 @@ use {
 ### vim-plug
 
 ```vim
-Plug 'uhs-robert/nvim-ssh'
+Plug 'uhs-robert/sshfs.nvim'
 ```
 
 Then in your `init.lua`:
 
 ```lua
-require("nvim_ssh").setup({
+require("sshfs").setup({
   -- Your configuration here
 })
 ```
@@ -74,13 +74,13 @@ require("nvim_ssh").setup({
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/uhs-robert/nvim-ssh ~/.local/share/nvim/site/pack/plugins/start/nvim-ssh
+git clone https://github.com/uhs-robert/sshfs.nvim ~/.local/share/nvim/site/pack/plugins/start/sshfs.nvim
 ```
 
 2. Add to your `init.lua`:
 
 ```lua
-require("nvim_ssh").setup({
+require("sshfs").setup({
   -- Your configuration here
 })
 ```
@@ -95,9 +95,9 @@ You can optionally customize behavior by passing a config table to setup().
 > Here's the full set of defaults for you to configure:
 
 ```lua
-require("nvim_ssh").setup({
+require("sshfs").setup({
   connections = {
-    ssh_configs = require("nvim_ssh.core.config").get_default_ssh_configs(),
+    ssh_configs = require("sshfs.core.config").get_default_ssh_configs(),
     sshfs_args = {
       "-o reconnect",
       "-o ConnectTimeout=5",
@@ -175,7 +175,7 @@ If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `
 You can override the keymaps or the prefix like this:
 
 ```lua
-require("nvim_ssh").setup({
+require("sshfs").setup({
   lead_prefix = "<leader>s", -- change keymap prefix (default: <leader>m)
   keymaps = {
     mount = "<leader>sm",
@@ -210,4 +210,4 @@ The plugin intelligently detects what you have installed and launches it automat
 
 ## 📜 License
 
-This plugin is released under the MIT license. Please see the [LICENSE](https://github.com/uhs-robert/nvim-ssh?tab=MIT-1-ov-file) file for details.
+This plugin is released under the MIT license. Please see the [LICENSE](https://github.com/uhs-robert/sshfs.nvim?tab=MIT-1-ov-file) file for details.

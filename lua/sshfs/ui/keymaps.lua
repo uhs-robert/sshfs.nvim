@@ -12,7 +12,7 @@ local default_keymaps = {
 	unmount = "u",
 }
 
-local api = require("nvim_ssh.api")
+local api = require("sshfs.api")
 
 function M.setup(opts)
 	opts = opts or {}
