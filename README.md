@@ -1,9 +1,9 @@
 # 📡 sshfs.nvim
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Neovim](https://img.shields.io/badge/NeoVim-0.10+-57A143?logo=neovim)](https://neovim.io/)
-[![GitHub stars](https://img.shields.io/github/stars/uhs-robert/sshfs.nvim?style=social)](https://github.com/uhs-robert/sshfs.nvim/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/uhs-robert/sshfs.nvim)](https://github.com/uhs-robert/sshfs.nvim/issues)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Neovim](https://img.shields.io/badge/NeoVim-0.10+-57A143?logo=neovim&style=for-the-badge)](https://neovim.io/)
+[![GitHub stars](https://img.shields.io/github/stars/uhs-robert/sshfs.nvim?style=for-the-badge)](https://github.com/uhs-robert/sshfs.nvim/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/uhs-robert/sshfs.nvim?style=for-the-badge)](https://github.com/uhs-robert/sshfs.nvim/issues)
 
 A minimal, fast **SSHFS** integration for **NeoVim** that **works with YOUR setup**. No forced dependencies. Use your preferred file picker, search tools, and workflow to edit remote files without leaving your editor.
 
@@ -108,12 +108,12 @@ You can optionally customize behavior by passing a config table to setup().
 require("sshfs").setup({
   connections = {
     ssh_configs = require("sshfs.core.config").get_default_ssh_configs(),
-    sshfs_args = {
-      "-o reconnect",
-      "-o ConnectTimeout=5",
-      "-o compression=yes",
-      "-o ServerAliveInterval=15",
-      "-o ServerAliveCountMax=3",
+    sshfs_args = { -- these are the sshfs options that will be used
+      "-o reconnect",            -- Automatically reconnect if the connection drops
+      "-o ConnectTimeout=5",     -- Time (in seconds) to wait before failing a connection attempt
+      "-o compression=yes",      -- Enable compression to reduce bandwidth usage
+      "-o ServerAliveInterval=15", -- Send a keepalive packet every 15 seconds to prevent timeouts
+      "-o ServerAliveCountMax=3",  -- Number of missed keepalive packets before disconnecting
     },
   },
   mounts = {
@@ -154,6 +154,11 @@ require("sshfs").setup({
 })
 ```
 
+>[!TIP]
+> The `sshfs_args` table can accept any configuration option that applies to the `sshfs` command. You can learn more about [sshfs mount options here](https://man7.org/linux/man-pages/man1/sshfs.1.html).
+>
+> In addition, sshfs also supports a variety of options from [sftp](https://man7.org/linux/man-pages/man1/sftp.1.html) and [ssh_config](https://man7.org/linux/man-pages/man5/ssh_config.5.html).
+
 ## 🔧 Commands
 
 - `:SSHConnect [host]` - Connect to SSH host (picker or direct)
@@ -171,12 +176,12 @@ This plugin optionally provides default keybindings under `<leader>m`. These can
 
 | Mapping      | Description               |
 | ------------ | ------------------------- |
-| `<leader>me` | Edit SSH config files     |
-| `<leader>mg` | Grep remote files         |
 | `<leader>mm` | Mount an SSH host         |
-| `<leader>mo` | Browse remote mount       |
-| `<leader>mr` | Reload SSH configuration  |
 | `<leader>mu` | Unmount an active session |
+| `<leader>me` | Edit SSH config files     |
+| `<leader>mr` | Reload SSH configuration  |
+| `<leader>mo` | Browse remote mount       |
+| `<leader>mg` | Grep remote files         |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
 
@@ -186,14 +191,14 @@ You can override the keymaps or the prefix like this:
 
 ```lua
 require("sshfs").setup({
-  lead_prefix = "<leader>s", -- change keymap prefix (default: <leader>m)
+  lead_prefix = "<leader>m", -- change keymap prefix (default: <leader>m)
   keymaps = {
-    mount = "<leader>sm",
-    unmount = "<leader>su",
-    edit = "<leader>se",
-    reload = "<leader>sr",
-    open = "<leader>so",
-    grep = "<leader>sg",
+    mount = "<leader>mm",
+    unmount = "<leader>mu",
+    edit = "<leader>me",
+    reload = "<leader>mr",
+    open = "<leader>mo",
+    grep = "<leader>mg",
   },
 })
 ```
