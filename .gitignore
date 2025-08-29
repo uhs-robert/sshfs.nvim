@@ -92,3 +92,4 @@ promptgen/
 *.llm-cache
 *.llm-out
 *.generated.*
+.serena
