@@ -18,6 +18,9 @@ function M.parse_hosts_from_configs(ssh_configs)
 								hosts[host_name] = { ["Config"] = path, ["Name"] = host_name }
 							end
 						end
+					elseif line:match("^%s*Match%s+") then
+						-- Match directive ends the current host block
+						current_hosts = {}
 					else
 						if #current_hosts > 0 then
 							local key, value = line:match("^%s*(%S+)%s+(.+)$")
