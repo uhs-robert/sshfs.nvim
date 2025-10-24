@@ -116,13 +116,14 @@ local function try_netrw(cwd)
 end
 
 -- Main function to try opening file picker
-function M.try_open_file_picker(cwd, config)
+function M.try_open_file_picker(cwd, config, is_manual)
 	local file_picker_config = config.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
 	local fallback_to_netrw = file_picker_config.fallback_to_netrw ~= false -- default true
 
-	if not auto_open then
+	-- Only check auto_open setting for automatic calls (not manual user commands)
+	if not is_manual and not auto_open then
 		return false, "Auto-open disabled"
 	end
 
@@ -246,12 +247,13 @@ local function try_builtin_grep(cwd, pattern)
 end
 
 -- Main function to try opening search picker
-function M.try_open_search_picker(cwd, pattern, config)
+function M.try_open_search_picker(cwd, pattern, config, is_manual)
 	local file_picker_config = config.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
 
-	if not auto_open then
+	-- Only check auto_open setting for automatic calls (not manual user commands)
+	if not is_manual and not auto_open then
 		return false, "Auto-open disabled"
 	end
 
@@ -419,8 +421,8 @@ function M.browse_remote_files(opts)
 		config = init_module._config.ui or {}
 	end
 
-	-- Try to auto-open file picker
-	local success, picker_name = M.try_open_file_picker(target_dir, config)
+	-- Try to open file picker (manual user command)
+	local success, picker_name = M.try_open_file_picker(target_dir, config, true)
 
 	if not success then
 		vim.notify("Failed to open " .. picker_name .. ". Please open manually.", vim.log.levels.WARN)
@@ -462,8 +464,8 @@ function M.grep_remote_files(pattern, opts)
 		config = init_module._config.ui or {}
 	end
 
-	-- Try to auto-open search picker
-	local success, picker_name = M.try_open_search_picker(search_dir, pattern, config)
+	-- Try to open search picker (manual user command)
+	local success, picker_name = M.try_open_search_picker(search_dir, pattern, config, true)
 
 	if success then
 		if pattern and pattern ~= "" then

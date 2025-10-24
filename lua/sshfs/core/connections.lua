@@ -179,12 +179,12 @@ end
 
 -- Handle post-connection actions (auto-open file picker)
 function M._handle_post_connect(mount_dir)
-	-- Auto-open file picker if enabled
-	if config.ui and config.ui.file_picker and config.ui.file_picker.auto_open_on_mount ~= false then
+	-- Try to auto-open file picker (respects auto_open_on_mount setting)
+	if config.ui then
 		local picker_module = require("sshfs.ui.picker")
-		local success, picker_name = picker_module.try_open_file_picker(mount_dir, config.ui)
+		local success, picker_name = picker_module.try_open_file_picker(mount_dir, config.ui, false)
 
-		if not success then
+		if not success and picker_name ~= "Auto-open disabled" then
 			vim.notify("Failed to open " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.ERROR)
 		end
 	end
