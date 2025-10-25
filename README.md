@@ -1,15 +1,29 @@
-# 📡 sshfs.nvim
+<p align="center">
+  <img
+    src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f4e1.svg"
+    width="128" height="128" alt="SSH emoji" />
+</p>
+<h1 align="center">sshfs.nvim</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Neovim](https://img.shields.io/badge/NeoVim-0.10+-57A143?logo=neovim&style=for-the-badge)](https://neovim.io/)
-[![GitHub stars](https://img.shields.io/github/stars/uhs-robert/sshfs.nvim?style=for-the-badge)](https://github.com/uhs-robert/sshfs.nvim/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/uhs-robert/sshfs.nvim?style=for-the-badge)](https://github.com/uhs-robert/sshfs.nvim/issues)
+<p align="center">
+  <a href="https://github.com/uhs-robert/sshfs.nvim/stargazers"><img src="https://img.shields.io/github/stars/uhs-robert/sshfs.nvim?colorA=192330&colorB=skyblue&style=for-the-badge"></a>
+  <a href="https://github.com/s.nvim.nvim" target="_blank" rel="noopener noreferrer"><img alt=.nvim 0.25+" src="https://img.shields.io/badge/NeoVim-0.10+%2B-blue?style=for-the-badge&labelColor=192330" /></a>
+  <a href="https://github.com/uhs-robert/sshfs.nvim/issues"><img src="https://img.shields.io/github/issues/uhs-robert/sshfs.nvim?colorA=192330&colorB=khaki&style=for-the-badge"></a>
+  <a href="https://github.com/uhs-robert/sshfs.nvim/contributors"><img src="https://img.shields.io/github/contributors/uhs-robert/sshfs.nvim?colorA=192330&colorB=8FD1C7&style=for-the-badge"></a>
+  <a href="https://github.com/uhs-robert/sshfs.nvim/network/members"><img src="https://img.shields.io/github/forks/uhs-robert/sshfs.nvim?colorA=192330&colorB=CFA7FF&style=for-the-badge"></a>
+</p>
 
-A minimal, fast **SSHFS** integration for **NeoVim** that **works with YOUR setup**. No forced dependencies. Use your preferred file picker, search tools, and workflow to edit remote files without leaving your editor.
+<p align="center">
+A minimal, fast <strong>SSHFS</strong> integration for <strong>NeoVim</strong> that <strong>works with YOUR setup</strong>.
+</p>
 
-**🎯 Smart Integration**: Automatically detects and launches **telescope**, **oil**, **neo-tree**, **nvim-tree**, **snacks**, **fzf-lua**, **mini**, **yazi**, **lf**, **nnn**, **ranger**, or **netrw**. Your workflow, your choice.
+## 🕶️ What does it do?
 
 Mount any host from your `~/.ssh/config` and browse remote files as if they were local. Jump between your local machine and remote mounts with a keystroke.
+
+No forced dependencies. Use your preferred file picker, search tools, and workflow to edit remote files without leaving your editor.
+
+**🎯 Smart Integration**: Automatically detects and launches **telescope**, **oil**, **neo-tree**, **nvim-tree**, **snacks**, **fzf-lua**, **mini**, **yazi**, **lf**, **nnn**, **ranger**, or **netrw**. Your workflow, your choice.
 
 <https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11>
 
@@ -154,7 +168,7 @@ require("sshfs").setup({
 })
 ```
 
->[!TIP]
+> [!TIP]
 > The `sshfs_args` table can accept any configuration option that applies to the `sshfs` command. You can learn more about [sshfs mount options here](https://man7.org/linux/man-pages/man1/sshfs.1.html).
 >
 > In addition, sshfs also supports a variety of options from [sftp](https://man7.org/linux/man-pages/man1/sftp.1.html) and [ssh_config](https://man7.org/linux/man-pages/man5/ssh_config.5.html).
@@ -208,7 +222,6 @@ require("sshfs").setup({
 After connecting to a host with `:SSHConnect`, the plugin mounts the remote filesystem locally. You can then:
 
 1. **Browse files**: Use `:SSHBrowse` to automatically launch your preferred file picker:
-
    - **Auto-detected pickers**: telescope, oil, neo-tree, nvim-tree, snacks, fzf-lua, mini, yazi, lf, nnn, ranger
    - **Fallback**: netrw if no other picker is available
    - **Your choice**: Configure `preferred_picker = "yazi"` to force a specific picker
