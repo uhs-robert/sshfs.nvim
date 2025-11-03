@@ -2,6 +2,7 @@
 -- Smart file picker and search picker auto-detection (telescope, oil, snacks, etc.) with vim.ui.select and netrw fallbacks
 
 local ssh_config = require("sshfs.core.config")
+local autocmds = require("sshfs.ui.autocmds")
 
 local M = {}
 
@@ -428,6 +429,7 @@ function M.browse_remote_files(opts)
 	end
 
 	-- Try to open file picker (manual user command)
+	autocmds.chdir_on_next_open(mount_point)
 	local success, picker_name = M.try_open_file_picker(target_dir, config, true)
 
 	if not success then
@@ -471,6 +473,7 @@ function M.grep_remote_files(pattern, opts)
 	end
 
 	-- Try to open search picker (manual user command)
+	autocmds.chdir_on_next_open(mount_point)
 	local success, picker_name = M.try_open_search_picker(search_dir, pattern, config, true)
 
 	if success then
