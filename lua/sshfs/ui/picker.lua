@@ -25,7 +25,9 @@ local function try_oil(cwd)
 end
 
 local function try_neo_tree(cwd)
-	local ok = pcall(vim.cmd, "Neotree filesystem reveal dir=" .. vim.fn.fnameescape(cwd))
+	local ok = pcall(function()
+		vim.cmd("Neotree filesystem reveal dir=" .. vim.fn.fnameescape(cwd))
+	end)
 	return ok
 end
 
@@ -84,10 +86,12 @@ local function try_lf(cwd)
 end
 
 local function try_nnn(cwd)
-	local ok = pcall(require, "nnn")
+	local ok, _ = pcall(require, "nnn")
 	if ok then
 		-- nnn.nvim uses a command interface
-		local success = pcall(vim.cmd, "NnnPicker " .. vim.fn.fnameescape(cwd))
+		local success = pcall(function()
+			vim.cmd("NnnPicker " .. vim.fn.fnameescape(cwd))
+		end)
 		return success
 	end
 	return false
@@ -499,7 +503,6 @@ end
 
 -- Mount selection picker using vim.ui.select
 function M.pick_mount(callback)
-	local connections = require("sshfs.core.connections")
 	local ssh_mount = require("sshfs.core.mount")
 
 	-- Get configuration to determine mount base directory
@@ -545,7 +548,6 @@ end
 
 -- Mount selection picker for unmounting using vim.ui.select
 function M.pick_mount_to_unmount(callback)
-	local connections = require("sshfs.core.connections")
 	local ssh_mount = require("sshfs.core.mount")
 
 	-- Get configuration to determine mount base directory
