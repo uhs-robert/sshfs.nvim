@@ -1,4 +1,6 @@
 -- lua/sshfs/core/cache.lua
+-- Host caching system with file modification time validation
+
 local M = {}
 
 local host_cache = {

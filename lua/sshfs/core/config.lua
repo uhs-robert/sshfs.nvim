@@ -1,4 +1,6 @@
 -- lua/sshfs/core/config.lua
+-- SSH configuration parsing from system config files and host discovery
+
 local M = {}
 
 function M.parse_hosts_from_configs(ssh_configs)

@@ -1,4 +1,6 @@
 -- lua/sshfs/utils/log.lua
+-- Logging system for debugging with support for different log types and file output
+
 local M = {
 	path = nil,
 	types = {},

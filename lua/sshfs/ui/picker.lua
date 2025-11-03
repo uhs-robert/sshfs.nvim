@@ -1,5 +1,6 @@
 -- lua/sshfs/ui/picker.lua
--- Native pickers using vim.ui.select - no external dependencies
+-- Smart file picker and search picker auto-detection (telescope, oil, snacks, etc.) with vim.ui.select and netrw fallbacks
+
 local ssh_config = require("sshfs.core.config")
 
 local M = {}

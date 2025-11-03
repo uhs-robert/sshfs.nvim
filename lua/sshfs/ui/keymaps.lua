@@ -1,5 +1,6 @@
 -- lua/sshfs/ui/keymaps.lua
--- Custom keymaps
+-- Keymap configuration and registration for SSH commands with which-key integration support
+
 local M = {}
 
 local default_prefix = "<leader>m"

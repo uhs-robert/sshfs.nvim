@@ -1,4 +1,6 @@
 -- lua/sshfs/init.lua
+-- Plugin entry point for setup, configuration management, and command registration
+
 local M = {}
 local ssh_config = require("sshfs.core.config")
 

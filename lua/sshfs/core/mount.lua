@@ -1,4 +1,6 @@
 -- lua/sshfs/core/mount.lua
+-- Mount point management, detection, creation, unmounting, and cleanup
+
 local M = {}
 
 function M.is_directory_empty(path)

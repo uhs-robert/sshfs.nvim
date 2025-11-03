@@ -1,4 +1,6 @@
 -- lua/sshfs/api.lua
+-- Public API wrapper providing high-level functions (connect, disconnect, browse, grep, edit)
+
 local connections = require("sshfs.core.connections")
 local picker = require("sshfs.ui.picker")
 
