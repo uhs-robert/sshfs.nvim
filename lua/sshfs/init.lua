@@ -89,12 +89,9 @@ function M.setup(user_opts)
 	-- Store config for access by other modules
 	M._config = opts
 
-	-- Store initial working directory for restoration on disconnect
-	M._initial_directory = vim.uv.cwd()
-
 	-- Initialize the connections module
 	local connections = require("sshfs.core.connections")
-	connections.setup(opts, M._initial_directory)
+	connections.setup(opts)
 
 	-- Setup other modules
 	require("sshfs.utils.log").setup(opts)

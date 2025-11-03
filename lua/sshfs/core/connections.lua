@@ -10,12 +10,12 @@ local M = {}
 
 -- Plugin configuration
 local config = {}
-local initial_directory = nil
+-- Track pre-mount directory for each connection
+local pre_mount_directories = {}
 
 -- Initialize plugin with configuration
-function M.setup(opts, init_dir)
+function M.setup(opts)
 	config = opts or {}
-	initial_directory = init_dir
 
 	-- Ensure mount base directory exists
 	if config.mounts and config.mounts.base_dir then
@@ -96,6 +96,9 @@ function M.connect(host)
 		return true
 	end
 
+	-- Capture current directory before mounting for restoration on disconnect
+	pre_mount_directories[mount_dir] = vim.uv.cwd()
+
 	-- Ensure mount directory exists
 	if not ssh_mount.ensure_mount_directory(mount_dir) then
 		vim.notify("Failed to create mount directory: " .. mount_dir, vim.log.levels.ERROR)
@@ -154,13 +157,16 @@ function M.disconnect_specific(connection)
 	-- Change directory if currently inside mount point
 	local cwd = vim.uv.cwd()
 	if cwd and mount_point and cwd:find(mount_point, 1, true) == 1 then
-		local restore_dir = initial_directory
+		local restore_dir = pre_mount_directories[mount_point]
 		if restore_dir and vim.fn.isdirectory(restore_dir) == 1 then
 			vim.cmd("tcd " .. vim.fn.fnameescape(restore_dir))
 		else
 			vim.cmd("tcd " .. vim.fn.expand("~"))
 		end
 	end
+
+	-- Clean up stored pre-mount directory
+	pre_mount_directories[mount_point] = nil
 
 	-- Unmount the filesystem
 	local success = ssh_mount.unmount_sshfs(mount_point)
