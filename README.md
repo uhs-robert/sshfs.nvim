@@ -133,6 +133,7 @@ require("sshfs").setup({
   mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
     unmount_on_exit = true, -- auto-disconnect all mounts on :q or exit
+    auto_change_dir_on_mount = false, -- auto-change current directory to mount point (default: false)
   },
   handlers = {
     on_disconnect = {
@@ -150,6 +151,7 @@ require("sshfs").setup({
   keymaps = {
     mount = "<leader>mm",
     unmount = "<leader>mu",
+    change_dir = "<leader>md",
     edit = "<leader>me",
     reload = "<leader>mr",
     open = "<leader>mo",
@@ -181,6 +183,7 @@ require("sshfs").setup({
 - `:SSHReload` - Reload SSH configuration
 - `:SSHBrowse` - Browse remote files using auto-detected file picker
 - `:SSHGrep [pattern]` - Search remote files using auto-detected search tool
+- `:SSHChangeDir` - Set current directory to SSH mount (picker shown if multiple mounts)
 
 ## 🎹 Key Mapping
 
@@ -188,14 +191,15 @@ This plugin optionally provides default keybindings under `<leader>m`. These can
 
 ### 🎯 Default Keymaps
 
-| Mapping      | Description               |
-| ------------ | ------------------------- |
-| `<leader>mm` | Mount an SSH host         |
-| `<leader>mu` | Unmount an active session |
-| `<leader>me` | Edit SSH config files     |
-| `<leader>mr` | Reload SSH configuration  |
-| `<leader>mo` | Browse remote mount       |
-| `<leader>mg` | Grep remote files         |
+| Mapping      | Description                           |
+| ------------ | ------------------------------------- |
+| `<leader>mm` | Mount an SSH host                     |
+| `<leader>mu` | Unmount an active session             |
+| `<leader>md` | Set current directory to SSH mount    |
+| `<leader>me` | Edit SSH config files                 |
+| `<leader>mr` | Reload SSH configuration              |
+| `<leader>mo` | Browse remote mount                   |
+| `<leader>mg` | Grep remote files                     |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
 
@@ -209,6 +213,7 @@ require("sshfs").setup({
   keymaps = {
     mount = "<leader>mm",
     unmount = "<leader>mu",
+    change_dir = "<leader>md",
     edit = "<leader>me",
     reload = "<leader>mr",
     open = "<leader>mo",

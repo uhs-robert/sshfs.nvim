@@ -138,4 +138,9 @@ M.list_mounts = function()
 	end)
 end
 
+-- Change current directory to SSH mount
+M.change_to_mount_dir = function()
+	connections.change_to_mount_dir()
+end
+
 return M

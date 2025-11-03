@@ -6,6 +6,7 @@ local M = {}
 local default_prefix = "<leader>m"
 
 local default_keymaps = {
+	change_dir = "d",
 	edit = "e",
 	grep = "g",
 	mount = "m",
@@ -33,6 +34,7 @@ function M.setup(opts)
 	-- Assign keymaps
 	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
 	vim.keymap.set("n", keymaps.unmount, api.unmount, { desc = "Unmount a SSH Server" })
+	vim.keymap.set("n", keymaps.change_dir, api.change_to_mount_dir, { desc = "Set current directory to SSH mount" })
 	vim.keymap.set("n", keymaps.edit, api.edit, { desc = "Edit ssh_configs" })
 	vim.keymap.set("n", keymaps.reload, api.reload, { desc = "Reload ssh_configs" })
 	vim.keymap.set("n", keymaps.open, api.browse, { desc = "Browse Mounted Directory" })

@@ -18,6 +18,7 @@ local default_opts = {
 	mounts = {
 		base_dir = vim.fn.expand("$HOME") .. "/mnt",
 		unmount_on_exit = true,
+		auto_change_dir_on_mount = false,
 	},
 	handlers = {
 		on_disconnect = {
@@ -76,6 +77,10 @@ M.setup_commands = function()
 		local pattern = opts.args and opts.args ~= "" and opts.args or nil
 		api.grep(pattern)
 	end, { nargs = "?", desc = "Search text in remote files" })
+
+	vim.api.nvim_create_user_command("SSHChangeDir", function()
+		api.change_to_mount_dir()
+	end, { desc = "Set current directory to SSH mount" })
 end
 
 function M.setup(user_opts)
@@ -84,9 +89,12 @@ function M.setup(user_opts)
 	-- Store config for access by other modules
 	M._config = opts
 
+	-- Store initial working directory for restoration on disconnect
+	M._initial_directory = vim.uv.cwd()
+
 	-- Initialize the connections module
 	local connections = require("sshfs.core.connections")
-	connections.setup(opts)
+	connections.setup(opts, M._initial_directory)
 
 	-- Setup other modules
 	require("sshfs.utils.log").setup(opts)
@@ -96,7 +104,6 @@ function M.setup(user_opts)
 	if opts.mounts.unmount_on_exit then
 		vim.api.nvim_create_autocmd("VimLeave", {
 			callback = function()
-				local connections = require("sshfs.core.connections")
 				local all_connections = connections.get_all_connections()
 
 				for _, connection in ipairs(all_connections) do

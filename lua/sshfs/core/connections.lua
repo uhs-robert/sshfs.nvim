@@ -10,10 +10,12 @@ local M = {}
 
 -- Plugin configuration
 local config = {}
+local initial_directory = nil
 
 -- Initialize plugin with configuration
-function M.setup(opts)
+function M.setup(opts, init_dir)
 	config = opts or {}
+	initial_directory = init_dir
 
 	-- Ensure mount base directory exists
 	if config.mounts and config.mounts.base_dir then
@@ -152,7 +154,12 @@ function M.disconnect_specific(connection)
 	-- Change directory if currently inside mount point
 	local cwd = vim.uv.cwd()
 	if cwd and mount_point and cwd:find(mount_point, 1, true) == 1 then
-		vim.cmd("cd " .. vim.fn.expand("~"))
+		local restore_dir = initial_directory
+		if restore_dir and vim.fn.isdirectory(restore_dir) == 1 then
+			vim.cmd("lcd " .. vim.fn.fnameescape(restore_dir))
+		else
+			vim.cmd("lcd " .. vim.fn.expand("~"))
+		end
 	end
 
 	-- Unmount the filesystem
@@ -179,8 +186,46 @@ function M.reload()
 	vim.notify("SSH configuration reloaded", vim.log.levels.INFO)
 end
 
+-- Change to mounted SSH directory
+function M.change_to_mount_dir()
+	local connections = M.get_all_connections()
+
+	if #connections == 0 then
+		vim.notify("No active SSH connections", vim.log.levels.WARN)
+		return
+	end
+
+	if #connections == 1 then
+		local mount_dir = connections[1].mount_point
+		vim.cmd("lcd " .. vim.fn.fnameescape(mount_dir))
+		vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
+		return
+	end
+
+	local items = {}
+	for _, conn in ipairs(connections) do
+		local host_name = conn.host and conn.host.Name or "unknown"
+		table.insert(items, host_name)
+	end
+
+	vim.ui.select(items, {
+		prompt = "Select mount to change to:",
+	}, function(_, idx)
+		if idx then
+			local mount_dir = connections[idx].mount_point
+			vim.cmd("lcd " .. vim.fn.fnameescape(mount_dir))
+			vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
+		end
+	end)
+end
+
 -- Handle post-connection actions (auto-open file picker)
 function M._handle_post_connect(mount_dir)
+	-- Auto-change directory to mount point if configured
+	if config.mounts and config.mounts.auto_change_dir_on_mount then
+		vim.cmd("lcd " .. vim.fn.fnameescape(mount_dir))
+	end
+
 	-- Try to auto-open file picker (respects auto_open_on_mount setting)
 	if config.ui then
 		local picker_module = require("sshfs.ui.picker")
