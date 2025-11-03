@@ -1,3 +1,4 @@
+-- lua/sshfs/ui/keymaps.lua
 -- Custom keymaps
 local M = {}
 

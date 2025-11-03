@@ -1,3 +1,4 @@
+-- lua/sshfs/core/config.lua
 local M = {}
 
 function M.parse_hosts_from_configs(ssh_configs)
@@ -66,4 +67,3 @@ function M.get_default_ssh_configs()
 end
 
 return M
-

@@ -1,3 +1,4 @@
+-- lua/sshfs/ui/picker.lua
 -- Native pickers using vim.ui.select - no external dependencies
 local ssh_config = require("sshfs.core.config")
 

@@ -1,3 +1,4 @@
+-- lua/sshfs/utils/log.lua
 local M = {
 	path = nil,
 	types = {},

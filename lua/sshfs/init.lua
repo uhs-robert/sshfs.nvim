@@ -1,3 +1,4 @@
+-- lua/sshfs/init.lua
 local M = {}
 local ssh_config = require("sshfs.core.config")
 

@@ -1,3 +1,4 @@
+-- lua/sshfs/api.lua
 local connections = require("sshfs.core.connections")
 local picker = require("sshfs.ui.picker")
 

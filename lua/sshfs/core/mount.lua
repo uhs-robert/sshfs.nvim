@@ -1,5 +1,5 @@
+-- lua/sshfs/core/mount.lua
 local M = {}
-
 
 function M.is_directory_empty(path)
 	local handle = vim.uv.fs_scandir(path)
@@ -27,7 +27,7 @@ function M.is_mount_active(mount_path, mount_dir)
 	-- Look for the specific mount path in the mount output
 	local mount_path_escaped = mount_path:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 	local pattern = "%s+" .. mount_path_escaped .. "%s+type%s+fuse%.sshfs"
-	
+
 	for line in result:gmatch("[^\r\n]+") do
 		if line:match(pattern) then
 			return true
@@ -57,7 +57,7 @@ function M.list_active_mounts(mount_dir)
 	-- Look for sshfs mounts in the specified mount directory
 	local mount_dir_escaped = mount_dir:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 	local pattern = "%s+(" .. mount_dir_escaped .. "/[^%s]+)%s+type%s+fuse%.sshfs"
-	
+
 	for line in result:gmatch("[^\r\n]+") do
 		local path = line:match(pattern)
 		if path then
@@ -120,4 +120,3 @@ function M.cleanup_mount_directory(mount_dir)
 end
 
 return M
-

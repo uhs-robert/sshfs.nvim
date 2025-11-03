@@ -1,3 +1,4 @@
+-- lua/sshfs/core/cache.lua
 local M = {}
 
 local host_cache = {
@@ -136,4 +137,3 @@ function M.remove_custom_host(file_path, host_to_remove)
 end
 
 return M
-

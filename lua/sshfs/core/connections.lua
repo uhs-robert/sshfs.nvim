@@ -1,3 +1,4 @@
+-- lua/sshfs/core/connections.lua
 -- Modern SSH connection management using ssh-core modules
 local ssh_config = require("sshfs.core.config")
 local ssh_mount = require("sshfs.core.mount")

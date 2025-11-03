@@ -1,3 +1,4 @@
+-- lua/sshfs/core/auth.lua
 local M = {}
 
 local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
