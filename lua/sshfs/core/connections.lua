@@ -165,14 +165,14 @@ function M.disconnect_specific(connection)
 		end
 	end
 
-	-- Clean up stored pre-mount directory
-	pre_mount_directories[mount_point] = nil
-
 	-- Unmount the filesystem
 	local success = ssh_mount.unmount_sshfs(mount_point)
 
 	if success then
 		vim.notify("Disconnected from " .. host_name, vim.log.levels.INFO)
+
+		-- Clean up stored pre-mount directory after successful unmount
+		pre_mount_directories[mount_point] = nil
 
 		-- Cleanup mount directory if configured
 		if config.handlers and config.handlers.on_disconnect and config.handlers.on_disconnect.clean_mount_folders then
