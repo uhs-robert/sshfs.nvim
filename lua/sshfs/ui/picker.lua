@@ -33,7 +33,7 @@ end
 
 local function try_nvim_tree(cwd)
 	local ok = pcall(function()
-		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
 		vim.cmd("NvimTreeOpen")
 	end)
 	return ok
@@ -107,7 +107,7 @@ local function try_ranger(cwd)
 
 	-- Try rnvimr as alternative
 	local rnvimr_ok = pcall(function()
-		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
 		vim.cmd("RnvimrToggle")
 	end)
 	return rnvimr_ok
@@ -115,7 +115,7 @@ end
 
 local function try_netrw(cwd)
 	local ok = pcall(function()
-		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
 		vim.cmd("Explore")
 	end)
 	return ok
@@ -239,7 +239,7 @@ end
 
 local function try_builtin_grep(cwd, pattern)
 	local ok = pcall(function()
-		vim.cmd("cd " .. vim.fn.fnameescape(cwd))
+		vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
 		if pattern and pattern ~= "" then
 			vim.fn.setreg("/", pattern)
 			vim.cmd("grep -r " .. vim.fn.shellescape(pattern) .. " .")
@@ -484,7 +484,7 @@ function M.grep_remote_files(pattern, opts)
 		end
 	else
 		-- Fallback to old behavior
-		vim.cmd("cd " .. vim.fn.fnameescape(search_dir))
+		vim.cmd("tcd " .. vim.fn.fnameescape(search_dir))
 		if pattern and pattern ~= "" then
 			vim.fn.setreg("/", pattern)
 			vim.notify(

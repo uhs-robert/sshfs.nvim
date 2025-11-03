@@ -156,9 +156,9 @@ function M.disconnect_specific(connection)
 	if cwd and mount_point and cwd:find(mount_point, 1, true) == 1 then
 		local restore_dir = initial_directory
 		if restore_dir and vim.fn.isdirectory(restore_dir) == 1 then
-			vim.cmd("lcd " .. vim.fn.fnameescape(restore_dir))
+			vim.cmd("tcd " .. vim.fn.fnameescape(restore_dir))
 		else
-			vim.cmd("lcd " .. vim.fn.expand("~"))
+			vim.cmd("tcd " .. vim.fn.expand("~"))
 		end
 	end
 
@@ -197,7 +197,7 @@ function M.change_to_mount_dir()
 
 	if #connections == 1 then
 		local mount_dir = connections[1].mount_point
-		vim.cmd("lcd " .. vim.fn.fnameescape(mount_dir))
+		vim.cmd("tcd " .. vim.fn.fnameescape(mount_dir))
 		vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
 		return
 	end
@@ -213,7 +213,7 @@ function M.change_to_mount_dir()
 	}, function(_, idx)
 		if idx then
 			local mount_dir = connections[idx].mount_point
-			vim.cmd("lcd " .. vim.fn.fnameescape(mount_dir))
+			vim.cmd("tcd " .. vim.fn.fnameescape(mount_dir))
 			vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
 		end
 	end)
@@ -223,7 +223,7 @@ end
 function M._handle_post_connect(mount_dir)
 	-- Auto-change directory to mount point if configured
 	if config.mounts and config.mounts.auto_change_dir_on_mount then
-		vim.cmd("lcd " .. vim.fn.fnameescape(mount_dir))
+		vim.cmd("tcd " .. vim.fn.fnameescape(mount_dir))
 	end
 
 	-- Try to auto-open file picker (respects auto_open_on_mount setting)
