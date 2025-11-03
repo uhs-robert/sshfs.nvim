@@ -13,7 +13,7 @@ function M.is_directory_empty(path)
 	return name == nil
 end
 
-function M.is_mount_active(mount_path, mount_dir)
+function M.is_mount_active(mount_path)
 	local stat = vim.uv.fs_stat(mount_path)
 	if not stat or stat.type ~= "directory" then
 		return false

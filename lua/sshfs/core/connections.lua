@@ -89,7 +89,7 @@ function M.connect(host)
 	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
 
 	-- Check if already mounted
-	if ssh_mount.is_mount_active(mount_dir, mount_dir) then
+	if ssh_mount.is_mount_active(mount_dir) then
 		vim.notify("Host " .. host.Name .. " is already mounted at " .. mount_dir, vim.log.levels.WARN)
 		return true
 	end
