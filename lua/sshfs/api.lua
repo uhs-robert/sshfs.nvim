@@ -129,7 +129,10 @@ M.list_mounts = function()
 			local success, picker_name = picker.try_open_file_picker(selected_mount.path, config, true)
 
 			if not success then
-				vim.notify("Could not open file picker for: " .. selected_mount.path, vim.log.levels.WARN)
+				vim.notify(
+				"Could not open file picker (" .. picker_name .. ") for: " .. selected_mount.path,
+				vim.log.levels.WARN
+			)
 			end
 		end
 	end)
