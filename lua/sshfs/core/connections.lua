@@ -106,36 +106,35 @@ function M.connect(host)
 	end
 
 	-- Prompt for mount location
-	local function prompt_for_mount_path(callback)
-		local choices = { "[H]ome directory (~)", "[R]oot directory (/)" }
-		local choice_map = {
-			["[H]ome directory (~)"] = "~",
-			["[R]oot directory (/)"] = "/",
-		}
+  local function prompt_for_mount_path(callback)
+		local choices = {
+      "&Home directory (~)",
+      "&Root directory (/)",
+      "&Manual path",
+      "&Configured path"
+    }
 
 		local configured_path = config.host_specific_mounts and config.host_specific_mounts[host.Name]
-		if configured_path then
-			local choice_text = string.format("[C]onfigured path (%s)", configured_path)
-			table.insert(choices, choice_text)
-			choice_map[choice_text] = configured_path
-		end
+    if not configured_path then
+      -- remove configured path if not defined in configuration
+      table.remove(choices, 4)
+    end
 
-		table.insert(choices, "[M]anual path")
+    local choice = vim.fn.confirm("Select mount location:", table.concat(choices, "\n"), 1)
+    print("Your choice is " .. choice)
 
-		vim.ui.select(choices, { prompt = "Select mount location:" }, function(choice)
-			if not choice then
-				callback(nil) -- User cancelled
-				return
-			end
-
-			if choice == "[M]anual path" then
-				vim.ui.input({ prompt = "Enter remote path to mount:" }, function(path)
-					callback(path)
-				end)
-			else
-				callback(choice_map[choice])
-			end
-		end)
+    if choice == 1 then
+      callback("$HOME")
+    elseif choice == 2 then
+      callback("/")
+    elseif choice == 4 then
+      callback(configured_path)
+    else
+      -- Get remote path from user
+      vim.ui.input({ prompt = "Enter remote path to mount:" }, function(path)
+        callback(path)
+      end)
+    end
 	end
 
 	prompt_for_mount_path(function(remote_path_suffix)
