@@ -105,32 +105,68 @@ function M.connect(host)
 		return false
 	end
 
-	-- Prompt for mount location (home vs root)
-	local mount_to_root = ssh_auth.prompt_mount_location()
+	-- Prompt for mount location
+	local function prompt_for_mount_path(callback)
+		local choices = { "[H]ome directory (~)", "[R]oot directory (/)" }
+		local choice_map = {
+			["[H]ome directory (~)"] = "~",
+			["[R]oot directory (/)"] = "/",
+		}
 
-	-- SSH connection options from config
-	local ssh_options = {
-		compression = true,
-		server_alive_interval = 15,
-		server_alive_count_max = 3,
-	}
+		local configured_path = config.host_specific_mounts and config.host_specific_mounts[host.Name]
+		if configured_path then
+			local choice_text = string.format("[C]onfigured path (%s)", configured_path)
+			table.insert(choices, choice_text)
+			choice_map[choice_text] = configured_path
+		end
 
-	-- Attempt authentication and mounting
-	local user_sshfs_args = config.connections and config.connections.sshfs_args
-	local success, result =
-		ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, mount_to_root, user_sshfs_args)
+		table.insert(choices, "[M]anual path")
 
-	if success then
-		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
+		vim.ui.select(choices, { prompt = "Select mount location:" }, function(choice)
+			if not choice then
+				callback(nil) -- User cancelled
+				return
+			end
 
-		-- Handle post-connection actions
-		M._handle_post_connect(mount_dir)
-		return true
-	else
-		vim.notify("Connection failed: " .. (result or "Unknown error"), vim.log.levels.ERROR)
-		ssh_mount.cleanup_mount_directory(mount_dir)
-		return false
+			if choice == "[M]anual path" then
+				vim.ui.input({ prompt = "Enter remote path to mount:" }, function(path)
+					callback(path)
+				end)
+			else
+				callback(choice_map[choice])
+			end
+		end)
 	end
+
+	prompt_for_mount_path(function(remote_path_suffix)
+		if not remote_path_suffix then
+			vim.notify("Connection cancelled.", vim.log.levels.WARN)
+			ssh_mount.cleanup_mount_directory(mount_dir)
+			return
+		end
+
+		-- SSH connection options from config
+		local ssh_options = {
+			compression = true,
+			server_alive_interval = 15,
+			server_alive_count_max = 3,
+		}
+
+		-- Attempt authentication and mounting
+		local user_sshfs_args = config.connections and config.connections.sshfs_args
+		local success, result =
+			ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, remote_path_suffix, user_sshfs_args)
+
+		if success then
+			vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
+
+			-- Handle post-connection actions
+			M._handle_post_connect(mount_dir)
+		else
+			vim.notify("Connection failed: " .. (result or "Unknown error"), vim.log.levels.ERROR)
+			ssh_mount.cleanup_mount_directory(mount_dir)
+		end
+	end)
 end
 
 -- Disconnect from current host (backward compatibility)
