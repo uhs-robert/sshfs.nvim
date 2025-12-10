@@ -157,16 +157,6 @@ require("sshfs").setup({
     open = "<leader>mo",
     grep = "<leader>mg",
   },
-  log = {
-    enabled = false,
-    truncate = false,
-    types = {
-      all = false,
-      util = false,
-      handler = false,
-      sshfs = false,
-    },
-  },
 })
 ```
 

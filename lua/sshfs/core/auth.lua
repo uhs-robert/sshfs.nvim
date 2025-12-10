@@ -99,10 +99,7 @@ function M.try_password_authentication(
 		end
 
 		if attempt < max_attempts then
-			vim.notify("Authentication failed, try again.", vim.log.levels.WARN)
-		else
-			local log = require("sshfs.utils.log")
-			log.debug("Password authentication failed: " .. (result or "unknown error"))
+			vim.notify(string.format("Authentication failed for %s, try again.", remote_path), vim.log.levels.WARN)
 		end
 	end
 
@@ -117,11 +114,7 @@ function M.authenticate_and_mount(host, mount_point, ssh_options, remote_path_su
 		return true, "Key authentication successful"
 	end
 
-	-- Log the key auth failure reason for debugging
-	local log = require("sshfs.utils.log")
-	log.debug("Key authentication failed: " .. (result or "unknown error"))
 
-	vim.notify("Key authentication failed, trying password authentication...", vim.log.levels.INFO)
 	return M.try_password_authentication(host, mount_point, ssh_options, remote_path_suffix, nil, user_sshfs_args)
 end
 

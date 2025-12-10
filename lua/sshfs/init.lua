@@ -33,16 +33,6 @@ local default_opts = {
 			fallback_to_netrw = true,
 		},
 	},
-	log = {
-		enabled = false,
-		truncate = false,
-		types = {
-			all = false,
-			util = false,
-			handler = false,
-			sshfs = false,
-		},
-	},
 }
 
 M.setup_commands = function()
@@ -95,7 +85,6 @@ function M.setup(user_opts)
 	connections.setup(opts)
 
 	-- Setup other modules
-	require("sshfs.utils.log").setup(opts)
 	require("sshfs.ui.keymaps").setup(opts)
 
 	-- Setup exit handler if enabled
