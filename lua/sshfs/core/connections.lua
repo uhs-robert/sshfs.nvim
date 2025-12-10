@@ -121,7 +121,6 @@ function M.connect(host)
     end
 
     local choice = vim.fn.confirm("Select mount location:", table.concat(choices, "\n"), 1)
-    print("Your choice is " .. choice)
 
     if choice == 1 then
       callback("$HOME")
