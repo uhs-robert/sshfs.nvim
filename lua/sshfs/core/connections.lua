@@ -86,6 +86,41 @@ function M.get_all_connections()
 	return connections
 end
 
+-- Normalize remote mount path to handle edge cases
+-- @param path string|nil - User-provided path
+-- @return string - Normalized path suitable for remote mounting
+local function normalize_remote_path(path, host)
+	-- Handle empty/nil -> root directory
+	if not path or path == "" then
+		return "/"
+	end
+
+	-- Trim whitespace
+	path = vim.trim(path)
+
+	-- Handle empty after trim
+	if path == "" then
+		return "/"
+	end
+
+	-- Handle ~ or ~/... -> $HOME or $HOME/...
+	if path == "~" or path:match("^~/") then
+		local home_dir = "$HOME"
+		if host.User then
+			home_dir = "/home/" .. host.User
+		end
+
+		return path:gsub("^~", home_dir)
+	end
+
+	-- Handle paths without leading slash -> prepend /
+	if path:sub(1, 1) ~= "/" then
+		return "/" .. path
+	end
+
+	return path
+end
+
 -- Connect to a remote host
 function M.connect(host)
 	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
