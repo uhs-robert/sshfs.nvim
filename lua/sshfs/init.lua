@@ -20,7 +20,7 @@ local default_opts = {
 		unmount_on_exit = true,
 		auto_change_dir_on_mount = false,
 	},
-	host_specific_mounts = {},
+	host_paths = {},
 	handlers = {
 		on_disconnect = {
 			clean_mount_folders = true,

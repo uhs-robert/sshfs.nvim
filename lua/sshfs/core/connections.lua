@@ -121,6 +121,59 @@ local function normalize_remote_path(path, host)
 	return path
 end
 
+-- Prompt for mount location
+-- @param host table - Host object with Name field (e.g., {Name = "my-server"})
+-- @param callback function - Callback function invoked with selected remote path string
+--                            (e.g., "$HOME", "/", "/custom/path", or nil if cancelled)
+-- @return nil - result is passed to callback
+local function prompt_for_mount_path(host, callback)
+	local options = {
+		{ label = "Home directory (~)", path = "~" },
+		{ label = "Root directory (/)", path = "/" },
+		{ label = "Custom Path", path = nil },
+	}
+
+	-- Add configured path options if available
+	local configured_paths = config.host_paths and config.host_paths[host.Name]
+	if configured_paths then
+		-- Handle both string and array formats
+		if type(configured_paths) == "string" then
+			table.insert(options, { label = configured_paths, path = configured_paths })
+		elseif type(configured_paths) == "table" then
+			for _, path in ipairs(configured_paths) do
+				table.insert(options, { label = path, path = path })
+			end
+		end
+	end
+
+	vim.ui.select(options, {
+		prompt = "Select mount location:",
+		format_item = function(item)
+			return item.label
+		end,
+	}, function(selected)
+		if not selected then
+			callback(nil)
+			return
+		end
+
+		-- Handle manual path entry
+		if selected.path == nil then
+			vim.ui.input({ prompt = "Enter remote path to mount:" }, function(path)
+				if not path then
+					callback(nil)
+					return
+				end
+				local normalized_path = normalize_remote_path(path, host)
+				callback(normalized_path)
+			end)
+		else
+			local normalized_path = normalize_remote_path(selected.path, host)
+			callback(normalized_path)
+		end
+	end)
+end
+
 -- Connect to a remote host
 function M.connect(host)
 	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
@@ -140,38 +193,8 @@ function M.connect(host)
 		return false
 	end
 
-	-- Prompt for mount location
-  local function prompt_for_mount_path(callback)
-		local choices = {
-      "&Home directory (~)",
-      "&Root directory (/)",
-      "&Manual path",
-      "&Configured path"
-    }
-
-		local configured_path = config.host_specific_mounts and config.host_specific_mounts[host.Name]
-    if not configured_path then
-      -- remove configured path if not defined in configuration
-      table.remove(choices, 4)
-    end
-
-    local choice = vim.fn.confirm("Select mount location:", table.concat(choices, "\n"), 1)
-
-    if choice == 1 then
-      callback("$HOME")
-    elseif choice == 2 then
-      callback("/")
-    elseif choice == 4 then
-      callback(configured_path)
-    else
-      -- Get remote path from user
-      vim.ui.input({ prompt = "Enter remote path to mount:" }, function(path)
-        callback(path)
-      end)
-    end
-	end
-
-	prompt_for_mount_path(function(remote_path_suffix)
+	-- Get mount path from user
+	prompt_for_mount_path(host, function(remote_path_suffix)
 		if not remote_path_suffix then
 			vim.notify("Connection cancelled.", vim.log.levels.WARN)
 			ssh_mount.cleanup_mount_directory(mount_dir)
