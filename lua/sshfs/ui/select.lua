@@ -3,7 +3,20 @@
 
 local Select = {}
 
--- SSH config file picker using vim.ui.select
+--- Get active mounts or display warning.
+---@return table|nil Active mounts array or nil if none found
+local function get_active_mounts_or_warn()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_mounts = MountPoint.list_active()
+	if not active_mounts or #active_mounts == 0 then
+		vim.notify("No active SSH mounts found", vim.log.levels.WARN)
+		return nil
+	end
+	return active_mounts
+end
+
+--- SSH config file picker using vim.ui.select.
+---@param callback function Callback invoked with selected config file path
 function Select.ssh_config(callback)
 	local SSHConfig = require("sshfs.lib.ssh_config")
 	local config_files = SSHConfig.get_default_files()
@@ -33,13 +46,11 @@ function Select.ssh_config(callback)
 	end)
 end
 
--- Mount selection from active mounts
+--- Mount selection from active mounts.
+---@param callback function Callback invoked with selected mount object
 function Select.mount(callback)
-	-- Get active mounts
-	local MountPoint = require("sshfs.lib.mount_point")
-	local active_mounts = MountPoint.list_active()
-	if not active_mounts or #active_mounts == 0 then
-		vim.notify("No active SSH mounts found", vim.log.levels.WARN)
+	local active_mounts = get_active_mounts_or_warn()
+	if not active_mounts then
 		return
 	end
 
@@ -64,13 +75,11 @@ function Select.mount(callback)
 	end)
 end
 
--- Mount selection for unmounting an active mount
+--- Mount selection for unmounting an active mount.
+---@param callback function Callback invoked with selected connection object
 function Select.unmount(callback)
-	-- Get active mounts
-	local MountPoint = require("sshfs.lib.mount_point")
-	local active_mounts = MountPoint.list_active()
-	if not active_mounts or #active_mounts == 0 then
-		vim.notify("No active SSH mounts to disconnect", vim.log.levels.WARN)
+	local active_mounts = get_active_mounts_or_warn()
+	if not active_mounts then
 		return
 	end
 
@@ -99,7 +108,8 @@ function Select.unmount(callback)
 	end)
 end
 
--- Host selection for choosing an SSH Host to connect to
+--- Host selection for choosing an SSH Host to connect to.
+---@param callback function Callback invoked with selected host object
 function Select.host(callback)
 	local SSHConfig = require("sshfs.lib.ssh_config")
 	local hosts = SSHConfig.get_hosts()
@@ -118,6 +128,7 @@ function Select.host(callback)
 		table.insert(host_list, display)
 		host_map[display] = host
 	end
+	table.sort(host_list)
 
 	vim.ui.select(host_list, {
 		prompt = "Select SSH host to connect:",
