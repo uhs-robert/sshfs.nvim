@@ -42,7 +42,7 @@ end
 -- Unmount SSH host - smart handling for multiple mounts
 Api.unmount = function()
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 	local active_connections = Connections.get_all(base_dir)
 
@@ -64,7 +64,7 @@ end
 -- Check connection status
 Api.has_active = function()
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 	return Connections.has_active(base_dir)
 end
@@ -72,7 +72,7 @@ end
 -- Get current connection info
 Api.get_active = function()
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 	return Connections.get_active(base_dir)
 end
@@ -96,7 +96,7 @@ end
 -- Browse remote files using native file browser
 Api.find_files = function(opts)
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -110,7 +110,7 @@ end
 -- Browse remote files - smart handling for multiple mounts
 Api.browse = function(opts)
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 	local active_connections = Connections.get_all(base_dir)
 
@@ -127,7 +127,7 @@ end
 -- Search text in remote files using picker or native grep
 Api.grep = function(pattern, opts)
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)

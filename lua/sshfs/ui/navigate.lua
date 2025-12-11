@@ -5,7 +5,7 @@ local Navigate = {}
 -- Change to mounted directory
 function Navigate.to_mount_dir()
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 	local active_connections = Connections.get_all(base_dir)
 

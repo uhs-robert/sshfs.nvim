@@ -95,7 +95,7 @@ end
 
 -- Disconnect from current host (backward compatibility)
 function Session.disconnect()
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = config.mounts and config.mounts.base_dir
 	local active_connection = Connections.get_active(base_dir)
 	if not active_connection.mount_point then

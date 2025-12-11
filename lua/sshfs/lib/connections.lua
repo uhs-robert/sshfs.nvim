@@ -1,7 +1,7 @@
--- lua/sshfs/core/connections.lua
+-- lua/sshfs/lib/connections.lua
 -- Connection status queries: check active connections and get connection info
 
-local Connections = {} -- TODO: move to lib
+local Connections = {}
 
 local MountPoint = require("sshfs.core.mount")
 

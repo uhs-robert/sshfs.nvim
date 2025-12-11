@@ -91,7 +91,7 @@ function App.setup(user_opts)
 	if opts.mounts.unmount_on_exit then
 		vim.api.nvim_create_autocmd("VimLeave", {
 			callback = function()
-				local connections = require("sshfs.core.connections")
+				local connections = require("sshfs.lib.connections")
 				local base_dir = opts.mounts and opts.mounts.base_dir
 				local all_connections = connections.get_all(base_dir)
 

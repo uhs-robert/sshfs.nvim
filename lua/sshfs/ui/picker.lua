@@ -335,7 +335,7 @@ end
 local function setup_remote_operation(opts)
 	opts = opts or {}
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.core.connections")
+	local Connections = require("sshfs.lib.connections")
 	local base_dir = Session.get_base_dir()
 
 	if not Connections.has_active(base_dir) then
