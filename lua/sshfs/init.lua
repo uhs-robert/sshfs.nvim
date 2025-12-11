@@ -3,7 +3,7 @@
 
 local App = {}
 
--- Creates API commands for vim api
+--- Creates API commands for vim api.
 App.setup_api_commands = function()
 	local Api = require("sshfs.api")
 
@@ -44,7 +44,8 @@ App.setup_api_commands = function()
 	end, { desc = "Set current directory to SSH mount" })
 end
 
--- Main entry point
+--- Main entry point for plugin initialization.
+---@param user_opts table|nil User configuration options to merge with defaults
 function App.setup(user_opts)
 	local Config = require("sshfs.config")
 	Config.setup(user_opts)
