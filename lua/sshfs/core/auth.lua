@@ -37,15 +37,29 @@ local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 	return options
 end
 
-function M.try_key_authentication(host, mount_point, ssh_options, mount_to_root, user_sshfs_args)
-	mount_to_root = mount_to_root or false
+-- Determines whether password authentication should be attempted based on the error type
+-- @param error_output string: The error output from the sshfs command
+-- @param host table: Host object with Name/User field (e.g., {Name = "my-server", User = "my-username"})
+-- @return boolean: true if password auth should be tried else false
+-- @return string: Formatted error message describing the error
+local function should_retry_with_password(error_output, host)
+	if error_output:match("No such file or directory") then
+		return false, "Remote path does not exist: " .. (error_output or "Unknown Error")
+	end
+
+	return true,
+		string.format("Authentication Error for %s@%s: %s", host.User, host.Name, error_output or "Unknown Error")
+end
+
+function M.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
+	remote_path_suffix = remote_path_suffix or (host.Path or "")
 	local options = get_sshfs_options("key", ssh_options, user_sshfs_args)
 
 	local remote_path = host.Name
 	if host.User then
 		remote_path = host.User .. "@" .. remote_path
 	end
-	remote_path = remote_path .. ":" .. (mount_to_root and "/" or (host.Path or ""))
+	remote_path = remote_path .. ":" .. remote_path_suffix
 
 	local cmd = { "sshfs", remote_path, mount_point, "-o", table.concat(options, ",") }
 
@@ -58,8 +72,15 @@ function M.try_key_authentication(host, mount_point, ssh_options, mount_to_root,
 	return vim.v.shell_error == 0, result
 end
 
-function M.try_password_authentication(host, mount_point, ssh_options, mount_to_root, max_attempts, user_sshfs_args)
-	mount_to_root = mount_to_root or false
+function M.try_password_authentication(
+	host,
+	mount_point,
+	ssh_options,
+	remote_path_suffix,
+	max_attempts,
+	user_sshfs_args
+)
+	remote_path_suffix = remote_path_suffix or (host.Path or "")
 	max_attempts = max_attempts or 3
 	local options = get_sshfs_options("password", ssh_options, user_sshfs_args)
 
@@ -67,7 +88,7 @@ function M.try_password_authentication(host, mount_point, ssh_options, mount_to_
 	if host.User then
 		remote_path = host.User .. "@" .. remote_path
 	end
-	remote_path = remote_path .. ":" .. (mount_to_root and "/" or (host.Path or ""))
+	remote_path = remote_path .. ":" .. remote_path_suffix
 
 	for attempt = 1, max_attempts do
 		local password =
@@ -85,41 +106,41 @@ function M.try_password_authentication(host, mount_point, ssh_options, mount_to_
 		end
 
 		-- Use more secure password passing to avoid shell injection
-		local result = vim.fn.system(table.concat(cmd, " "), password)
+		local error_output = vim.fn.system(table.concat(cmd, " "), password)
 
 		if vim.v.shell_error == 0 then
 			return true, "Success"
 		end
 
+		local should_retry, error_message = should_retry_with_password(error_output, host)
+		if not should_retry then
+			return false, error_message
+		end
+
 		if attempt < max_attempts then
-			vim.notify("Authentication failed, try again.", vim.log.levels.WARN)
-		else
-			local log = require("sshfs.utils.log")
-			log.debug("Password authentication failed: " .. (result or "unknown error"))
+			vim.notify(string.format("Authentication failed for %s, try again.", remote_path), vim.log.levels.WARN)
 		end
 	end
 
 	return false, "Authentication failed after " .. max_attempts .. " attempts"
 end
 
-function M.authenticate_and_mount(host, mount_point, ssh_options, mount_to_root, user_sshfs_args)
-	local success, result = M.try_key_authentication(host, mount_point, ssh_options, mount_to_root, user_sshfs_args)
+function M.authenticate_and_mount(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
+	local success, error_output =
+		M.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
 
 	if success then
 		return true, "Key authentication successful"
+	elseif not error_output then
+		return false, string.format("Unknown Error: Key authentication failed for %s@%s", host.User, host.Name)
 	end
 
-	-- Log the key auth failure reason for debugging
-	local log = require("sshfs.utils.log")
-	log.debug("Key authentication failed: " .. (result or "unknown error"))
+	local should_try_password, error_message = should_retry_with_password(error_output, host)
+	if not should_try_password then
+		return false, error_message
+	end
 
-	vim.notify("Key authentication failed, trying password authentication...", vim.log.levels.INFO)
-	return M.try_password_authentication(host, mount_point, ssh_options, mount_to_root, nil, user_sshfs_args)
-end
-
-function M.prompt_mount_location()
-	local choice = vim.fn.confirm("Mount location:", "&Home directory (~)\n&Root directory (/)", 1)
-	return choice == 2
+	return M.try_password_authentication(host, mount_point, ssh_options, remote_path_suffix, nil, user_sshfs_args)
 end
 
 return M

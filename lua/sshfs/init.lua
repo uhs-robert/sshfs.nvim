@@ -20,6 +20,7 @@ local default_opts = {
 		unmount_on_exit = true,
 		auto_change_dir_on_mount = false,
 	},
+	host_paths = {},
 	handlers = {
 		on_disconnect = {
 			clean_mount_folders = true,
@@ -30,16 +31,6 @@ local default_opts = {
 			auto_open_on_mount = true, -- Auto-open file picker after mounting (default: true)
 			preferred_picker = "auto", -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
 			fallback_to_netrw = true,
-		},
-	},
-	log = {
-		enabled = false,
-		truncate = false,
-		types = {
-			all = false,
-			util = false,
-			handler = false,
-			sshfs = false,
 		},
 	},
 }
@@ -94,7 +85,6 @@ function M.setup(user_opts)
 	connections.setup(opts)
 
 	-- Setup other modules
-	require("sshfs.utils.log").setup(opts)
 	require("sshfs.ui.keymaps").setup(opts)
 
 	-- Setup exit handler if enabled

@@ -134,6 +134,14 @@ require("sshfs").setup({
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
     unmount_on_exit = true, -- auto-disconnect all mounts on :q or exit
     auto_change_dir_on_mount = false, -- auto-change current directory to mount point (default: false)
+    host_paths = {
+      -- Optionally define default mount paths for specific hosts
+      -- Single path (string):
+      -- ["my-server"] = "/var/www/html"
+      --
+      -- Multiple paths (array):
+      -- ["dev-server"] = { "/var/www", "~/projects", "/opt/app" }
+    },
   },
   handlers = {
     on_disconnect = {
@@ -156,16 +164,6 @@ require("sshfs").setup({
     reload = "<leader>mr",
     open = "<leader>mo",
     grep = "<leader>mg",
-  },
-  log = {
-    enabled = false,
-    truncate = false,
-    types = {
-      all = false,
-      util = false,
-      handler = false,
-      sshfs = false,
-    },
   },
 })
 ```
@@ -224,7 +222,39 @@ require("sshfs").setup({
 
 ## 🚀 Usage
 
-After connecting to a host with `:SSHConnect`, the plugin mounts the remote filesystem locally. You can then:
+### Connecting to a Host
+
+When you run `:SSHConnect`, you'll be prompted to:
+
+1. **Select a host** from your SSH config
+2. **Choose a mount location** with the following options:
+   - **Home directory (~)**: Mounts your remote home directory
+   - **Root directory (/)**: Mounts the entire remote filesystem
+   - **Custom path**: Enter any custom path (e.g., `/var/www`, `~/projects`, `/opt/app`)
+   - **Configured paths**: Any paths you've defined in `host_paths` for this host
+
+> [!TIP]
+> Use `host_paths` to define one or more default paths for frequently-used hosts:
+>
+> ```lua
+> mounts = {
+>   host_paths = {
+>     -- Single path
+>     ["production-server"] = "/var/www/html",
+>
+>     -- Multiple paths for the same host
+>     ["dev-server"] = {
+>       "/var/www",
+>       "~/projects",
+>       "/opt/app",
+>     },
+>   },
+> }
+> ```
+
+### Working with Remote Files
+
+After connecting to a host, the plugin mounts the remote filesystem locally. You can then:
 
 1. **Browse files**: Use `:SSHBrowse` to automatically launch your preferred file picker:
    - **Auto-detected pickers**: telescope, oil, neo-tree, nvim-tree, snacks, fzf-lua, mini, yazi, lf, nnn, ranger

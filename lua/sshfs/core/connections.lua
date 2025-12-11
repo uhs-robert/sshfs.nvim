@@ -86,6 +86,94 @@ function M.get_all_connections()
 	return connections
 end
 
+-- Normalize remote mount path to handle edge cases
+-- @param path string|nil - User-provided path
+-- @return string - Normalized path suitable for remote mounting
+local function normalize_remote_path(path, host)
+	-- Handle empty/nil -> root directory
+	if not path or path == "" then
+		return "/"
+	end
+
+	-- Trim whitespace
+	path = vim.trim(path)
+
+	-- Handle empty after trim
+	if path == "" then
+		return "/"
+	end
+
+	-- Handle ~ or ~/... -> $HOME or $HOME/...
+	if path == "~" or path:match("^~/") then
+		local home_dir = "$HOME"
+		if host.User then
+			home_dir = "/home/" .. host.User
+		end
+
+		return path:gsub("^~", home_dir)
+	end
+
+	-- Handle paths without leading slash -> prepend /
+	if path:sub(1, 1) ~= "/" then
+		return "/" .. path
+	end
+
+	return path
+end
+
+-- Prompt for mount location
+-- @param host table - Host object with Name field (e.g., {Name = "my-server"})
+-- @param callback function - Callback function invoked with selected remote path string
+--                            (e.g., "$HOME", "/", "/custom/path", or nil if cancelled)
+-- @return nil - result is passed to callback
+local function prompt_for_mount_path(host, callback)
+	local options = {
+		{ label = "Home directory (~)", path = "~" },
+		{ label = "Root directory (/)", path = "/" },
+		{ label = "Custom Path", path = nil },
+	}
+
+	-- Add configured path options if available
+	local configured_paths = config.host_paths and config.host_paths[host.Name]
+	if configured_paths then
+		-- Handle both string and array formats
+		if type(configured_paths) == "string" then
+			table.insert(options, { label = configured_paths, path = configured_paths })
+		elseif type(configured_paths) == "table" then
+			for _, path in ipairs(configured_paths) do
+				table.insert(options, { label = path, path = path })
+			end
+		end
+	end
+
+	vim.ui.select(options, {
+		prompt = "Select mount location:",
+		format_item = function(item)
+			return item.label
+		end,
+	}, function(selected)
+		if not selected then
+			callback(nil)
+			return
+		end
+
+		-- Handle manual path entry
+		if selected.path == nil then
+			vim.ui.input({ prompt = "Enter remote path to mount:" }, function(path)
+				if not path then
+					callback(nil)
+					return
+				end
+				local normalized_path = normalize_remote_path(path, host)
+				callback(normalized_path)
+			end)
+		else
+			local normalized_path = normalize_remote_path(selected.path, host)
+			callback(normalized_path)
+		end
+	end)
+end
+
 -- Connect to a remote host
 function M.connect(host)
 	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
@@ -105,32 +193,36 @@ function M.connect(host)
 		return false
 	end
 
-	-- Prompt for mount location (home vs root)
-	local mount_to_root = ssh_auth.prompt_mount_location()
+	-- Get mount path from user
+	prompt_for_mount_path(host, function(remote_path_suffix)
+		if not remote_path_suffix then
+			vim.notify("Connection cancelled.", vim.log.levels.WARN)
+			ssh_mount.cleanup_mount_directory(mount_dir)
+			return
+		end
 
-	-- SSH connection options from config
-	local ssh_options = {
-		compression = true,
-		server_alive_interval = 15,
-		server_alive_count_max = 3,
-	}
+		-- SSH connection options from config
+		local ssh_options = {
+			compression = true,
+			server_alive_interval = 15,
+			server_alive_count_max = 3,
+		}
 
-	-- Attempt authentication and mounting
-	local user_sshfs_args = config.connections and config.connections.sshfs_args
-	local success, result =
-		ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, mount_to_root, user_sshfs_args)
+		-- Attempt authentication and mounting
+		local user_sshfs_args = config.connections and config.connections.sshfs_args
+		local success, result =
+			ssh_auth.authenticate_and_mount(host, mount_dir, ssh_options, remote_path_suffix, user_sshfs_args)
 
-	if success then
-		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
+		if success then
+			vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
 
-		-- Handle post-connection actions
-		M._handle_post_connect(mount_dir)
-		return true
-	else
-		vim.notify("Connection failed: " .. (result or "Unknown error"), vim.log.levels.ERROR)
-		ssh_mount.cleanup_mount_directory(mount_dir)
-		return false
-	end
+			-- Handle post-connection actions
+			M._handle_post_connect(mount_dir)
+		else
+			vim.notify("Connection failed: " .. (result or "Unknown error"), vim.log.levels.ERROR)
+			ssh_mount.cleanup_mount_directory(mount_dir)
+		end
+	end)
 end
 
 -- Disconnect from current host (backward compatibility)
