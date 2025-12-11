@@ -5,7 +5,7 @@ local Select = {}
 
 -- SSH config file picker using vim.ui.select
 function Select.ssh_config(callback)
-	local SSHConfig = require("sshfs.core.config")
+	local SSHConfig = require("sshfs.lib.ssh_config")
 	local config_files = SSHConfig.get_default_files()
 
 	-- Filter to only existing files

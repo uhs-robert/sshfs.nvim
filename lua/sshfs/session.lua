@@ -23,7 +23,7 @@ end
 
 -- Get all available hosts from SSH configs
 function Session.get_hosts()
-	local SSHConfig = require("sshfs.core.config")
+	local SSHConfig = require("sshfs.lib.ssh_config")
 	local Cache = require("sshfs.core.cache")
 	local config_files = config.connections.ssh_configs or SSHConfig.get_default_files()
 

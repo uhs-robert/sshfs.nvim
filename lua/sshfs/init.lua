@@ -2,7 +2,7 @@
 -- Plugin entry point for setup, configuration management, and command registration
 
 local App = {}
-local SSHConfig = require("sshfs.core.config")
+local SSHConfig = require("sshfs.lib.ssh_config")
 
 local default_opts = {
 	connections = {

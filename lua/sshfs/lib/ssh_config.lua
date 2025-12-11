@@ -1,8 +1,7 @@
--- lua/sshfs/core/config.lua
+-- lua/sshfs/lib.ssh_config.lua
 -- SSH configuration parsing from system config files and host discovery
 
-local SSHConfig = {} -- TODO: Rename this file to match
--- TODO: Move to lib
+local SSHConfig = {}
 
 function SSHConfig.get_hosts(ssh_configs)
 	local hosts = {}
