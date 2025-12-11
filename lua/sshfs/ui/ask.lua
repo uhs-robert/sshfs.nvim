@@ -3,9 +3,10 @@
 
 local Ask = {}
 
--- Normalize remote mount path to handle edge cases
--- @param path string|nil - User-provided path
--- @return string - Normalized path suitable for remote mounting
+--- Normalize remote mount path to handle edge cases
+--- @param path string|nil User-provided path
+--- @param host table Host object with User field
+--- @return string Normalized path suitable for remote mounting
 local function normalize_remote_path(path, host)
 	-- Handle empty/nil -> root directory
 	if not path or path == "" then
@@ -38,11 +39,10 @@ local function normalize_remote_path(path, host)
 	return path
 end
 
--- Ask for mount location
--- @param host table - Host object with Name field (e.g., {Name = "my-server"})
--- @param callback function - Callback function invoked with selected remote path string
---                            (e.g., "$HOME", "/", "/custom/path", or nil if cancelled)
--- @return nil - result is passed to callback
+--- Ask for mount location
+--- @param host table Host object with Name field
+--- @param config table Plugin configuration
+--- @param callback function Callback invoked with selected remote path or nil
 function Ask.for_mount_path(host, config, callback)
 	local options = {
 		{ label = "Home directory (~)", path = "~" },

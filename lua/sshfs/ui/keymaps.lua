@@ -14,6 +14,8 @@ local DEFAULT_KEYMAPS = {
 	unmount = "u",
 }
 
+--- Setup keymaps for SSH commands
+--- @param opts table|nil Configuration options with keymaps and lead_prefix
 function Keymaps.setup(opts)
 	local user_keymaps = opts and opts.keymaps or {}
 	local lead_prefix = opts.lead_prefix or DEFAULT_PREFIX

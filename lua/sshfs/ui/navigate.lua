@@ -2,7 +2,7 @@
 
 local Navigate = {}
 
--- Change to mounted directory
+--- Change to mounted directory
 function Navigate.to_mount_dir()
 	local Connections = require("sshfs.lib.connections")
 	local base_dir = Config.get_base_dir()
@@ -37,7 +37,9 @@ function Navigate.to_mount_dir()
 	end)
 end
 
--- Navigate with file picker (with auto-change of dir if enabled)
+--- Navigate with file picker (with auto-change of dir if enabled)
+--- @param mount_dir string Mount directory path
+--- @param config table Plugin configuration
 function Navigate.with_picker(mount_dir, config)
 	-- Auto-change directory to mount point if configured
 	if config.mounts and config.mounts.auto_change_dir_on_mount then

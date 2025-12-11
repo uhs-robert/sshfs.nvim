@@ -5,6 +5,10 @@ local AutoCommands = {}
 
 local STATE = { armed = false, base_dir = nil }
 
+--- Check if path a starts with path b
+--- @param a string|nil First path
+--- @param b string|nil Second path
+--- @return boolean True if a starts with b
 local function starts_with(a, b)
 	local norm = vim.fs.normalize
 	a, b = norm(a or ""), norm(b or "")
@@ -44,6 +48,8 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
 	end,
 })
 
+--- Arm autocommand to change directory on next file open
+--- @param base_dir string|nil Base directory to restrict chdir to
 function AutoCommands.chdir_on_next_open(base_dir)
 	STATE.armed = true
 	STATE.base_dir = base_dir
