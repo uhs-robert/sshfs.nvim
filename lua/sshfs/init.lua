@@ -1,12 +1,12 @@
 -- lua/sshfs/init.lua
 -- Plugin entry point for setup, configuration management, and command registration
 
-local M = {}
-local ssh_config = require("sshfs.core.config")
+local App = {}
+local SSHConfig = require("sshfs.core.config")
 
 local default_opts = {
 	connections = {
-		ssh_configs = ssh_config.get_default_ssh_configs(),
+		ssh_configs = SSHConfig.get_default_files(),
 		sshfs_args = {
 			"-o reconnect",
 			"-o ConnectTimeout=5",
@@ -35,54 +35,54 @@ local default_opts = {
 	},
 }
 
-M.setup_commands = function()
-	local api = require("sshfs.api")
+App.setup_commands = function()
+	local Api = require("sshfs.api")
 
 	-- Create commands
 	vim.api.nvim_create_user_command("SSHConnect", function(opts)
 		if opts.args and opts.args ~= "" then
-			local host = ssh_config.parse_host_from_command(opts.args)
-			api.connect(host)
+			local host = SSHConfig.parse_host(opts.args)
+			Api.connect(host)
 		else
-			api.connect()
+			Api.connect()
 		end
 	end, { nargs = "?", desc = "Remotely connect to host via picker or command as argument." })
 
 	vim.api.nvim_create_user_command("SSHEdit", function()
-		api.edit()
+		Api.edit()
 	end, { desc = "Edit SSH config files" })
 
 	vim.api.nvim_create_user_command("SSHReload", function()
-		api.reload()
+		Api.reload()
 	end, { desc = "Reload SSH configuration" })
 
 	vim.api.nvim_create_user_command("SSHDisconnect", function()
-		api.unmount()
+		Api.unmount()
 	end, { desc = "Disconnect from current SSH host" })
 
 	vim.api.nvim_create_user_command("SSHBrowse", function()
-		api.browse()
+		Api.browse()
 	end, { desc = "Browse remote files" })
 
 	vim.api.nvim_create_user_command("SSHGrep", function(opts)
 		local pattern = opts.args and opts.args ~= "" and opts.args or nil
-		api.grep(pattern)
+		Api.grep(pattern)
 	end, { nargs = "?", desc = "Search text in remote files" })
 
 	vim.api.nvim_create_user_command("SSHChangeDir", function()
-		api.change_to_mount_dir()
+		Api.change_to_mount_dir()
 	end, { desc = "Set current directory to SSH mount" })
 end
 
-function M.setup(user_opts)
+function App.setup(user_opts)
 	local opts = user_opts and vim.tbl_deep_extend("force", default_opts, user_opts) or default_opts
 
 	-- Store config for access by other modules
-	M._config = opts
+	App._config = opts
 
-	-- Initialize the connections module
-	local connections = require("sshfs.core.connections")
-	connections.setup(opts)
+	-- Initialize the session module
+	local session = require("sshfs.session")
+	session.setup(opts)
 
 	-- Setup other modules
 	require("sshfs.ui.keymaps").setup(opts)
@@ -91,10 +91,12 @@ function M.setup(user_opts)
 	if opts.mounts.unmount_on_exit then
 		vim.api.nvim_create_autocmd("VimLeave", {
 			callback = function()
-				local all_connections = connections.get_all_connections()
+				local connections = require("sshfs.core.connections")
+				local base_dir = opts.mounts and opts.mounts.base_dir
+				local all_connections = connections.get_all(base_dir)
 
 				for _, connection in ipairs(all_connections) do
-					connections.disconnect_specific(connection)
+					session.disconnect_from(connection)
 				end
 			end,
 			desc = "Cleanup SSH mounts on exit",
@@ -102,7 +104,7 @@ function M.setup(user_opts)
 	end
 
 	-- Create user commands
-	M.setup_commands()
+	App.setup_commands()
 end
 
-return M
+return App

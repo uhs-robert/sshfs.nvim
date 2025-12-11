@@ -1,9 +1,10 @@
 -- lua/sshfs/core/config.lua
 -- SSH configuration parsing from system config files and host discovery
 
-local M = {}
+local SSHConfig = {} -- TODO: Rename this file to match
+-- TODO: Move to lib
 
-function M.parse_hosts_from_configs(ssh_configs)
+function SSHConfig.get_hosts(ssh_configs)
 	local hosts = {}
 	local current_hosts = {}
 
@@ -41,7 +42,7 @@ function M.parse_hosts_from_configs(ssh_configs)
 	return hosts
 end
 
-function M.parse_host_from_command(command)
+function SSHConfig.parse_host(command)
 	local host = {}
 
 	local port = command:match("%-p (%d+)")
@@ -61,11 +62,11 @@ function M.parse_host_from_command(command)
 	return host
 end
 
-function M.get_default_ssh_configs()
+function SSHConfig.get_default_files()
 	return {
 		vim.fn.expand("$HOME") .. "/.ssh/config",
 		"/etc/ssh/ssh_config",
 	}
 end
 
-return M
+return SSHConfig

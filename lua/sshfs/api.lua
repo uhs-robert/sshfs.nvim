@@ -1,10 +1,7 @@
 -- lua/sshfs/api.lua
 -- Public API wrapper providing high-level functions (connect, disconnect, browse, grep, edit)
 
-local connections = require("sshfs.core.connections")
-local picker = require("sshfs.ui.picker")
-
-local M = {}
+local Api = {}
 
 -- Helper function to get UI config consistently
 local function get_ui_config()
@@ -17,63 +14,73 @@ local function get_ui_config()
 end
 
 -- Connect to SSH host - use picker if no host provided, otherwise connect directly
-M.connect = function(host)
+Api.connect = function(host)
+	local Session = require("sshfs.session")
 	if host then
-		-- Direct connection with provided host
-		connections.connect(host)
+		Session.connect(host)
 	else
-		-- Use picker to select host
-		picker.pick_host(function(selected_host)
+		local Select = require("sshfs.ui.select")
+		Select.host(function(selected_host)
 			if selected_host then
-				connections.connect(selected_host)
+				Session.connect(selected_host)
 			end
 		end)
 	end
 end
 
 -- Mount SSH host (alias for connect)
-M.mount = function()
-	M.connect()
+Api.mount = function()
+	Api.connect()
 end
 
 -- Disconnect from current SSH host
-M.disconnect = function()
-	connections.disconnect()
+Api.disconnect = function()
+	local Session = require("sshfs.session")
+	Session.disconnect()
 end
 
 -- Unmount SSH host - smart handling for multiple mounts
-M.unmount = function()
-	local all_connections = connections.get_all_connections()
+Api.unmount = function()
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.core.connections")
+	local base_dir = Session.get_base_dir()
+	local active_connections = Connections.get_all(base_dir)
 
-	if #all_connections == 0 then
+	if #active_connections == 0 then
 		vim.notify("No active mounts to disconnect", vim.log.levels.WARN)
 		return
-	elseif #all_connections == 1 then
-		-- Single mount: disconnect directly
-		connections.disconnect_specific(all_connections[1])
+	elseif #active_connections == 1 then
+		Session.disconnect_from(active_connections[1])
 	else
-		-- Multiple mounts: show picker to select which to unmount
-		picker.pick_mount_to_unmount(function(selected_mount)
+		local Select = require("sshfs.ui.select")
+		Select.unmount(function(selected_mount)
 			if selected_mount then
-				connections.disconnect_specific(selected_mount)
+				Session.disconnect_from(selected_mount)
 			end
 		end)
 	end
 end
 
 -- Check connection status
-M.is_connected = function()
-	return connections.is_connected()
+Api.has_active = function()
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.core.connections")
+	local base_dir = Session.get_base_dir()
+	return Connections.has_active(base_dir)
 end
 
 -- Get current connection info
-M.get_current_connection = function()
-	return connections.get_current_connection()
+Api.get_active = function()
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.core.connections")
+	local base_dir = Session.get_base_dir()
+	return Connections.get_active(base_dir)
 end
 
 -- Edit SSH config files using native picker
-M.edit = function()
-	picker.pick_ssh_config(function(config_file)
+Api.edit = function()
+	local Select = require("sshfs.ui.select")
+	Select.ssh_config(function(config_file)
 		if config_file then
 			vim.cmd("edit " .. vim.fn.fnameescape(config_file))
 		end
@@ -81,66 +88,79 @@ M.edit = function()
 end
 
 -- Reload SSH configuration
-M.reload = function()
-	connections.reload()
+Api.reload = function()
+	local Session = require("sshfs.session")
+	Session.reload()
 end
 
 -- Browse remote files using native file browser
-M.find_files = function(opts)
-	if not connections.is_connected() then
+Api.find_files = function(opts)
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.core.connections")
+	local base_dir = Session.get_base_dir()
+	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
 	end
 
-	picker.browse_remote_files(opts)
+	local Picker = require("sshfs.ui.picker")
+	Picker.browse_remote_files(opts)
 end
 
 -- Browse remote files - smart handling for multiple mounts
-M.browse = function(opts)
-	local all_connections = connections.get_all_connections()
+Api.browse = function(opts)
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.core.connections")
+	local base_dir = Session.get_base_dir()
+	local active_connections = Connections.get_all(base_dir)
 
-	if #all_connections == 0 then
+	if #active_connections == 0 then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
-	elseif #all_connections == 1 then
-		-- Single mount: browse directly
-		M.find_files(opts)
+	elseif #active_connections == 1 then
+		Api.find_files(opts)
 	else
-		-- Multiple mounts: show picker to select which mount to browse
-		M.list_mounts()
+		Api.list_mounts()
 	end
 end
 
 -- Search text in remote files using picker or native grep
-M.grep = function(pattern, opts)
-	if not connections.is_connected() then
+Api.grep = function(pattern, opts)
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.core.connections")
+	local base_dir = Session.get_base_dir()
+	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
 	end
 
-	picker.grep_remote_files(pattern, opts)
+	local Picker = require("sshfs.ui.picker")
+	Picker.grep_remote_files(pattern, opts)
 end
 
 -- List all active mounts and open file picker for selected mount
-M.list_mounts = function()
-	picker.pick_mount(function(selected_mount)
+Api.list_mounts = function()
+	local Select = require("sshfs.ui.select")
+	Select.mount(function(selected_mount)
 		if selected_mount then
+			local Picker = require("sshfs.ui.picker")
 			local config = get_ui_config()
-			local success, picker_name = picker.try_open_file_picker(selected_mount.path, config, true)
+			local success, picker_name = Picker.try_open_file_picker(selected_mount.path, config, true)
 
 			if not success then
 				vim.notify(
-				"Could not open file picker (" .. picker_name .. ") for: " .. selected_mount.path,
-				vim.log.levels.WARN
-			)
+					"Could not open file picker (" .. picker_name .. ") for: " .. selected_mount.path,
+					vim.log.levels.WARN
+				)
 			end
 		end
 	end)
 end
 
 -- Change current directory to SSH mount
-M.change_to_mount_dir = function()
-	connections.change_to_mount_dir()
+Api.change_to_mount_dir = function()
+	local Navigate = require("sshfs.ui.navigate")
+	Navigate.to_mount_dir()
 end
 
-return M
+return Api

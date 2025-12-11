@@ -1,11 +1,10 @@
 -- lua/sshfs/ui/keymaps.lua
 -- Keymap configuration and registration for SSH commands with which-key integration support
 
-local M = {}
+local Keymaps = {}
 
-local default_prefix = "<leader>m"
-
-local default_keymaps = {
+local DEFAULT_PREFIX = "<leader>m"
+local DEFAULT_KEYMAPS = {
 	change_dir = "d",
 	edit = "e",
 	grep = "g",
@@ -15,16 +14,14 @@ local default_keymaps = {
 	unmount = "u",
 }
 
-local api = require("sshfs.api")
-
-function M.setup(opts)
+function Keymaps.setup(opts)
 	opts = opts or {}
 	local user_keymaps = opts.keymaps or {}
-	local lead_prefix = opts.lead_prefix or default_prefix
+	local lead_prefix = opts.lead_prefix or DEFAULT_PREFIX
 
 	-- Merge and apply prefix dynamically
 	local keymaps = {}
-	for key, suffix in pairs(default_keymaps) do
+	for key, suffix in pairs(DEFAULT_KEYMAPS) do
 		keymaps[key] = user_keymaps[key] or (lead_prefix .. suffix)
 	end
 
@@ -32,6 +29,7 @@ function M.setup(opts)
 	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "mount" })
 
 	-- Assign keymaps
+	local api = require("sshfs.api")
 	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
 	vim.keymap.set("n", keymaps.unmount, api.unmount, { desc = "Unmount a SSH Server" })
 	vim.keymap.set("n", keymaps.change_dir, api.change_to_mount_dir, { desc = "Set current directory to SSH mount" })
@@ -49,4 +47,4 @@ function M.setup(opts)
 	end
 end
 
-return M
+return Keymaps

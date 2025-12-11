@@ -1,19 +1,11 @@
 -- lua/sshfs/core/mount.lua
 -- Mount point management, detection, creation, unmounting, and cleanup
 
-local M = {}
+-- TODO: move to lib
+local MountPoint = {} -- TODO: rename file to match
+local Directory = require("sshfs.lib.directory")
 
-function M.is_directory_empty(path)
-	local handle = vim.uv.fs_scandir(path)
-	if not handle then
-		return true
-	end
-
-	local name = vim.uv.fs_scandir_next(handle)
-	return name == nil
-end
-
-function M.is_mount_active(mount_path)
+function MountPoint.is_active(mount_path)
 	local stat = vim.uv.fs_stat(mount_path)
 	if not stat or stat.type ~= "directory" then
 		return false
@@ -23,7 +15,7 @@ function M.is_mount_active(mount_path)
 	local result = vim.fn.system("mount")
 	if vim.v.shell_error ~= 0 then
 		-- Fall back to directory check
-		return not M.is_directory_empty(mount_path)
+		return not Directory.is_empty(mount_path)
 	end
 
 	-- Look for the specific mount path in the mount output
@@ -37,10 +29,10 @@ function M.is_mount_active(mount_path)
 	end
 
 	-- If not found in mount output, fall back to directory check
-	return not M.is_directory_empty(mount_path)
+	return not Directory.is_empty(mount_path)
 end
 
-function M.list_active_mounts(mount_dir)
+function MountPoint.list_active(mount_dir)
 	local mounts = {}
 
 	local result = vim.fn.system("mount")
@@ -48,7 +40,7 @@ function M.list_active_mounts(mount_dir)
 		-- Fall back to directory scanning
 		local files = vim.fn.glob(mount_dir .. "/*", false, true)
 		for _, file in ipairs(files) do
-			if vim.fn.isdirectory(file) == 1 and not M.is_directory_empty(file) then
+			if vim.fn.isdirectory(file) == 1 and not Directory.is_empty(file) then
 				local alias = vim.fn.fnamemodify(file, ":t")
 				table.insert(mounts, { alias = alias, path = file })
 			end
@@ -73,7 +65,7 @@ function M.list_active_mounts(mount_dir)
 	return mounts
 end
 
-function M.ensure_mount_directory(mount_dir)
+function MountPoint.ensure(mount_dir)
 	local stat = vim.uv.fs_stat(mount_dir)
 	if stat and stat.type == "directory" then
 		return true
@@ -83,7 +75,7 @@ function M.ensure_mount_directory(mount_dir)
 	return success == 1
 end
 
-function M.unmount_sshfs(mount_path)
+function MountPoint.unmount(mount_path)
 	local commands = {
 		{ "fusermount", { "-u", mount_path } },
 		{ "fusermount3", { "-u", mount_path } },
@@ -112,13 +104,13 @@ function M.unmount_sshfs(mount_path)
 	return false
 end
 
-function M.cleanup_mount_directory(mount_dir)
+function MountPoint.cleanup(mount_dir)
 	local stat = vim.uv.fs_stat(mount_dir)
-	if stat and stat.type == "directory" and M.is_directory_empty(mount_dir) then
+	if stat and stat.type == "directory" and Directory.is_empty(mount_dir) then
 		vim.fn.delete(mount_dir, "d")
 		return true
 	end
 	return false
 end
 
-return M
+return MountPoint

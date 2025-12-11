@@ -1,10 +1,7 @@
 -- lua/sshfs/ui/picker.lua
 -- Smart file picker and search picker auto-detection (telescope, oil, snacks, etc.) with vim.ui.select and netrw fallbacks
 
-local ssh_config = require("sshfs.core.config")
-local autocmds = require("sshfs.ui.autocmds")
-
-local M = {}
+local Picker = {}
 
 -- File picker detection and auto-launch functions
 local function try_telescope_files(cwd)
@@ -123,7 +120,7 @@ local function try_netrw(cwd)
 end
 
 -- Main function to try opening file picker
-function M.try_open_file_picker(cwd, config, is_manual)
+function Picker.try_open_file_picker(cwd, config, is_manual)
 	local file_picker_config = config.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
@@ -254,7 +251,7 @@ local function try_builtin_grep(cwd, pattern)
 end
 
 -- Main function to try opening search picker
-function M.try_open_search_picker(cwd, pattern, config, is_manual)
+function Picker.try_open_search_picker(cwd, pattern, config, is_manual)
 	local file_picker_config = config.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
@@ -332,93 +329,33 @@ function M.try_open_search_picker(cwd, pattern, config, is_manual)
 	return false, "No search picker available"
 end
 
--- Host selection picker using vim.ui.select
-function M.pick_host(callback)
-	local connections = require("sshfs.core.connections")
-	local hosts = connections.get_hosts()
-
-	if not hosts or vim.tbl_count(hosts) == 0 then
-		vim.notify("No SSH hosts found in configuration", vim.log.levels.WARN)
-		return
-	end
-
-	local host_list = {}
-	local host_map = {}
-
-	for name, host in pairs(hosts) do
-		local display = name -- Just use the alias/hostname
-
-		table.insert(host_list, display)
-		host_map[display] = host
-	end
-
-	vim.ui.select(host_list, {
-		prompt = "Select SSH host to connect:",
-		format_item = function(item)
-			return item
-		end,
-	}, function(choice)
-		if choice and host_map[choice] then
-			callback(host_map[choice])
-		end
-	end)
-end
-
--- SSH config file picker using vim.ui.select
-function M.pick_ssh_config(callback)
-	local ssh_configs = ssh_config.get_default_ssh_configs()
-
-	-- Filter to only existing files
-	local available_configs = {}
-	for _, config in ipairs(ssh_configs) do
-		if vim.fn.filereadable(config) == 1 then
-			table.insert(available_configs, config)
-		end
-	end
-
-	if #available_configs == 0 then
-		vim.notify("No readable SSH config files found", vim.log.levels.WARN)
-		return
-	end
-
-	vim.ui.select(available_configs, {
-		prompt = "Select SSH config to edit:",
-		format_item = function(item)
-			return vim.fn.fnamemodify(item, ":~")
-		end,
-	}, function(choice)
-		if choice then
-			callback(choice)
-		end
-	end)
-end
-
--- Browse remote files using auto-detected file picker
-function M.browse_remote_files(opts)
+-- Common setup and validation for remote operations
+-- Returns: config, active_connection, target_dir or nil on error
+-- TODO: rename this function
+local function setup_remote_operation(opts)
 	opts = opts or {}
-	local connections = require("sshfs.core.connections")
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.core.connections")
+	local base_dir = Session.get_base_dir()
 
-	if not connections.is_connected() then
+	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
-		return
+		return nil
 	end
 
-	local connection = connections.get_current_connection()
-	local host = connection.host
-	local mount_point = connection.mount_point
-
-	if not host or not mount_point then
+	-- Get active connection
+	local active_connection = Connections.get_active(base_dir)
+	local target_dir = opts.dir or (active_connection and active_connection.mount_point)
+	if not target_dir then
 		vim.notify("Invalid connection state", vim.log.levels.ERROR)
-		return
+		return nil
 	end
 
-	local target_dir = opts.dir or mount_point
-
-	-- Check if directory exists and is accessible
+	-- Validate target directory
 	local stat = vim.uv.fs_stat(target_dir)
 	if not stat or stat.type ~= "directory" then
-		vim.notify("Mount point not accessible: " .. target_dir, vim.log.levels.ERROR)
-		return
+		vim.notify("Directory not accessible: " .. target_dir, vim.log.levels.ERROR)
+		return nil
 	end
 
 	-- Get UI configuration from init
@@ -428,9 +365,21 @@ function M.browse_remote_files(opts)
 		config = init_module._config.ui or {}
 	end
 
+	return config, active_connection, target_dir
+end
+
+-- Browse remote files using auto-detected file picker
+function Picker.browse_remote_files(opts)
+	local AutoCommands = require("sshfs.ui.autocommands")
+	local config, active_connection, target_dir = setup_remote_operation(opts)
+
+	if not config or not active_connection then
+		return
+	end
+
 	-- Try to open file picker (manual user command)
-	autocmds.chdir_on_next_open(mount_point)
-	local success, picker_name = M.try_open_file_picker(target_dir, config, true)
+	AutoCommands.chdir_on_next_open(active_connection.mount_point)
+	local success, picker_name = Picker.try_open_file_picker(target_dir, config, true)
 
 	if not success then
 		vim.notify("Failed to open " .. picker_name .. ". Please open manually.", vim.log.levels.WARN)
@@ -438,56 +387,30 @@ function M.browse_remote_files(opts)
 end
 
 -- Search remote files using auto-detected search picker
-function M.grep_remote_files(pattern, opts)
-	opts = opts or {}
-	local connections = require("sshfs.core.connections")
+function Picker.grep_remote_files(pattern, opts)
+	local AutoCommands = require("sshfs.ui.autocommands")
+	local config, active_connection, target_dir = setup_remote_operation(opts)
 
-	if not connections.is_connected() then
-		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
+	if not config or not active_connection or not target_dir then
 		return
-	end
-
-	-- Allow empty pattern to open search interface without initial query
-
-	local connection = connections.get_current_connection()
-	local host = connection.host
-	local mount_point = connection.mount_point
-
-	if not host or not mount_point then
-		vim.notify("Invalid connection state", vim.log.levels.ERROR)
-		return
-	end
-
-	local search_dir = opts.dir or mount_point
-	local stat = vim.uv.fs_stat(search_dir)
-	if not stat or stat.type ~= "directory" then
-		vim.notify("Search directory not accessible: " .. search_dir, vim.log.levels.ERROR)
-		return
-	end
-
-	-- Get UI configuration from init
-	local config = {}
-	local config_ok, init_module = pcall(require, "sshfs")
-	if config_ok and init_module._config then
-		config = init_module._config.ui or {}
 	end
 
 	-- Try to open search picker (manual user command)
-	autocmds.chdir_on_next_open(mount_point)
-	local success, picker_name = M.try_open_search_picker(search_dir, pattern, config, true)
+	AutoCommands.chdir_on_next_open(active_connection.mount_point)
+	local success, picker_name = Picker.try_open_search_picker(target_dir, pattern, config, true)
 
 	if success then
 		if pattern and pattern ~= "" then
 			vim.notify(
-				"Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. search_dir,
+				"Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. target_dir,
 				vim.log.levels.INFO
 			)
 		else
-			vim.notify("Opened " .. picker_name .. " search interface in: " .. search_dir, vim.log.levels.INFO)
+			vim.notify("Opened " .. picker_name .. " search interface in: " .. target_dir, vim.log.levels.INFO)
 		end
 	else
 		-- Fallback to old behavior
-		vim.cmd("tcd " .. vim.fn.fnameescape(search_dir))
+		vim.cmd("tcd " .. vim.fn.fnameescape(target_dir))
 		if pattern and pattern ~= "" then
 			vim.fn.setreg("/", pattern)
 			vim.notify(
@@ -495,7 +418,7 @@ function M.grep_remote_files(pattern, opts)
 				vim.log.levels.INFO
 			)
 		else
-			vim.notify("Changed to remote directory: " .. search_dir, vim.log.levels.INFO)
+			vim.notify("Changed to remote directory: " .. target_dir, vim.log.levels.INFO)
 		end
 		vim.notify(
 			"Reason: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.",
@@ -504,98 +427,4 @@ function M.grep_remote_files(pattern, opts)
 	end
 end
 
--- Mount selection picker using vim.ui.select
-function M.pick_mount(callback)
-	local ssh_mount = require("sshfs.core.mount")
-
-	-- Get configuration to determine mount base directory
-	local config = {}
-	local config_ok, init_module = pcall(require, "sshfs")
-	if config_ok and init_module._config then
-		config = init_module._config
-	end
-
-	local base_dir = config.mounts and config.mounts.base_dir
-	if not base_dir then
-		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
-		return
-	end
-
-	local mounts = ssh_mount.list_active_mounts(base_dir)
-
-	if not mounts or #mounts == 0 then
-		vim.notify("No active SSH mounts found", vim.log.levels.WARN)
-		return
-	end
-
-	local mount_list = {}
-	local mount_map = {}
-
-	for _, mount in ipairs(mounts) do
-		local display = mount.alias .. " (" .. mount.path .. ")"
-		table.insert(mount_list, display)
-		mount_map[display] = mount
-	end
-
-	vim.ui.select(mount_list, {
-		prompt = "Select mount to navigate to:",
-		format_item = function(item)
-			return item
-		end,
-	}, function(choice)
-		if choice and mount_map[choice] then
-			callback(mount_map[choice])
-		end
-	end)
-end
-
--- Mount selection picker for unmounting using vim.ui.select
-function M.pick_mount_to_unmount(callback)
-	local ssh_mount = require("sshfs.core.mount")
-
-	-- Get configuration to determine mount base directory
-	local config = {}
-	local config_ok, init_module = pcall(require, "sshfs")
-	if config_ok and init_module._config then
-		config = init_module._config
-	end
-
-	local base_dir = config.mounts and config.mounts.base_dir
-	if not base_dir then
-		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
-		return
-	end
-
-	local mounts = ssh_mount.list_active_mounts(base_dir)
-
-	if not mounts or #mounts == 0 then
-		vim.notify("No active SSH mounts to disconnect", vim.log.levels.WARN)
-		return
-	end
-
-	local mount_list = {}
-	local mount_map = {}
-
-	for _, mount in ipairs(mounts) do
-		local display = mount.alias .. " (" .. mount.path .. ")"
-		table.insert(mount_list, display)
-		-- Create connection object compatible with disconnect_specific
-		mount_map[display] = {
-			host = { Name = mount.alias },
-			mount_point = mount.path,
-		}
-	end
-
-	vim.ui.select(mount_list, {
-		prompt = "Select mount to disconnect:",
-		format_item = function(item)
-			return item
-		end,
-	}, function(choice)
-		if choice and mount_map[choice] then
-			callback(mount_map[choice])
-		end
-	end)
-end
-
-return M
+return Picker

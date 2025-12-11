@@ -1,7 +1,7 @@
 -- lua/sshfs/core/auth.lua
 -- SSH authentication flows (key-based and password-based) with fallback mechanisms
 
-local M = {}
+local Sshfs = {} -- TODO: Rename file and move to lib
 
 local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 	ssh_options = ssh_options or {}
@@ -51,7 +51,7 @@ local function should_retry_with_password(error_output, host)
 		string.format("Authentication Error for %s@%s: %s", host.User, host.Name, error_output or "Unknown Error")
 end
 
-function M.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
+function Sshfs.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
 	remote_path_suffix = remote_path_suffix or (host.Path or "")
 	local options = get_sshfs_options("key", ssh_options, user_sshfs_args)
 
@@ -72,7 +72,7 @@ function M.try_key_authentication(host, mount_point, ssh_options, remote_path_su
 	return vim.v.shell_error == 0, result
 end
 
-function M.try_password_authentication(
+function Sshfs.try_password_authentication(
 	host,
 	mount_point,
 	ssh_options,
@@ -125,10 +125,9 @@ function M.try_password_authentication(
 	return false, "Authentication failed after " .. max_attempts .. " attempts"
 end
 
-function M.authenticate_and_mount(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
+function Sshfs.authenticate_and_mount(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
 	local success, error_output =
-		M.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
-
+		Sshfs.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
 	if success then
 		return true, "Key authentication successful"
 	elseif not error_output then
@@ -140,7 +139,7 @@ function M.authenticate_and_mount(host, mount_point, ssh_options, remote_path_su
 		return false, error_message
 	end
 
-	return M.try_password_authentication(host, mount_point, ssh_options, remote_path_suffix, nil, user_sshfs_args)
+	return Sshfs.try_password_authentication(host, mount_point, ssh_options, remote_path_suffix, nil, user_sshfs_args)
 end
 
-return M
+return Sshfs
