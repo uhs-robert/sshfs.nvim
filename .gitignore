@@ -73,6 +73,7 @@ luac.out
 GEMINI.md
 CLAUDE.md
 QWEN.md
+AGENTS.md
 *.ai.md
 .claude
 .gemini
