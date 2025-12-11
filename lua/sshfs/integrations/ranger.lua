@@ -7,7 +7,7 @@ local Ranger = {}
 --- Tries ranger.nvim first, falls back to rnvimr
 ---@param cwd string Current working directory to open ranger in
 ---@return boolean success True if ranger was successfully opened
-function Ranger.try_files(cwd)
+function Ranger.explore_files(cwd)
 	-- Try ranger.nvim first
 	local ok, ranger = pcall(require, "ranger-nvim")
 	if ok and ranger.open then

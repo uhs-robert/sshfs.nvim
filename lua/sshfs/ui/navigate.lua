@@ -49,7 +49,7 @@ function Navigate.with_picker(mount_dir, config)
 	-- Try to auto-open file picker (respects auto_open_on_mount setting)
 	if config.ui then
 		local Picker = require("sshfs.ui.picker")
-		local success, picker_name = Picker.try_open_file_picker(mount_dir, config, false)
+		local success, picker_name = Picker.open_file_picker(mount_dir, config, false)
 
 		if not success and picker_name ~= "Auto-open disabled" then
 			vim.notify("Failed to open " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.ERROR)

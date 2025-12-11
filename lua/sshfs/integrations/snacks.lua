@@ -6,7 +6,7 @@ local Snacks = {}
 --- Attempts to open snacks.nvim file picker
 ---@param cwd string Current working directory to open picker in
 ---@return boolean success True if snacks picker was successfully opened
-function Snacks.try_files(cwd)
+function Snacks.explore_files(cwd)
 	local ok, snacks = pcall(require, "snacks")
 	if ok and snacks.picker and snacks.picker.files then
 		snacks.picker.files({ cwd = cwd })
@@ -19,7 +19,7 @@ end
 ---@param cwd string Current working directory to search in
 ---@param pattern? string Optional search pattern to pre-populate
 ---@return boolean success True if snacks grep was successfully opened
-function Snacks.try_grep(cwd, pattern)
+function Snacks.grep(cwd, pattern)
 	local ok, snacks = pcall(require, "snacks")
 	if ok and snacks.picker and snacks.picker.grep then
 		local opts = { cwd = cwd }

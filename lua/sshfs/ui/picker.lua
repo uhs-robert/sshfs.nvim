@@ -1,23 +1,78 @@
 -- lua/sshfs/ui/picker.lua
--- Smart file picker and search picker auto-detection with fallbacks
+-- File picker and search picker auto-detection with fallbacks
 
 local Picker = {}
 local Config = require("sshfs.config")
 
--- Integration modules
-local Telescope = require("sshfs.integrations.telescope")
-local Oil = require("sshfs.integrations.oil")
-local NeoTree = require("sshfs.integrations.neo_tree")
-local NvimTree = require("sshfs.integrations.nvim_tree")
-local Snacks = require("sshfs.integrations.snacks")
-local FzfLua = require("sshfs.integrations.fzf_lua")
-local Mini = require("sshfs.integrations.mini")
-local Yazi = require("sshfs.integrations.yazi")
-local Lf = require("sshfs.integrations.lf")
-local Nnn = require("sshfs.integrations.nnn")
-local Ranger = require("sshfs.integrations.ranger")
-local Netrw = require("sshfs.integrations.netrw")
-local Builtin = require("sshfs.integrations.builtin")
+-- Integration registry, modules are lazy-loaded on first use
+local FILE_PICKERS = {
+	{ name = "snacks", module = "sshfs.integrations.snacks", method = "explore_files" },
+	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "explore_files" },
+	{ name = "telescope", module = "sshfs.integrations.telescope", method = "explore_files" },
+	{ name = "mini", module = "sshfs.integrations.mini", method = "explore_files" },
+	{ name = "oil", module = "sshfs.integrations.oil", method = "explore_files" },
+	{ name = "neo-tree", module = "sshfs.integrations.neo_tree", method = "explore_files" },
+	{ name = "nvim-tree", module = "sshfs.integrations.nvim_tree", method = "explore_files" },
+	{ name = "yazi", module = "sshfs.integrations.yazi", method = "explore_files" },
+	{ name = "lf", module = "sshfs.integrations.lf", method = "explore_files" },
+	{ name = "nnn", module = "sshfs.integrations.nnn", method = "explore_files" },
+	{ name = "ranger", module = "sshfs.integrations.ranger", method = "explore_files" },
+	{ name = "netrw", module = "sshfs.integrations.netrw", method = "explore_files" },
+}
+
+local SEARCH_PICKERS = {
+	{ name = "snacks", module = "sshfs.integrations.snacks", method = "grep" },
+	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "grep" },
+	{ name = "telescope", module = "sshfs.integrations.telescope", method = "grep" },
+	{ name = "mini", module = "sshfs.integrations.mini", method = "grep" },
+	{ name = "builtin", module = "sshfs.integrations.builtin", method = "grep" },
+}
+
+-- Cache for loaded integration modules
+local INTEGRATION_CACHE = {}
+
+--- Lazy-load and cache an integration module
+---@param module_path string Module path to require
+---@return table integration The loaded integration module
+---@private
+local function get_integration(module_path)
+	if not INTEGRATION_CACHE[module_path] then
+		INTEGRATION_CACHE[module_path] = require(module_path)
+	end
+	return INTEGRATION_CACHE[module_path]
+end
+
+--- Generic function to try opening a picker from a registry
+---@param picker_registry table List of picker definitions with name, module, and method
+---@param preferred string|nil Preferred picker name, or "auto" for auto-detection
+---@param args table Arguments to pass to the picker method
+---@return boolean success True if a picker was successfully opened
+---@return string picker_name Name of the picker that was opened, or error message
+---@private
+local function try_picker(picker_registry, preferred, args)
+	-- Try preferred picker first if specified
+	if preferred and preferred ~= "auto" then
+		for _, picker in ipairs(picker_registry) do
+			if picker.name == preferred then
+				local integration = get_integration(picker.module)
+				if integration[picker.method](unpack(args)) then
+					return true, picker.name
+				end
+				break
+			end
+		end
+	end
+
+	-- Auto-detect available pickers in order of preference
+	for _, picker in ipairs(picker_registry) do
+		local integration = get_integration(picker.module)
+		if integration[picker.method](unpack(args)) then
+			return true, picker.name
+		end
+	end
+
+	return false, "No picker available"
+end
 
 --- Attempts to open a file picker based on configuration and availability
 --- Auto-detects available file pickers (telescope, oil, snacks, etc.) and falls back to netrw
@@ -26,7 +81,7 @@ local Builtin = require("sshfs.integrations.builtin")
 ---@param is_manual boolean True if called manually by user command, false if automatic
 ---@return boolean success True if a picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
-function Picker.try_open_file_picker(cwd, config, is_manual)
+function Picker.open_file_picker(cwd, config, is_manual)
 	local file_picker_config = config.ui and config.ui.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
@@ -37,55 +92,15 @@ function Picker.try_open_file_picker(cwd, config, is_manual)
 		return false, "Auto-open disabled"
 	end
 
-	-- Try preferred picker first if specified
-	if preferred ~= "auto" then
-		local pickers = {
-			telescope = Telescope.try_files,
-			snacks = Snacks.try_files,
-			oil = Oil.try_files,
-			["neo-tree"] = NeoTree.try_files,
-			["nvim-tree"] = NvimTree.try_files,
-			["fzf-lua"] = FzfLua.try_files,
-			mini = Mini.try_files,
-			yazi = Yazi.try_files,
-			lf = Lf.try_files,
-			nnn = Nnn.try_files,
-			ranger = Ranger.try_files,
-			netrw = Netrw.try_files,
-		}
-		local picker_fn = pickers[preferred]
-		if picker_fn and picker_fn(cwd) then
-			return true, preferred
-		end
+	-- Determine which pickers to try
+	local pickers_to_try = FILE_PICKERS
+	if not fallback_to_netrw then
+		pickers_to_try = vim.tbl_filter(function(p)
+			return p.name ~= "netrw"
+		end, FILE_PICKERS)
 	end
 
-	-- Auto-detect available pickers in order of preference
-	local pickers_order = {
-		{ name = "telescope", fn = Telescope.try_files },
-		{ name = "oil", fn = Oil.try_files },
-		{ name = "neo-tree", fn = NeoTree.try_files },
-		{ name = "nvim-tree", fn = NvimTree.try_files },
-		{ name = "snacks", fn = Snacks.try_files },
-		{ name = "fzf-lua", fn = FzfLua.try_files },
-		{ name = "mini", fn = Mini.try_files },
-		{ name = "yazi", fn = Yazi.try_files },
-		{ name = "lf", fn = Lf.try_files },
-		{ name = "nnn", fn = Nnn.try_files },
-		{ name = "ranger", fn = Ranger.try_files },
-	}
-
-	for _, picker in ipairs(pickers_order) do
-		if picker.fn(cwd) then
-			return true, picker.name
-		end
-	end
-
-	-- Fallback to netrw if enabled
-	if fallback_to_netrw and Netrw.try_files(cwd) then
-		return true, "netrw"
-	end
-
-	return false, "No file picker available"
+	return try_picker(pickers_to_try, preferred, { cwd })
 end
 
 --- Attempts to open a search picker based on configuration and availability
@@ -96,7 +111,7 @@ end
 ---@param is_manual boolean True if called manually by user command, false if automatic
 ---@return boolean success True if a search picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
-function Picker.try_open_search_picker(cwd, pattern, config, is_manual)
+function Picker.open_search_picker(cwd, pattern, config, is_manual)
 	local file_picker_config = config.ui and config.ui.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
@@ -106,83 +121,16 @@ function Picker.try_open_search_picker(cwd, pattern, config, is_manual)
 		return false, "Auto-open disabled"
 	end
 
-	-- Try preferred picker first if specified
-	if preferred ~= "auto" then
-		local pickers = {
-			telescope = function()
-				return Telescope.try_grep(cwd, pattern)
-			end,
-			snacks = function()
-				return Snacks.try_grep(cwd, pattern)
-			end,
-			["fzf-lua"] = function()
-				return FzfLua.try_grep(cwd, pattern)
-			end,
-			mini = function()
-				return Mini.try_grep(cwd, pattern)
-			end,
-			builtin = function()
-				return Builtin.try_grep(cwd, pattern)
-			end,
-		}
-		local picker_fn = pickers[preferred]
-		if picker_fn and picker_fn() then
-			return true, preferred
-		end
-	end
-
-	-- Auto-detect available search pickers in order of preference
-	local search_pickers = {
-		{
-			name = "telescope",
-			fn = function()
-				return Telescope.try_grep(cwd, pattern)
-			end,
-		},
-		{
-			name = "snacks",
-			fn = function()
-				return Snacks.try_grep(cwd, pattern)
-			end,
-		},
-		{
-			name = "fzf-lua",
-			fn = function()
-				return FzfLua.try_grep(cwd, pattern)
-			end,
-		},
-		{
-			name = "mini",
-			fn = function()
-				return Mini.try_grep(cwd, pattern)
-			end,
-		},
-		{
-			name = "builtin",
-			fn = function()
-				return Builtin.try_grep(cwd, pattern)
-			end,
-		},
-	}
-
-	for _, picker in ipairs(search_pickers) do
-		if picker.fn() then
-			return true, picker.name
-		end
-	end
-
-	return false, "No search picker available"
+	return try_picker(SEARCH_PICKERS, preferred, { cwd, pattern })
 end
 
---- Common setup and validation for remote operations
---- Validates connection state and directory accessibility
---- TODO: rename this function to better reflect its purpose
+--- Validates remote connection and returns necessary context
 ---@param opts? table Optional options table with 'dir' field
 ---@return table|nil config Plugin configuration, or nil on error
 ---@return table|nil active_connection Active connection table, or nil on error
 ---@return string|nil target_dir Target directory path, or nil on error
 ---@private
-local function setup_remote_operation(opts)
+local function validate_remote_connection(opts)
 	opts = opts or {}
 	local Connections = require("sshfs.lib.connections")
 	local base_dir = Config.get_base_dir()
@@ -207,10 +155,7 @@ local function setup_remote_operation(opts)
 		return nil
 	end
 
-	-- Get UI configuration
-	local config = Config.get()
-
-	return config, active_connection, target_dir
+	return Config.get(), active_connection, target_dir
 end
 
 --- Opens file picker to browse files on the active remote connection
@@ -218,7 +163,7 @@ end
 ---@param opts? table Optional options table with 'dir' field to specify directory
 function Picker.browse_remote_files(opts)
 	local AutoCommands = require("sshfs.ui.autocommands")
-	local config, active_connection, target_dir = setup_remote_operation(opts)
+	local config, active_connection, target_dir = validate_remote_connection(opts)
 
 	if not config or not active_connection then
 		return
@@ -226,7 +171,7 @@ function Picker.browse_remote_files(opts)
 
 	-- Try to open file picker (manual user command)
 	AutoCommands.chdir_on_next_open(active_connection.mount_point)
-	local success, picker_name = Picker.try_open_file_picker(target_dir, config, true)
+	local success, picker_name = Picker.open_file_picker(target_dir, config, true)
 
 	if not success then
 		vim.notify("Failed to open " .. picker_name .. ". Please open manually.", vim.log.levels.WARN)
@@ -239,7 +184,7 @@ end
 ---@param opts? table Optional options table with 'dir' field to specify directory
 function Picker.grep_remote_files(pattern, opts)
 	local AutoCommands = require("sshfs.ui.autocommands")
-	local config, active_connection, target_dir = setup_remote_operation(opts)
+	local config, active_connection, target_dir = validate_remote_connection(opts)
 
 	if not config or not active_connection or not target_dir then
 		return
@@ -247,7 +192,7 @@ function Picker.grep_remote_files(pattern, opts)
 
 	-- Try to open search picker (manual user command)
 	AutoCommands.chdir_on_next_open(active_connection.mount_point)
-	local success, picker_name = Picker.try_open_search_picker(target_dir, pattern, config, true)
+	local success, picker_name = Picker.open_search_picker(target_dir, pattern, config, true)
 
 	if success then
 		if pattern and pattern ~= "" then

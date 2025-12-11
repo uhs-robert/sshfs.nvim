@@ -138,7 +138,7 @@ Api.list_mounts = function()
 		if selected_mount then
 			local Picker = require("sshfs.ui.picker")
 			local config = Config.get()
-			local success, picker_name = Picker.try_open_file_picker(selected_mount.path, config, true)
+			local success, picker_name = Picker.open_file_picker(selected_mount.path, config, true)
 
 			if not success then
 				vim.notify(

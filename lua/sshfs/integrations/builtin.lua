@@ -8,7 +8,7 @@ local Builtin = {}
 ---@param cwd string Current working directory to search in
 ---@param pattern? string Optional search pattern to execute
 ---@return boolean success True if built-in grep was successfully executed
-function Builtin.try_grep(cwd, pattern)
+function Builtin.grep(cwd, pattern)
 	local ok = pcall(function()
 		vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
 		if pattern and pattern ~= "" then

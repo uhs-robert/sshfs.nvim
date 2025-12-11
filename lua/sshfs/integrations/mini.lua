@@ -6,7 +6,7 @@ local Mini = {}
 --- Attempts to open mini.pick file picker
 ---@param cwd string Current working directory to open picker in
 ---@return boolean success True if mini.pick was successfully opened
-function Mini.try_files(cwd)
+function Mini.explore_files(cwd)
 	local ok, mini_pick = pcall(require, "mini.pick")
 	if ok and mini_pick.builtin and mini_pick.builtin.files then
 		mini_pick.builtin.files({ source = { cwd = cwd } })
@@ -19,7 +19,7 @@ end
 ---@param cwd string Current working directory to search in
 ---@param pattern? string Optional search pattern to pre-populate
 ---@return boolean success True if mini.pick was successfully opened
-function Mini.try_grep(cwd, pattern)
+function Mini.grep(cwd, pattern)
 	local ok, mini_pick = pcall(require, "mini.pick")
 	if ok and mini_pick.builtin and mini_pick.builtin.grep_live then
 		local opts = {}

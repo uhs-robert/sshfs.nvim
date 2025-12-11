@@ -6,7 +6,7 @@ local FzfLua = {}
 --- Attempts to open fzf-lua file picker
 ---@param cwd string Current working directory to open picker in
 ---@return boolean success True if fzf-lua was successfully opened
-function FzfLua.try_files(cwd)
+function FzfLua.explore_files(cwd)
 	local ok, fzf = pcall(require, "fzf-lua")
 	if ok and fzf.files then
 		fzf.files({ cwd = cwd })
@@ -19,7 +19,7 @@ end
 ---@param cwd string Current working directory to search in
 ---@param pattern? string Optional search pattern to pre-populate
 ---@return boolean success True if fzf-lua was successfully opened
-function FzfLua.try_grep(cwd, pattern)
+function FzfLua.grep(cwd, pattern)
 	local ok, fzf = pcall(require, "fzf-lua")
 	if ok and fzf.live_grep then
 		local opts = { cwd = cwd }
