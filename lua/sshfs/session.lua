@@ -73,7 +73,7 @@ function Session.connect(host)
 		}
 
 		-- Attempt authentication and mounting
-		local Sshfs = require("sshfs.core.auth")
+		local Sshfs = require("sshfs.lib.sshfs")
 		local user_sshfs_args = config.connections and config.connections.sshfs_args
 		local success, result =
 			Sshfs.authenticate_and_mount(host, mount_dir, ssh_options, remote_path_suffix, user_sshfs_args)

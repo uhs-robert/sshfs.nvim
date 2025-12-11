@@ -1,7 +1,7 @@
--- lua/sshfs/core/auth.lua
--- SSH authentication flows (key-based and password-based) with fallback mechanisms
+-- lua/sshfs/lib/sshfs.lua
+-- SSHFS wrapper with authentication workflows
 
-local Sshfs = {} -- TODO: Rename file and move to lib
+local Sshfs = {}
 
 local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 	ssh_options = ssh_options or {}
