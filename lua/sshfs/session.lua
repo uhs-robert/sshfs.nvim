@@ -5,7 +5,9 @@ local Session = {}
 local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
 
--- Connect to a remote host
+--- Connect to a remote SSH host via SSHFS
+---@param host table Host object with Name, User, Port, and Path fields
+---@return boolean|nil Success status (or nil if async callback)
 function Session.connect(host)
 	local MountPoint = require("sshfs.lib.mount_point")
 	local config = Config.get()
@@ -63,7 +65,8 @@ function Session.connect(host)
 	end)
 end
 
--- Disconnect from current host (backward compatibility)
+--- Disconnect from the currently active SSH mount
+---@return boolean Success status
 function Session.disconnect()
 	local Connections = require("sshfs.lib.connections")
 	local active_connection = Connections.get_active()
@@ -75,7 +78,9 @@ function Session.disconnect()
 	return Session.disconnect_from(active_connection)
 end
 
--- Disconnect from specific connection
+--- Disconnect from a specific SSH connection
+---@param connection table Connection object with host and mount_point fields
+---@return boolean Success status
 function Session.disconnect_from(connection)
 	local MountPoint = require("sshfs.lib.mount_point")
 	if not connection or not connection.mount_point then
@@ -116,7 +121,7 @@ function Session.disconnect_from(connection)
 	end
 end
 
--- Reload SSH configuration
+--- Reload SSH configuration by clearing the cache
 function Session.reload()
 	local SSHConfig = require("sshfs.lib.ssh_config")
 	SSHConfig.refresh()
