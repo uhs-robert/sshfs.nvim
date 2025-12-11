@@ -4,7 +4,8 @@
 local Api = {}
 local Config = require("sshfs.config")
 
--- Connect to SSH host - use picker if no host provided, otherwise connect directly
+--- Connect to SSH host - use picker if no host provided, otherwise connect directly
+--- @param host string|nil SSH host to connect to (optional)
 Api.connect = function(host)
 	local Session = require("sshfs.session")
 	if host then
@@ -19,18 +20,18 @@ Api.connect = function(host)
 	end
 end
 
--- Mount SSH host (alias for connect)
+--- Mount SSH host (alias for connect)
 Api.mount = function()
 	Api.connect()
 end
 
--- Disconnect from current SSH host
+--- Disconnect from current SSH host
 Api.disconnect = function()
 	local Session = require("sshfs.session")
 	Session.disconnect()
 end
 
--- Unmount SSH host - smart handling for multiple mounts
+--- Unmount from a SSH host
 Api.unmount = function()
 	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
@@ -52,21 +53,23 @@ Api.unmount = function()
 	end
 end
 
--- Check connection status
+--- Check connection status
+--- @return boolean True if any active connections exist
 Api.has_active = function()
 	local Connections = require("sshfs.lib.connections")
 	local base_dir = Config.get_base_dir()
 	return Connections.has_active(base_dir)
 end
 
--- Get current connection info
+--- Get current connection info
+--- @return table|nil Connection info or nil if none active
 Api.get_active = function()
 	local Connections = require("sshfs.lib.connections")
 	local base_dir = Config.get_base_dir()
 	return Connections.get_active(base_dir)
 end
 
--- Edit SSH config files using native picker
+--- Edit SSH config files using native picker
 Api.edit = function()
 	local Select = require("sshfs.ui.select")
 	Select.ssh_config(function(config_file)
@@ -76,13 +79,14 @@ Api.edit = function()
 	end)
 end
 
--- Reload SSH configuration
+--- Reload SSH configuration
 Api.reload = function()
 	local Session = require("sshfs.session")
 	Session.reload()
 end
 
--- Browse remote files using native file browser
+--- Browse remote files using native file browser
+--- @param opts table|nil Picker options
 Api.find_files = function(opts)
 	local Connections = require("sshfs.lib.connections")
 	local base_dir = Config.get_base_dir()
@@ -95,7 +99,8 @@ Api.find_files = function(opts)
 	Picker.browse_remote_files(opts)
 end
 
--- Browse remote files - smart handling for multiple mounts
+--- Browse remote files - smart handling for multiple mounts
+--- @param opts table|nil Picker options
 Api.browse = function(opts)
 	local Connections = require("sshfs.lib.connections")
 	local base_dir = Config.get_base_dir()
@@ -111,7 +116,9 @@ Api.browse = function(opts)
 	end
 end
 
--- Search text in remote files using picker or native grep
+--- Search text in remote files using picker or native grep
+--- @param pattern string|nil Search pattern
+--- @param opts table|nil Picker options
 Api.grep = function(pattern, opts)
 	local Connections = require("sshfs.lib.connections")
 	local base_dir = Config.get_base_dir()
@@ -124,7 +131,7 @@ Api.grep = function(pattern, opts)
 	Picker.grep_remote_files(pattern, opts)
 end
 
--- List all active mounts and open file picker for selected mount
+--- List all active mounts and open file picker for selected mount
 Api.list_mounts = function()
 	local Select = require("sshfs.ui.select")
 	Select.mount(function(selected_mount)
@@ -143,7 +150,7 @@ Api.list_mounts = function()
 	end)
 end
 
--- Change current directory to SSH mount
+--- Change current directory to SSH mount
 Api.change_to_mount_dir = function()
 	local Navigate = require("sshfs.ui.navigate")
 	Navigate.to_mount_dir()
