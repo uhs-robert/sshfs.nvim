@@ -15,8 +15,7 @@ local DEFAULT_KEYMAPS = {
 }
 
 function Keymaps.setup(opts)
-	opts = opts or {}
-	local user_keymaps = opts.keymaps or {}
+	local user_keymaps = opts and opts.keymaps or {}
 	local lead_prefix = opts.lead_prefix or DEFAULT_PREFIX
 
 	-- Merge and apply prefix dynamically

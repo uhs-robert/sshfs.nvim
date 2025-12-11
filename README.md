@@ -121,7 +121,7 @@ You can optionally customize behavior by passing a config table to setup().
 ```lua
 require("sshfs").setup({
   connections = {
-    ssh_configs = require("sshfs.core.config").get_default_ssh_configs(),
+    ssh_configs = require("sshfs.lib.ssh_config").get_default_files(),
     sshfs_args = { -- these are the sshfs options that will be used
       "-o reconnect",            -- Automatically reconnect if the connection drops
       "-o ConnectTimeout=5",     -- Time (in seconds) to wait before failing a connection attempt

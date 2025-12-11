@@ -1,46 +1,16 @@
 -- lua/sshfs/init.lua
--- Plugin entry point for setup, configuration management, and command registration
+-- Plugin entry point for setup, configuration, and command registration
 
 local App = {}
-local SSHConfig = require("sshfs.lib.ssh_config")
 
-local default_opts = {
-	connections = {
-		ssh_configs = SSHConfig.get_default_files(),
-		sshfs_args = {
-			"-o reconnect",
-			"-o ConnectTimeout=5",
-			"-o compression=yes",
-			"-o ServerAliveInterval=15",
-			"-o ServerAliveCountMax=3",
-		},
-	},
-	mounts = {
-		base_dir = vim.fn.expand("$HOME") .. "/mnt",
-		unmount_on_exit = true,
-		auto_change_dir_on_mount = false,
-	},
-	host_paths = {},
-	handlers = {
-		on_disconnect = {
-			clean_mount_folders = true,
-		},
-	},
-	ui = {
-		file_picker = {
-			auto_open_on_mount = true, -- Auto-open file picker after mounting (default: true)
-			preferred_picker = "auto", -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
-			fallback_to_netrw = true,
-		},
-	},
-}
-
-App.setup_commands = function()
+-- Creates API commands for vim api
+App.setup_api_commands = function()
 	local Api = require("sshfs.api")
 
 	-- Create commands
 	vim.api.nvim_create_user_command("SSHConnect", function(opts)
 		if opts.args and opts.args ~= "" then
+			local SSHConfig = require("sshfs.lib.ssh_config")
 			local host = SSHConfig.parse_host(opts.args)
 			Api.connect(host)
 		else
@@ -74,37 +44,34 @@ App.setup_commands = function()
 	end, { desc = "Set current directory to SSH mount" })
 end
 
+-- Main entry point
 function App.setup(user_opts)
-	local opts = user_opts and vim.tbl_deep_extend("force", default_opts, user_opts) or default_opts
+	local Config = require("sshfs.config")
+	Config.setup(user_opts)
+	local opts = Config.get()
 
-	-- Store config for access by other modules
-	App._config = opts
-
-	-- Initialize the session module
-	local session = require("sshfs.session")
-	session.setup(opts)
-
-	-- Setup other modules
+	-- Initialize other modules
+	local MountPoint = require("sshfs.lib.mount_point")
+	MountPoint.get_or_create()
 	require("sshfs.ui.keymaps").setup(opts)
 
 	-- Setup exit handler if enabled
 	if opts.mounts.unmount_on_exit then
 		vim.api.nvim_create_autocmd("VimLeave", {
 			callback = function()
-				local connections = require("sshfs.lib.connections")
-				local base_dir = opts.mounts and opts.mounts.base_dir
-				local all_connections = connections.get_all(base_dir)
+				local Session = require("sshfs.session")
+				local Connections = require("sshfs.lib.connections")
+				local all_connections = Connections.get_all()
 
 				for _, connection in ipairs(all_connections) do
-					session.disconnect_from(connection)
+					Session.disconnect_from(connection)
 				end
 			end,
 			desc = "Cleanup SSH mounts on exit",
 		})
 	end
 
-	-- Create user commands
-	App.setup_commands()
+	App.setup_api_commands()
 end
 
 return App

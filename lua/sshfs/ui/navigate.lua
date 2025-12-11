@@ -4,9 +4,8 @@ local Navigate = {}
 
 -- Change to mounted directory
 function Navigate.to_mount_dir()
-	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 	local active_connections = Connections.get_all(base_dir)
 
 	if #active_connections == 0 then
@@ -48,7 +47,7 @@ function Navigate.with_picker(mount_dir, config)
 	-- Try to auto-open file picker (respects auto_open_on_mount setting)
 	if config.ui then
 		local Picker = require("sshfs.ui.picker")
-		local success, picker_name = Picker.try_open_file_picker(mount_dir, config.ui, false)
+		local success, picker_name = Picker.try_open_file_picker(mount_dir, config, false)
 
 		if not success and picker_name ~= "Auto-open disabled" then
 			vim.notify("Failed to open " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.ERROR)

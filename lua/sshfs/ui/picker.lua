@@ -2,6 +2,7 @@
 -- Smart file picker and search picker auto-detection (telescope, oil, snacks, etc.) with vim.ui.select and netrw fallbacks
 
 local Picker = {}
+local Config = require("sshfs.config")
 
 -- File picker detection and auto-launch functions
 local function try_telescope_files(cwd)
@@ -121,7 +122,7 @@ end
 
 -- Main function to try opening file picker
 function Picker.try_open_file_picker(cwd, config, is_manual)
-	local file_picker_config = config.file_picker or {}
+	local file_picker_config = config.ui and config.ui.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
 	local fallback_to_netrw = file_picker_config.fallback_to_netrw ~= false -- default true
@@ -252,7 +253,7 @@ end
 
 -- Main function to try opening search picker
 function Picker.try_open_search_picker(cwd, pattern, config, is_manual)
-	local file_picker_config = config.file_picker or {}
+	local file_picker_config = config.ui and config.ui.file_picker or {}
 	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
 	local preferred = file_picker_config.preferred_picker or "auto"
 
@@ -334,9 +335,8 @@ end
 -- TODO: rename this function
 local function setup_remote_operation(opts)
 	opts = opts or {}
-	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 
 	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -358,12 +358,8 @@ local function setup_remote_operation(opts)
 		return nil
 	end
 
-	-- Get UI configuration from init
-	local config = {}
-	local config_ok, init_module = pcall(require, "sshfs")
-	if config_ok and init_module._config then
-		config = init_module._config.ui or {}
-	end
+	-- Get UI configuration
+	local config = Config.get()
 
 	return config, active_connection, target_dir
 end

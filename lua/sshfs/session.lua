@@ -2,29 +2,14 @@
 -- SSH session lifecycle management: setup, connect, disconnect, reload
 
 local Session = {}
-local config = {}
-local pre_mount_directories = {} -- Track pre-mount directory for each connection
-
--- Initialize plugin with configuration
-function Session.setup(opts)
-	local MountPoint = require("sshfs.lib.mount_point")
-	config = opts or {}
-
-	-- Ensure mount base directory exists
-	if config.mounts and config.mounts.base_dir then
-		MountPoint.ensure(config.mounts.base_dir)
-	end
-end
-
--- Get the configured base directory for mounts
-function Session.get_base_dir()
-	return config.mounts and config.mounts.base_dir
-end
+local Config = require("sshfs.config")
+local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
 
 -- Get all available hosts from SSH configs
 function Session.get_hosts()
 	local SSHConfig = require("sshfs.lib.ssh_config")
 	local Cache = require("sshfs.cache")
+	local config = Config.get()
 	local config_files = config.connections.ssh_configs or SSHConfig.get_default_files()
 
 	if Cache.is_valid(config_files, nil) then
@@ -39,6 +24,7 @@ end
 -- Connect to a remote host
 function Session.connect(host)
 	local MountPoint = require("sshfs.lib.mount_point")
+	local config = Config.get()
 	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
 
 	-- Check if already mounted
@@ -48,10 +34,10 @@ function Session.connect(host)
 	end
 
 	-- Capture current directory before mounting for restoration on disconnect
-	pre_mount_directories[mount_dir] = vim.uv.cwd()
+	PRE_MOUNT_DIRS[mount_dir] = vim.uv.cwd()
 
 	-- Ensure mount directory exists
-	if not MountPoint.ensure(mount_dir) then
+	if not MountPoint.get_or_create(mount_dir) then
 		vim.notify("Failed to create mount directory: " .. mount_dir, vim.log.levels.ERROR)
 		return false
 	end
@@ -61,7 +47,7 @@ function Session.connect(host)
 	Ask.for_mount_path(host, config, function(remote_path_suffix)
 		if not remote_path_suffix then
 			vim.notify("Connection cancelled.", vim.log.levels.WARN)
-			MountPoint.cleanup(mount_dir)
+			MountPoint.cleanup()
 			return
 		end
 
@@ -81,7 +67,7 @@ function Session.connect(host)
 		-- Handle connection failure
 		if not success then
 			vim.notify("Connection failed: " .. (result or "Unknown error"), vim.log.levels.ERROR)
-			MountPoint.cleanup(mount_dir)
+			MountPoint.cleanup()
 			return false
 		end
 
@@ -96,8 +82,7 @@ end
 -- Disconnect from current host (backward compatibility)
 function Session.disconnect()
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = config.mounts and config.mounts.base_dir
-	local active_connection = Connections.get_active(base_dir)
+	local active_connection = Connections.get_active()
 	if not active_connection.mount_point then
 		vim.notify("No active connection to disconnect", vim.log.levels.WARN)
 		return false
@@ -114,12 +99,10 @@ function Session.disconnect_from(connection)
 		return false
 	end
 
-	local host_name = connection.host and connection.host.Name or "unknown"
-
 	-- Change directory if currently inside mount point
 	local cwd = vim.uv.cwd()
 	if cwd and connection.mount_point and cwd:find(connection.mount_point, 1, true) == 1 then
-		local restore_dir = pre_mount_directories[connection.mount_point]
+		local restore_dir = PRE_MOUNT_DIRS[connection.mount_point]
 		if restore_dir and vim.fn.isdirectory(restore_dir) == 1 then
 			vim.cmd("tcd " .. vim.fn.fnameescape(restore_dir))
 		else
@@ -130,15 +113,16 @@ function Session.disconnect_from(connection)
 	-- Unmount the filesystem
 	local success = MountPoint.unmount(connection.mount_point)
 
+	-- Cleanup
+	local host_name = connection.host and connection.host.Name or "unknown"
 	if success then
 		vim.notify("Disconnected from " .. host_name, vim.log.levels.INFO)
 
-		-- Clean up stored pre-mount directory after successful unmount
-		pre_mount_directories[connection.mount_point] = nil
-
-		-- Cleanup mount directory if configured
+		-- Remove pre-mount cache and mount point
+		PRE_MOUNT_DIRS[connection.mount_point] = nil
+		local config = Config.get()
 		if config.handlers and config.handlers.on_disconnect and config.handlers.on_disconnect.clean_mount_folders then
-			MountPoint.cleanup(connection.mount_point)
+			MountPoint.cleanup()
 		end
 
 		return true

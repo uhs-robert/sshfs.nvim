@@ -35,24 +35,10 @@ end
 
 -- Mount selection from active mounts
 function Select.mount(callback)
+	-- Get active mounts
 	local MountPoint = require("sshfs.lib.mount_point")
-
-	-- Get configuration to determine mount base directory
-	local config = {}
-	local config_ok, init_module = pcall(require, "sshfs")
-	if config_ok and init_module._config then
-		config = init_module._config
-	end
-
-	local base_dir = config.mounts and config.mounts.base_dir
-	if not base_dir then
-		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
-		return
-	end
-
-	local mounts = MountPoint.list_active(base_dir)
-
-	if not mounts or #mounts == 0 then
+	local active_mounts = MountPoint.list_active()
+	if not active_mounts or #active_mounts == 0 then
 		vim.notify("No active SSH mounts found", vim.log.levels.WARN)
 		return
 	end
@@ -60,7 +46,7 @@ function Select.mount(callback)
 	local mount_list = {}
 	local mount_map = {}
 
-	for _, mount in ipairs(mounts) do
+	for _, mount in ipairs(active_mounts) do
 		local display = mount.alias .. " (" .. mount.path .. ")"
 		table.insert(mount_list, display)
 		mount_map[display] = mount
@@ -80,24 +66,10 @@ end
 
 -- Mount selection for unmounting an active mount
 function Select.unmount(callback)
+	-- Get active mounts
 	local MountPoint = require("sshfs.lib.mount_point")
-
-	-- Get configuration to determine mount base directory
-	local config = {}
-	local config_ok, init_module = pcall(require, "sshfs")
-	if config_ok and init_module._config then
-		config = init_module._config
-	end
-
-	local base_dir = config.mounts and config.mounts.base_dir
-	if not base_dir then
-		vim.notify("Mount base directory not configured", vim.log.levels.ERROR)
-		return
-	end
-
-	local mounts = MountPoint.list_active(base_dir)
-
-	if not mounts or #mounts == 0 then
+	local active_mounts = MountPoint.list_active()
+	if not active_mounts or #active_mounts == 0 then
 		vim.notify("No active SSH mounts to disconnect", vim.log.levels.WARN)
 		return
 	end
@@ -105,7 +77,7 @@ function Select.unmount(callback)
 	local mount_list = {}
 	local mount_map = {}
 
-	for _, mount in ipairs(mounts) do
+	for _, mount in ipairs(active_mounts) do
 		local display = mount.alias .. " (" .. mount.path .. ")"
 		table.insert(mount_list, display)
 		-- Create connection object compatible with disconnect_from

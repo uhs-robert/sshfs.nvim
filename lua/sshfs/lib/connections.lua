@@ -1,27 +1,19 @@
 -- lua/sshfs/lib/connections.lua
--- Connection status queries: check active connections and get connection info
+-- Connection status queries: checks active mounted connections and gets connection info
 
 local Connections = {}
 
 local MountPoint = require("sshfs.lib.mount_point")
 
 -- Check if currently connected to a remote host
-function Connections.has_active(base_dir)
-	if not base_dir then
-		return false
-	end
-
-	local mounts = MountPoint.list_active(base_dir)
+function Connections.has_active()
+	local mounts = MountPoint.list_active()
 	return #mounts > 0
 end
 
 -- Get current connection info (first mount for backward compatibility)
-function Connections.get_active(base_dir)
-	if not base_dir then
-		return { host = nil, mount_point = nil }
-	end
-
-	local mounts = MountPoint.list_active(base_dir)
+function Connections.get_active()
+	local mounts = MountPoint.list_active()
 	if #mounts > 0 then
 		-- Return first active mount as the current connection
 		return {
@@ -34,22 +26,18 @@ function Connections.get_active(base_dir)
 end
 
 -- Get all active connections
-function Connections.get_all(base_dir)
-	if not base_dir then
-		return {}
-	end
+function Connections.get_all()
+	local mounts = MountPoint.list_active()
 
-	local mounts = MountPoint.list_active(base_dir)
-
-	local connections = {}
+	local all_connections = {}
 	for _, mount in ipairs(mounts) do
-		table.insert(connections, {
+		table.insert(all_connections, {
 			host = { Name = mount.alias },
 			mount_point = mount.path,
 		})
 	end
 
-	return connections
+	return all_connections
 end
 
 return Connections

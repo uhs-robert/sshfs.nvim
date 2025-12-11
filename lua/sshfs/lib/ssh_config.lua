@@ -1,7 +1,14 @@
--- lua/sshfs/lib.ssh_config.lua
+-- lua/sshfs/lib/ssh_config.lua
 -- SSH configuration parsing from system config files and host discovery
 
 local SSHConfig = {}
+
+function SSHConfig.get_default_files()
+	return {
+		vim.fn.expand("$HOME") .. "/.ssh/config",
+		"/etc/ssh/ssh_config",
+	}
+end
 
 function SSHConfig.get_hosts(ssh_configs)
 	local hosts = {}
@@ -59,13 +66,6 @@ function SSHConfig.parse_host(command)
 	host["Path"] = path
 
 	return host
-end
-
-function SSHConfig.get_default_files()
-	return {
-		vim.fn.expand("$HOME") .. "/.ssh/config",
-		"/etc/ssh/ssh_config",
-	}
 end
 
 return SSHConfig

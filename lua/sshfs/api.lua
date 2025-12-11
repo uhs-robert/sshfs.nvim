@@ -2,16 +2,7 @@
 -- Public API wrapper providing high-level functions (connect, disconnect, browse, grep, edit)
 
 local Api = {}
-
--- Helper function to get UI config consistently
-local function get_ui_config()
-	local config = {}
-	local config_ok, init_module = pcall(require, "sshfs")
-	if config_ok and init_module._config then
-		config = init_module._config.ui or {}
-	end
-	return config
-end
+local Config = require("sshfs.config")
 
 -- Connect to SSH host - use picker if no host provided, otherwise connect directly
 Api.connect = function(host)
@@ -43,7 +34,7 @@ end
 Api.unmount = function()
 	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 	local active_connections = Connections.get_all(base_dir)
 
 	if #active_connections == 0 then
@@ -63,17 +54,15 @@ end
 
 -- Check connection status
 Api.has_active = function()
-	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 	return Connections.has_active(base_dir)
 end
 
 -- Get current connection info
 Api.get_active = function()
-	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 	return Connections.get_active(base_dir)
 end
 
@@ -95,9 +84,8 @@ end
 
 -- Browse remote files using native file browser
 Api.find_files = function(opts)
-	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
@@ -109,9 +97,8 @@ end
 
 -- Browse remote files - smart handling for multiple mounts
 Api.browse = function(opts)
-	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 	local active_connections = Connections.get_all(base_dir)
 
 	if #active_connections == 0 then
@@ -126,9 +113,8 @@ end
 
 -- Search text in remote files using picker or native grep
 Api.grep = function(pattern, opts)
-	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Session.get_base_dir()
+	local base_dir = Config.get_base_dir()
 	if not Connections.has_active(base_dir) then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
@@ -144,7 +130,7 @@ Api.list_mounts = function()
 	Select.mount(function(selected_mount)
 		if selected_mount then
 			local Picker = require("sshfs.ui.picker")
-			local config = get_ui_config()
+			local config = Config.get()
 			local success, picker_name = Picker.try_open_file_picker(selected_mount.path, config, true)
 
 			if not success then
