@@ -101,8 +101,8 @@ end
 
 -- Host selection for choosing an SSH Host to connect to
 function Select.host(callback)
-	local session = require("sshfs.session")
-	local hosts = session.get_hosts()
+	local SSHConfig = require("sshfs.lib.ssh_config")
+	local hosts = SSHConfig.get_hosts()
 
 	if not hosts or vim.tbl_count(hosts) == 0 then
 		vim.notify("No SSH hosts found in configuration", vim.log.levels.WARN)

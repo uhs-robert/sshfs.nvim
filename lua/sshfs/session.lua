@@ -5,22 +5,6 @@ local Session = {}
 local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
 
--- Get all available hosts from SSH configs
-function Session.get_hosts()
-	local SSHConfig = require("sshfs.lib.ssh_config")
-	local Cache = require("sshfs.cache")
-	local config = Config.get()
-	local config_files = config.connections.ssh_configs or SSHConfig.get_default_files()
-
-	if Cache.is_valid(config_files, nil) then
-		return Cache.get_hosts() or {}
-	end
-
-	local hosts = SSHConfig.get_hosts(config_files)
-	Cache.update(hosts, config_files, nil)
-	return hosts
-end
-
 -- Connect to a remote host
 function Session.connect(host)
 	local MountPoint = require("sshfs.lib.mount_point")
@@ -134,8 +118,8 @@ end
 
 -- Reload SSH configuration
 function Session.reload()
-	local Cache = require("sshfs.cache")
-	Cache.reset()
+	local SSHConfig = require("sshfs.lib.ssh_config")
+	SSHConfig.refresh()
 	vim.notify("SSH configuration reloaded", vim.log.levels.INFO)
 end
 
