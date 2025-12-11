@@ -121,27 +121,26 @@ You can optionally customize behavior by passing a config table to setup().
 ```lua
 require("sshfs").setup({
   connections = {
-    ssh_configs = require("sshfs.lib.ssh_config").get_default_files(),
-    sshfs_args = { -- these are the sshfs options that will be used
-      "-o reconnect",            -- Automatically reconnect if the connection drops
-      "-o ConnectTimeout=5",     -- Time (in seconds) to wait before failing a connection attempt
-      "-o compression=yes",      -- Enable compression to reduce bandwidth usage
-      "-o ServerAliveInterval=15", -- Send a keepalive packet every 15 seconds to prevent timeouts
-      "-o ServerAliveCountMax=3",  -- Number of missed keepalive packets before disconnecting
+    sshfs_args = {                  -- these are the sshfs options that will be used
+      "-o reconnect",               -- Automatically reconnect if the connection drops
+      "-o ConnectTimeout=5",        -- Time (in seconds) to wait before failing a connection attempt
+      "-o compression=yes",         -- Enable compression to reduce bandwidth usage
+      "-o ServerAliveInterval=15",  -- Send a keepalive packet every 15 seconds to prevent timeouts
+      "-o ServerAliveCountMax=3",   -- Number of missed keepalive packets before disconnecting
     },
   },
   mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
-    unmount_on_exit = true, -- auto-disconnect all mounts on :q or exit
-    auto_change_dir_on_mount = false, -- auto-change current directory to mount point (default: false)
-    host_paths = {
-      -- Optionally define default mount paths for specific hosts
-      -- Single path (string):
-      -- ["my-server"] = "/var/www/html"
-      --
-      -- Multiple paths (array):
-      -- ["dev-server"] = { "/var/www", "~/projects", "/opt/app" }
-    },
+    unmount_on_exit = true,                      -- auto-disconnect all mounts on :q or exit
+    auto_change_dir_on_mount = false,            -- auto-change current directory to mount point (default: false)
+  },
+  host_paths = {
+    -- Optionally define default mount paths for specific hosts
+    -- Single path (string):
+    -- ["my-server"] = "/var/www/html"
+    --
+    -- Multiple paths (array):
+    -- ["dev-server"] = { "/var/www", "~/projects", "/opt/app" }
   },
   handlers = {
     on_disconnect = {
@@ -150,14 +149,14 @@ require("sshfs").setup({
   },
   ui = {
     file_picker = {
-      auto_open_on_mount = true, -- auto-open picker after connecting
-      preferred_picker = "auto", -- one of: "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
-      fallback_to_netrw = true,  -- fallback to netrw if no picker is available
+      preferred_picker = "auto",  -- one of: "auto", "snacks", "fzf-lua", "mini", "telescope", "oil", "neo-tree", "nvim-tree", "yazi", "lf", "nnn", "ranger", "netrw"
+      auto_open_on_mount = true,  -- auto-open picker after connecting
+      fallback_to_netrw = true,   -- fallback to netrw if no picker is available
     },
   },
-  lead_prefix = "<leader>m", -- change keymap prefix (default: <leader>m)
+  lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
-    mount = "<leader>mm",
+    mount = "<leader>mm",         -- change any keymap below
     unmount = "<leader>mu",
     change_dir = "<leader>md",
     edit = "<leader>me",
@@ -237,17 +236,15 @@ When you run `:SSHConnect`, you'll be prompted to:
 > Use `host_paths` to define one or more default paths for frequently-used hosts:
 >
 > ```lua
-> mounts = {
->   host_paths = {
->     -- Single path
->     ["production-server"] = "/var/www/html",
+> host_paths = {
+>   -- Single path
+>   ["production-server"] = "/var/www/html",
 >
->     -- Multiple paths for the same host
->     ["dev-server"] = {
->       "/var/www",
->       "~/projects",
->       "/opt/app",
->     },
+>   -- Multiple paths for the same host
+>   ["dev-server"] = {
+>     "/var/www",
+>     "~/projects",
+>     "/opt/app",
 >   },
 > }
 > ```
@@ -265,7 +262,7 @@ After connecting to a host, the plugin mounts the remote filesystem locally. You
    - **Auto-detected search**: telescope live_grep, snacks grep, fzf-lua live_grep, mini grep_live
    - **Fallback**: built-in grep with quickfix list
 
-**🎯 The Magic**: The plugin intelligently detects what you have installed and launches it automatically, respecting your existing Neovim setup and preferences. No configuration required, it just works with whatever you're already using.
+**🎯 The Magic**: The plugin intelligently detects what you have installed and launches it automatically via lazyloading, respecting your existing Neovim setup and preferences. No configuration required, it just works with whatever you're already using.
 
 ## 💡 Tips and Performance
 
