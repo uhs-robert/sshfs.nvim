@@ -15,6 +15,8 @@ function Directory.is_empty(path)
 	return name == nil
 end
 
+--- Change to directory using tab-local cd
+--- @param path string|nil Directory path to change to
 function Directory.change(path)
 	if not path or path == "" then
 		return

@@ -5,13 +5,15 @@ local Connections = {}
 
 local MountPoint = require("sshfs.lib.mount_point")
 
--- Check if currently connected to a remote host
+--- Check if currently connected to a remote host
+--- @return boolean True if any active mounts exist
 function Connections.has_active()
 	local mounts = MountPoint.list_active()
 	return #mounts > 0
 end
 
--- Get current connection info (first mount for backward compatibility)
+--- Get current connection info (first mount for backward compatibility)
+--- @return table Connection info with host and mount_point fields
 function Connections.get_active()
 	local mounts = MountPoint.list_active()
 	if #mounts > 0 then
@@ -25,7 +27,8 @@ function Connections.get_active()
 	return { host = nil, mount_point = nil }
 end
 
--- Get all active connections
+--- Get all active connections
+--- @return table Array of connection info objects with host and mount_point fields
 function Connections.get_all()
 	local mounts = MountPoint.list_active()
 

@@ -3,6 +3,11 @@
 
 local Sshfs = {}
 
+--- Build sshfs options array based on authentication type
+--- @param auth_type string Authentication type ("key" or "password")
+--- @param ssh_options table|nil SSH configuration options
+--- @param user_sshfs_args table|nil User-provided sshfs arguments
+--- @return table Array of sshfs options
 local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 	ssh_options = ssh_options or {}
 
@@ -37,11 +42,11 @@ local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
 	return options
 end
 
--- Determines whether password authentication should be attempted based on the error type
--- @param error_output string: The error output from the sshfs command
--- @param host table: Host object with Name/User field (e.g., {Name = "my-server", User = "my-username"})
--- @return boolean: true if password auth should be tried else false
--- @return string: Formatted error message describing the error
+--- Determine whether password authentication should be attempted based on error type
+--- @param error_output string Error output from the sshfs command
+--- @param host table Host object with Name and User fields
+--- @return boolean True if password auth should be tried
+--- @return string Formatted error message describing the error
 local function should_retry_with_password(error_output, host)
 	if error_output:match("No such file or directory") then
 		return false, "Remote path does not exist: " .. (error_output or "Unknown Error")
@@ -51,6 +56,14 @@ local function should_retry_with_password(error_output, host)
 		string.format("Authentication Error for %s@%s: %s", host.User, host.Name, error_output or "Unknown Error")
 end
 
+--- Try SSH key-based authentication for mounting
+--- @param host table Host object with Name, User, Port, and Path fields
+--- @param mount_point string Local mount point directory
+--- @param ssh_options table|nil SSH configuration options
+--- @param remote_path_suffix string|nil Remote path to mount
+--- @param user_sshfs_args table|nil User-provided sshfs arguments
+--- @return boolean True if authentication succeeded
+--- @return string Result message or error output
 function Sshfs.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
 	remote_path_suffix = remote_path_suffix or (host.Path or "")
 	local options = get_sshfs_options("key", ssh_options, user_sshfs_args)
@@ -72,6 +85,15 @@ function Sshfs.try_key_authentication(host, mount_point, ssh_options, remote_pat
 	return vim.v.shell_error == 0, result
 end
 
+--- Try password-based authentication for mounting with retry attempts
+--- @param host table Host object with Name, User, Port, and Path fields
+--- @param mount_point string Local mount point directory
+--- @param ssh_options table|nil SSH configuration options
+--- @param remote_path_suffix string|nil Remote path to mount
+--- @param max_attempts number|nil Maximum password attempts (default: 3)
+--- @param user_sshfs_args table|nil User-provided sshfs arguments
+--- @return boolean True if authentication succeeded
+--- @return string Result message or error output
 function Sshfs.try_password_authentication(
 	host,
 	mount_point,
@@ -125,6 +147,14 @@ function Sshfs.try_password_authentication(
 	return false, "Authentication failed after " .. max_attempts .. " attempts"
 end
 
+--- Authenticate and mount with automatic fallback from key to password auth
+--- @param host table Host object with Name, User, Port, and Path fields
+--- @param mount_point string Local mount point directory
+--- @param ssh_options table|nil SSH configuration options
+--- @param remote_path_suffix string|nil Remote path to mount
+--- @param user_sshfs_args table|nil User-provided sshfs arguments
+--- @return boolean True if authentication and mount succeeded
+--- @return string Result message or error output
 function Sshfs.authenticate_and_mount(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
 	local success, error_output =
 		Sshfs.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)

@@ -6,6 +6,9 @@ local Directory = require("sshfs.lib.directory")
 local Config = require("sshfs.config")
 local BASE_MOUNT_DIR = Config.get_base_dir()
 
+--- Check if a mount path is actively mounted
+--- @param mount_path string Path to check for active mount
+--- @return boolean True if mount is active
 function MountPoint.is_active(mount_path)
 	local stat = vim.uv.fs_stat(mount_path)
 	if not stat or stat.type ~= "directory" then
@@ -33,6 +36,8 @@ function MountPoint.is_active(mount_path)
 	return not Directory.is_empty(mount_path)
 end
 
+--- List all active sshfs mounts
+--- @return table Array of mount objects with alias and path fields
 function MountPoint.list_active()
 	local mounts = {}
 
@@ -66,6 +71,9 @@ function MountPoint.list_active()
 	return mounts
 end
 
+--- Get or create mount directory
+--- @param mount_dir string|nil Directory path (defaults to BASE_MOUNT_DIR)
+--- @return boolean True if directory exists or was created successfully
 function MountPoint.get_or_create(mount_dir)
 	mount_dir = mount_dir or BASE_MOUNT_DIR
 	local stat = vim.uv.fs_stat(mount_dir)
@@ -77,6 +85,9 @@ function MountPoint.get_or_create(mount_dir)
 	return success == 1
 end
 
+--- Unmount an sshfs mount using fusermount/umount
+--- @param mount_path string Path to unmount
+--- @return boolean True if unmount succeeded
 function MountPoint.unmount(mount_path)
 	local commands = {
 		{ "fusermount", { "-u", mount_path } },
@@ -106,6 +117,8 @@ function MountPoint.unmount(mount_path)
 	return false
 end
 
+--- Clean up base mount directory if empty
+--- @return boolean True if cleanup succeeded
 function MountPoint.cleanup()
 	local stat = vim.uv.fs_stat(BASE_MOUNT_DIR)
 	if stat and stat.type == "directory" and Directory.is_empty(BASE_MOUNT_DIR) then
