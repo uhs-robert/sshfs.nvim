@@ -1,8 +1,7 @@
--- lua/sshfs/core/mount.lua
+-- lua/sshfs/lib/mount_point.lua
 -- Mount point management, detection, creation, unmounting, and cleanup
 
--- TODO: move to lib
-local MountPoint = {} -- TODO: rename file to match
+local MountPoint = {}
 local Directory = require("sshfs.lib.directory")
 
 function MountPoint.is_active(mount_path)

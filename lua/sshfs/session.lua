@@ -7,7 +7,7 @@ local pre_mount_directories = {} -- Track pre-mount directory for each connectio
 
 -- Initialize plugin with configuration
 function Session.setup(opts)
-	local MountPoint = require("sshfs.core.mount")
+	local MountPoint = require("sshfs.lib.mount_point")
 	config = opts or {}
 
 	-- Ensure mount base directory exists
@@ -38,7 +38,7 @@ end
 
 -- Connect to a remote host
 function Session.connect(host)
-	local MountPoint = require("sshfs.core.mount")
+	local MountPoint = require("sshfs.lib.mount_point")
 	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
 
 	-- Check if already mounted
@@ -108,7 +108,7 @@ end
 
 -- Disconnect from specific connection
 function Session.disconnect_from(connection)
-	local MountPoint = require("sshfs.core.mount")
+	local MountPoint = require("sshfs.lib.mount_point")
 	if not connection or not connection.mount_point then
 		vim.notify("Invalid connection to disconnect", vim.log.levels.WARN)
 		return false

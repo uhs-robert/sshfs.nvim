@@ -35,7 +35,7 @@ end
 
 -- Mount selection from active mounts
 function Select.mount(callback)
-	local MountPoint = require("sshfs.core.mount")
+	local MountPoint = require("sshfs.lib.mount_point")
 
 	-- Get configuration to determine mount base directory
 	local config = {}
@@ -80,7 +80,7 @@ end
 
 -- Mount selection for unmounting an active mount
 function Select.unmount(callback)
-	local MountPoint = require("sshfs.core.mount")
+	local MountPoint = require("sshfs.lib.mount_point")
 
 	-- Get configuration to determine mount base directory
 	local config = {}

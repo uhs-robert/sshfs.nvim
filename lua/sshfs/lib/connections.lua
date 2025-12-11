@@ -3,7 +3,7 @@
 
 local Connections = {}
 
-local MountPoint = require("sshfs.core.mount")
+local MountPoint = require("sshfs.lib.mount_point")
 
 -- Check if currently connected to a remote host
 function Connections.has_active(base_dir)
