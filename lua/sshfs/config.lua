@@ -1,11 +1,9 @@
 -- lua/sshfs/config.lua
 
 local Config = {}
-local deepcopy = vim.deepcopy
 
--- Default configuration
 -- stylua: ignore start
-Config.defaults = {
+local DEFAULT_CONFIG = {
 	connections = {
 		ssh_configs = require("sshfs.lib.ssh_config").get_default_files(),
     sshfs_args = {                      -- These are the sshfs options that will be used
@@ -46,32 +44,14 @@ Config.defaults = {
 }
 -- stylua: ignore end
 
--- Current active configuration
-Config.options = deepcopy(Config.defaults)
-
---- Deep merge two tables
----@param base table The base table
----@param override table The table to merge on top
----@return table merged The merged result
-local function deep_merge(base, override)
-	local result = deepcopy(base)
-
-	for k, v in pairs(override) do
-		if type(v) == "table" and type(result[k]) == "table" then
-			result[k] = deep_merge(result[k], v)
-		else
-			result[k] = v
-		end
-	end
-
-	return result
-end
+-- Active configuration
+Config.options = vim.deepcopy(DEFAULT_CONFIG)
 
 --- Setup configuration
 ---@param user_config table|nil User configuration to merge with defaults
 function Config.setup(user_config)
 	user_config = user_config or {}
-	Config.options = deep_merge(Config.defaults, user_config)
+	Config.options = vim.tbl_deep_extend("force", DEFAULT_CONFIG, user_config)
 end
 
 --- Get current configuration
@@ -81,7 +61,7 @@ function Config.get()
 end
 
 -- Get the configured base directory for mounts
----@return string base_dir The base directory for mounts
+---@return string base_dir The base directory path for mounts
 function Config.get_base_dir()
 	local opts = Config.options
 	return opts.mounts and opts.mounts.base_dir
