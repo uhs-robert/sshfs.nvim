@@ -5,8 +5,7 @@ local Navigate = {}
 --- Change to mounted directory
 function Navigate.to_mount_dir()
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Config.get_base_dir()
-	local active_connections = Connections.get_all(base_dir)
+	local active_connections = Connections.get_all()
 
 	if #active_connections == 0 then
 		vim.notify("No active SSH connections", vim.log.levels.WARN)
