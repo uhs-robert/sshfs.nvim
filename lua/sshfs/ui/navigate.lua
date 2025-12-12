@@ -13,7 +13,7 @@ function Navigate.to_mount_dir()
 	end
 
 	if #active_connections == 1 then
-		local mount_dir = active_connections[1].mount_point
+		local mount_dir = active_connections[1].mount_path
 		vim.cmd("tcd " .. vim.fn.fnameescape(mount_dir))
 		vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
 		return
@@ -21,15 +21,14 @@ function Navigate.to_mount_dir()
 
 	local items = {}
 	for _, conn in ipairs(active_connections) do
-		local host_name = conn.host and conn.host.Name or "unknown"
-		table.insert(items, host_name)
+		table.insert(items, conn.host)
 	end
 
 	vim.ui.select(items, {
 		prompt = "Select mount to change to:",
 	}, function(_, idx)
 		if idx then
-			local mount_dir = active_connections[idx].mount_point
+			local mount_dir = active_connections[idx].mount_path
 			vim.cmd("tcd " .. vim.fn.fnameescape(mount_dir))
 			vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
 		end

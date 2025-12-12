@@ -37,7 +37,7 @@ function MountPoint.is_active(mount_path)
 end
 
 --- List all active sshfs mounts
---- @return table Array of mount objects with alias and path fields
+--- @return table Array of mount objects with host and mount_path fields
 function MountPoint.list_active()
 	local mounts = {}
 
@@ -47,8 +47,10 @@ function MountPoint.list_active()
 		local files = vim.fn.glob(BASE_MOUNT_DIR .. "/*", false, true)
 		for _, file in ipairs(files) do
 			if vim.fn.isdirectory(file) == 1 and not Directory.is_empty(file) then
-				local alias = vim.fn.fnamemodify(file, ":t")
-				table.insert(mounts, { alias = alias, path = file })
+				local host = vim.fn.fnamemodify(file, ":t")
+				if host and host ~= "" then
+					table.insert(mounts, { host = host, mount_path = file })
+				end
 			end
 		end
 		return mounts
@@ -59,11 +61,11 @@ function MountPoint.list_active()
 	local pattern = "%s+(" .. mount_dir_escaped .. "/[^%s]+)%s+type%s+fuse%.sshfs"
 
 	for line in result:gmatch("[^\r\n]+") do
-		local path = line:match(pattern)
-		if path then
-			local alias = path:match("([^/]+)$")
-			if alias then
-				table.insert(mounts, { alias = alias, path = path })
+		local mount_path = line:match(pattern)
+		if mount_path then
+			local host = mount_path:match("([^/]+)$")
+			if host and host ~= "" then
+				table.insert(mounts, { host = host, mount_path = mount_path })
 			end
 		end
 	end

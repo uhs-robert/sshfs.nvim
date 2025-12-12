@@ -57,9 +57,11 @@ function Session.connect(host)
 			return false
 		end
 
-		-- Handle post-connection success
+		-- Add connection to cache and navigate to remote directory with picker
 		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
+		local Connections = require("sshfs.lib.connections")
 		local Navigate = require("sshfs.ui.navigate")
+		Connections.add(host.Name, mount_dir)
 		Navigate.with_picker(mount_dir, config)
 		return true
 	end)
@@ -70,7 +72,7 @@ end
 function Session.disconnect()
 	local Connections = require("sshfs.lib.connections")
 	local active_connection = Connections.get_active()
-	if not active_connection.mount_point then
+	if not active_connection or not active_connection.mount_path then
 		vim.notify("No active connection to disconnect", vim.log.levels.WARN)
 		return false
 	end
@@ -79,19 +81,19 @@ function Session.disconnect()
 end
 
 --- Disconnect from a specific SSH connection
----@param connection table Connection object with host and mount_point fields
+---@param connection table Connection object with host and mount_path fields
 ---@return boolean Success status
 function Session.disconnect_from(connection)
 	local MountPoint = require("sshfs.lib.mount_point")
-	if not connection or not connection.mount_point then
+	if not connection or not connection.mount_path then
 		vim.notify("Invalid connection to disconnect", vim.log.levels.WARN)
 		return false
 	end
 
 	-- Change directory if currently inside mount point
 	local cwd = vim.uv.cwd()
-	if cwd and connection.mount_point and cwd:find(connection.mount_point, 1, true) == 1 then
-		local restore_dir = PRE_MOUNT_DIRS[connection.mount_point]
+	if cwd and connection.mount_path and cwd:find(connection.mount_path, 1, true) == 1 then
+		local restore_dir = PRE_MOUNT_DIRS[connection.mount_path]
 		if restore_dir and vim.fn.isdirectory(restore_dir) == 1 then
 			vim.cmd("tcd " .. vim.fn.fnameescape(restore_dir))
 		else
@@ -100,15 +102,18 @@ function Session.disconnect_from(connection)
 	end
 
 	-- Unmount the filesystem
-	local success = MountPoint.unmount(connection.mount_point)
+	local success = MountPoint.unmount(connection.mount_path)
 
 	-- Cleanup
-	local host_name = connection.host and connection.host.Name or "unknown"
 	if success then
-		vim.notify("Disconnected from " .. host_name, vim.log.levels.INFO)
+		vim.notify("Disconnected from " .. connection.host, vim.log.levels.INFO)
+
+		-- Remove connection from cache
+		local Connections = require("sshfs.lib.connections")
+		Connections.remove(connection.mount_path)
 
 		-- Remove pre-mount cache and mount point
-		PRE_MOUNT_DIRS[connection.mount_point] = nil
+		PRE_MOUNT_DIRS[connection.mount_path] = nil
 		local config = Config.get()
 		if config.handlers and config.handlers.on_disconnect and config.handlers.on_disconnect.clean_mount_folders then
 			MountPoint.cleanup()
@@ -116,7 +121,7 @@ function Session.disconnect_from(connection)
 
 		return true
 	else
-		vim.notify("Failed to disconnect from " .. host_name, vim.log.levels.ERROR)
+		vim.notify("Failed to disconnect from " .. connection.host, vim.log.levels.ERROR)
 		return false
 	end
 end

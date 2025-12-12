@@ -58,7 +58,7 @@ function Select.mount(callback)
 	local mount_map = {}
 
 	for _, mount in ipairs(active_mounts) do
-		local display = mount.alias .. " (" .. mount.path .. ")"
+		local display = mount.host .. " (" .. mount.mount_path .. ")"
 		table.insert(mount_list, display)
 		mount_map[display] = mount
 	end
@@ -87,13 +87,9 @@ function Select.unmount(callback)
 	local mount_map = {}
 
 	for _, mount in ipairs(active_mounts) do
-		local display = mount.alias .. " (" .. mount.path .. ")"
+		local display = mount.host .. " (" .. mount.mount_path .. ")"
 		table.insert(mount_list, display)
-		-- Create connection object compatible with disconnect_from
-		mount_map[display] = {
-			host = { Name = mount.alias },
-			mount_point = mount.path,
-		}
+		mount_map[display] = mount
 	end
 
 	vim.ui.select(mount_list, {

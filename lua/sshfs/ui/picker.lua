@@ -142,7 +142,7 @@ local function validate_remote_connection(opts)
 
 	-- Get active connection
 	local active_connection = Connections.get_active(base_dir)
-	local target_dir = opts.dir or (active_connection and active_connection.mount_point)
+	local target_dir = opts.dir or (active_connection and active_connection.mount_path)
 	if not target_dir then
 		vim.notify("Invalid connection state", vim.log.levels.ERROR)
 		return nil
@@ -170,7 +170,7 @@ function Picker.browse_remote_files(opts)
 	end
 
 	-- Try to open file picker (manual user command)
-	AutoCommands.chdir_on_next_open(active_connection.mount_point)
+	AutoCommands.chdir_on_next_open(active_connection.mount_path)
 	local success, picker_name = Picker.open_file_picker(target_dir, config, true)
 
 	if not success then
@@ -191,7 +191,7 @@ function Picker.grep_remote_files(pattern, opts)
 	end
 
 	-- Try to open search picker (manual user command)
-	AutoCommands.chdir_on_next_open(active_connection.mount_point)
+	AutoCommands.chdir_on_next_open(active_connection.mount_path)
 	local success, picker_name = Picker.open_search_picker(target_dir, pattern, config, true)
 
 	if success then
