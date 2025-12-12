@@ -9,7 +9,7 @@ local Config = require("sshfs.config")
 Api.connect = function(host)
 	local Session = require("sshfs.session")
 	if host then
-		Session.connect(host)
+		Session.connect({ Name = host })
 	else
 		local Select = require("sshfs.ui.select")
 		Select.host(function(selected_host)
@@ -35,8 +35,7 @@ end
 Api.unmount = function()
 	local Session = require("sshfs.session")
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Config.get_base_dir()
-	local active_connections = Connections.get_all(base_dir)
+	local active_connections = Connections.get_all()
 
 	if #active_connections == 0 then
 		vim.notify("No active mounts to disconnect", vim.log.levels.WARN)
@@ -57,16 +56,14 @@ end
 --- @return boolean True if any active connections exist
 Api.has_active = function()
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Config.get_base_dir()
-	return Connections.has_active(base_dir)
+	return Connections.has_active()
 end
 
 --- Get current connection info
 --- @return table|nil Connection info or nil if none active
 Api.get_active = function()
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Config.get_base_dir()
-	return Connections.get_active(base_dir)
+	return Connections.get_active()
 end
 
 --- Edit SSH config files using native picker
@@ -89,8 +86,7 @@ end
 --- @param opts table|nil Picker options
 Api.find_files = function(opts)
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Config.get_base_dir()
-	if not Connections.has_active(base_dir) then
+	if not Connections.has_active() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
 	end
@@ -103,8 +99,7 @@ end
 --- @param opts table|nil Picker options
 Api.browse = function(opts)
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Config.get_base_dir()
-	local active_connections = Connections.get_all(base_dir)
+	local active_connections = Connections.get_all()
 
 	if #active_connections == 0 then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -121,8 +116,7 @@ end
 --- @param opts table|nil Picker options
 Api.grep = function(pattern, opts)
 	local Connections = require("sshfs.lib.connections")
-	local base_dir = Config.get_base_dir()
-	if not Connections.has_active(base_dir) then
+	if not Connections.has_active() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
 	end

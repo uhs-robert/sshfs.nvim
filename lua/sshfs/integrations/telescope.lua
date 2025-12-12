@@ -8,8 +8,8 @@ local Telescope = {}
 ---@return boolean success True if telescope was successfully opened
 function Telescope.explore_files(cwd)
 	local ok, telescope = pcall(require, "telescope.builtin")
-	if ok and telescope.explore_files then
-		telescope.explore_files({ cwd = cwd })
+	if ok and telescope.find_files then
+		telescope.find_files({ cwd = cwd })
 		return true
 	end
 	return false
