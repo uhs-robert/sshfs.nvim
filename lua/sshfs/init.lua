@@ -42,6 +42,11 @@ App.setup_api_commands = function()
 	vim.api.nvim_create_user_command("SSHChangeDir", function()
 		Api.change_to_mount_dir()
 	end, { desc = "Set current directory to SSH mount" })
+
+	vim.api.nvim_create_user_command("SSHTerminal", function()
+		Api.ssh_terminal()
+	end, { desc = "Open SSH terminal session to remote host" })
+
 end
 
 --- Main entry point for plugin initialization.

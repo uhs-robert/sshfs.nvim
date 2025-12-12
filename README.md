@@ -181,6 +181,7 @@ require("sshfs").setup({
 - `:SSHBrowse` - Browse remote files using auto-detected file picker
 - `:SSHGrep [pattern]` - Search remote files using auto-detected search tool
 - `:SSHChangeDir` - Set current directory to SSH mount (picker shown if multiple mounts)
+- `:SSHTerminal` - Open SSH terminal session to remote host (picker shown if multiple mounts)
 
 ## 🎹 Key Mapping
 
@@ -197,6 +198,7 @@ This plugin optionally provides default keybindings under `<leader>m`. These can
 | `<leader>mr` | Reload SSH configuration           |
 | `<leader>mo` | Browse remote mount                |
 | `<leader>mg` | Grep remote files                  |
+| `<leader>mt` | Open SSH terminal session          |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
 

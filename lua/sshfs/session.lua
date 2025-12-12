@@ -61,7 +61,7 @@ function Session.connect(host)
 		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
 		local Connections = require("sshfs.lib.connections")
 		local Navigate = require("sshfs.ui.navigate")
-		Connections.add(host.Name, mount_dir)
+		Connections.add(host.Name, mount_dir, remote_path_suffix)
 		Navigate.with_picker(mount_dir, config)
 		return true
 	end)

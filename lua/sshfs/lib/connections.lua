@@ -44,7 +44,8 @@ end
 --- Add a new connection to the cache
 ---@param host string Hostname/alias
 ---@param mount_path string Mount point path
-function Connections.add(host, mount_path)
+---@param remote_path string|nil Remote path on the host (optional)
+function Connections.add(host, mount_path, remote_path)
 	if not ACTIVE_CONNECTIONS then
 		ACTIVE_CONNECTIONS = {}
 	end
@@ -52,6 +53,7 @@ function Connections.add(host, mount_path)
 	table.insert(ACTIVE_CONNECTIONS, {
 		host = host,
 		mount_path = mount_path,
+		remote_path = remote_path,
 	})
 end
 

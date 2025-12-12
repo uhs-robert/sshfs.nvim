@@ -11,6 +11,7 @@ local DEFAULT_KEYMAPS = {
 	mount = "m",
 	open = "o",
 	reload = "r",
+	terminal = "t",
 	unmount = "u",
 }
 
@@ -38,6 +39,7 @@ function Keymaps.setup(opts)
 	vim.keymap.set("n", keymaps.reload, Api.reload, { desc = "Reload ssh_configs" })
 	vim.keymap.set("n", keymaps.open, Api.browse, { desc = "Browse Mounted Directory" })
 	vim.keymap.set("n", keymaps.grep, Api.grep, { desc = "GREP Mounted Directory" })
+	vim.keymap.set("n", keymaps.terminal, Api.ssh_terminal, { desc = "Open SSH Terminal" })
 
 	-- Check if which-key is installed before registering the group with an icon
 	local ok, wk = pcall(require, "which-key")

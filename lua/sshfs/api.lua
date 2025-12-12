@@ -150,4 +150,10 @@ Api.change_to_mount_dir = function()
 	Navigate.to_mount_dir()
 end
 
+--- Open SSH terminal session to remote host
+Api.ssh_terminal = function()
+	local Navigate = require("sshfs.ui.navigate")
+	Navigate.open_ssh_terminal()
+end
+
 return Api
