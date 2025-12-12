@@ -2,7 +2,7 @@
 
 local Navigate = {}
 
---- Change to mounted directory
+--- Change to mounted directory by opening it as a buffer
 function Navigate.to_mount_dir()
 	local Connections = require("sshfs.lib.connections")
 	local active_connections = Connections.get_all()
@@ -14,8 +14,7 @@ function Navigate.to_mount_dir()
 
 	if #active_connections == 1 then
 		local mount_dir = active_connections[1].mount_path
-		vim.cmd("tcd " .. vim.fn.fnameescape(mount_dir))
-		vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
+		vim.cmd("edit " .. vim.fn.fnameescape(mount_dir))
 		return
 	end
 
@@ -29,8 +28,7 @@ function Navigate.to_mount_dir()
 	}, function(_, idx)
 		if idx then
 			local mount_dir = active_connections[idx].mount_path
-			vim.cmd("tcd " .. vim.fn.fnameescape(mount_dir))
-			vim.notify("Changed to: " .. mount_dir, vim.log.levels.INFO)
+			vim.cmd("edit " .. vim.fn.fnameescape(mount_dir))
 		end
 	end)
 end
