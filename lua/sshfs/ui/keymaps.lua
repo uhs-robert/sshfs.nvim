@@ -18,7 +18,7 @@ local DEFAULT_KEYMAPS = {
 --- @param opts table|nil Configuration options with keymaps and lead_prefix
 function Keymaps.setup(opts)
 	local user_keymaps = opts and opts.keymaps or {}
-	local lead_prefix = opts.lead_prefix or DEFAULT_PREFIX
+	local lead_prefix = opts and opts.lead_prefix or DEFAULT_PREFIX
 
 	-- Merge and apply prefix dynamically
 	local keymaps = {}
@@ -30,14 +30,14 @@ function Keymaps.setup(opts)
 	vim.keymap.set("n", lead_prefix, "<nop>", { desc = "mount" })
 
 	-- Assign keymaps
-	local api = require("sshfs.api")
-	vim.keymap.set("n", keymaps.mount, api.mount, { desc = "Mount a SSH Server" })
-	vim.keymap.set("n", keymaps.unmount, api.unmount, { desc = "Unmount a SSH Server" })
-	vim.keymap.set("n", keymaps.change_dir, api.change_to_mount_dir, { desc = "Set current directory to SSH mount" })
-	vim.keymap.set("n", keymaps.edit, api.edit, { desc = "Edit ssh_configs" })
-	vim.keymap.set("n", keymaps.reload, api.reload, { desc = "Reload ssh_configs" })
-	vim.keymap.set("n", keymaps.open, api.browse, { desc = "Browse Mounted Directory" })
-	vim.keymap.set("n", keymaps.grep, api.grep, { desc = "GREP Mounted Directory" })
+	local Api = require("sshfs.api")
+	vim.keymap.set("n", keymaps.mount, Api.mount, { desc = "Mount a SSH Server" })
+	vim.keymap.set("n", keymaps.unmount, Api.unmount, { desc = "Unmount a SSH Server" })
+	vim.keymap.set("n", keymaps.change_dir, Api.change_to_mount_dir, { desc = "Set current directory to SSH mount" })
+	vim.keymap.set("n", keymaps.edit, Api.edit, { desc = "Edit ssh_configs" })
+	vim.keymap.set("n", keymaps.reload, Api.reload, { desc = "Reload ssh_configs" })
+	vim.keymap.set("n", keymaps.open, Api.browse, { desc = "Browse Mounted Directory" })
+	vim.keymap.set("n", keymaps.grep, Api.grep, { desc = "GREP Mounted Directory" })
 
 	-- Check if which-key is installed before registering the group with an icon
 	local ok, wk = pcall(require, "which-key")
