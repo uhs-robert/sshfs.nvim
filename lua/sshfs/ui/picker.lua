@@ -165,14 +165,13 @@ function Picker.browse_remote_files(opts)
 	local AutoCommands = require("sshfs.ui.autocommands")
 	local config, active_connection, target_dir = validate_remote_connection(opts)
 
-	if not config or not active_connection then
+	if not config or not active_connection or not target_dir then
 		return
 	end
 
 	-- Try to open file picker (manual user command)
 	AutoCommands.chdir_on_next_open(active_connection.mount_path)
 	local success, picker_name = Picker.open_file_picker(target_dir, config, true)
-
 	if not success then
 		vim.notify("Failed to open " .. picker_name .. ". Please open manually.", vim.log.levels.WARN)
 	end
@@ -193,33 +192,19 @@ function Picker.grep_remote_files(pattern, opts)
 	-- Try to open search picker (manual user command)
 	AutoCommands.chdir_on_next_open(active_connection.mount_path)
 	local success, picker_name = Picker.open_search_picker(target_dir, pattern, config, true)
-
 	if success then
-		if pattern and pattern ~= "" then
-			vim.notify(
-				"Opened " .. picker_name .. " search for pattern '" .. pattern .. "' in: " .. target_dir,
-				vim.log.levels.INFO
-			)
-		else
-			vim.notify("Opened " .. picker_name .. " search interface in: " .. target_dir, vim.log.levels.INFO)
-		end
-	else
-		-- Fallback to old behavior
-		vim.cmd("tcd " .. vim.fn.fnameescape(target_dir))
-		if pattern and pattern ~= "" then
-			vim.fn.setreg("/", pattern)
-			vim.notify(
-				"Changed to remote directory. Search pattern '" .. pattern .. "' set in search register.",
-				vim.log.levels.INFO
-			)
-		else
-			vim.notify("Changed to remote directory: " .. target_dir, vim.log.levels.INFO)
-		end
-		vim.notify(
-			"Reason: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.",
-			vim.log.levels.WARN
-		)
+		return
 	end
+
+	-- Fallback behaviour
+	vim.cmd("tcd " .. vim.fn.fnameescape(target_dir))
+	if pattern and pattern ~= "" then
+		vim.fn.setreg("/", pattern)
+	end
+	vim.notify(
+		"Grep failed for: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.",
+		vim.log.levels.WARN
+	)
 end
 
 return Picker
