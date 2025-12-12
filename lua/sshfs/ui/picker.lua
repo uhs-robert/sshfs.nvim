@@ -7,23 +7,23 @@ local Config = require("sshfs.config")
 -- Integration registry, modules are lazy-loaded on first use
 local FILE_PICKERS = {
 	{ name = "snacks", module = "sshfs.integrations.snacks", method = "explore_files" },
-	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "explore_files" },
+	{ name = "yazi", module = "sshfs.integrations.yazi", method = "explore_files" },
 	{ name = "telescope", module = "sshfs.integrations.telescope", method = "explore_files" },
 	{ name = "mini", module = "sshfs.integrations.mini", method = "explore_files" },
 	{ name = "oil", module = "sshfs.integrations.oil", method = "explore_files" },
 	{ name = "neo-tree", module = "sshfs.integrations.neo_tree", method = "explore_files" },
 	{ name = "nvim-tree", module = "sshfs.integrations.nvim_tree", method = "explore_files" },
-	{ name = "yazi", module = "sshfs.integrations.yazi", method = "explore_files" },
 	{ name = "lf", module = "sshfs.integrations.lf", method = "explore_files" },
 	{ name = "nnn", module = "sshfs.integrations.nnn", method = "explore_files" },
 	{ name = "ranger", module = "sshfs.integrations.ranger", method = "explore_files" },
+	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "explore_files" }, -- Slow on SSHFS
 	{ name = "netrw", module = "sshfs.integrations.netrw", method = "explore_files" },
 }
 
 local SEARCH_PICKERS = {
 	{ name = "snacks", module = "sshfs.integrations.snacks", method = "grep" },
-	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "grep" },
 	{ name = "telescope", module = "sshfs.integrations.telescope", method = "grep" },
+	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "grep" },
 	{ name = "mini", module = "sshfs.integrations.mini", method = "grep" },
 	{ name = "builtin", module = "sshfs.integrations.builtin", method = "grep" },
 }
