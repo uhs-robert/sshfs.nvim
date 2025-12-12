@@ -9,7 +9,7 @@ local Mini = {}
 function Mini.explore_files(cwd)
 	local ok, mini_pick = pcall(require, "mini.pick")
 	if ok and mini_pick.builtin and mini_pick.builtin.files then
-		mini_pick.builtin.files({ source = { cwd = cwd } })
+		mini_pick.builtin.files({}, { source = { cwd = cwd } })
 		return true
 	end
 	return false
@@ -22,11 +22,11 @@ end
 function Mini.grep(cwd, pattern)
 	local ok, mini_pick = pcall(require, "mini.pick")
 	if ok and mini_pick.builtin and mini_pick.builtin.grep_live then
-		local opts = {}
+		local opts = { source = { cwd = cwd } }
 		if pattern and pattern ~= "" then
-			opts.default_text = pattern
+			opts.input = vim.split(pattern, "")
 		end
-		mini_pick.builtin.grep_live({ source = { cwd = cwd } }, opts)
+		mini_pick.builtin.grep_live({}, opts)
 		return true
 	end
 	return false
