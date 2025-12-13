@@ -5,7 +5,7 @@ local Ask = {}
 
 --- Normalize remote mount path to handle edge cases
 --- @param path string|nil User-provided path
---- @param host table Host object with User field
+--- @param host table Host object with user field
 --- @return string Normalized path suitable for remote mounting
 local function normalize_remote_path(path, host)
 	-- Handle empty/nil -> root directory
@@ -24,8 +24,8 @@ local function normalize_remote_path(path, host)
 	-- Handle ~ or ~/... -> $HOME or $HOME/...
 	if path == "~" or path:match("^~/") then
 		local home_dir = "$HOME"
-		if host.User then
-			home_dir = "/home/" .. host.User
+		if host.user then
+			home_dir = "/home/" .. host.user
 		end
 
 		return path:gsub("^~", home_dir)
@@ -40,7 +40,7 @@ local function normalize_remote_path(path, host)
 end
 
 --- Ask for mount location
---- @param host table Host object with Name field
+--- @param host table Host object with name field
 --- @param config table Plugin configuration
 --- @param callback function Callback invoked with selected remote path or nil
 function Ask.for_mount_path(host, config, callback)
@@ -51,7 +51,7 @@ function Ask.for_mount_path(host, config, callback)
 	}
 
 	-- Add configured path options if available (string or array)
-	local configured_paths = config.host_paths and config.host_paths[host.Name]
+	local configured_paths = config.host_paths and config.host_paths[host.name]
 	if configured_paths then
 		if type(configured_paths) == "string" then
 			table.insert(options, { label = configured_paths, path = configured_paths })

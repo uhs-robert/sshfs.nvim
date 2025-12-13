@@ -55,7 +55,7 @@ end
 
 --- Determine whether password authentication should be attempted based on error type
 --- @param error_output string Error output from the sshfs command
---- @param host table Host object with Name and User fields
+--- @param host table Host object with name and user fields
 --- @return boolean True if password auth should be tried
 --- @return string Formatted error message describing the error
 local function should_retry_with_password(error_output, host)
@@ -64,30 +64,31 @@ local function should_retry_with_password(error_output, host)
 	end
 
 	return true,
-		string.format("Authentication Error for %s@%s: %s", host.User, host.Name, error_output or "Unknown Error")
+		string.format("Authentication Error for %s@%s: %s", host.user or "user", host.name, error_output or "Unknown Error")
 end
 
 --- Try SSH key-based authentication for mounting
---- @param host table Host object with Name, User, Port, and Path fields
+--- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
 --- @return boolean True if authentication succeeded
 --- @return string Result message or error output
 function Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
-	remote_path_suffix = remote_path_suffix or (host.Path or "")
+	remote_path_suffix = remote_path_suffix or (host.path or "")
 	local options = get_sshfs_options("key")
 
-	local remote_path = host.Name
-	if host.User then
-		remote_path = host.User .. "@" .. remote_path
+	-- Use host.name (the alias) to let SSH config resolution work properly
+	local remote_path = host.name
+	if host.user then
+		remote_path = host.user .. "@" .. remote_path
 	end
 	remote_path = remote_path .. ":" .. remote_path_suffix
 
 	local cmd = { "sshfs", remote_path, mount_point, "-o", table.concat(options, ",") }
 
-	if host.Port then
+	if host.port then
 		table.insert(cmd, "-p")
-		table.insert(cmd, host.Port)
+		table.insert(cmd, host.port)
 	end
 
 	-- Pass command as table to avoid shell injection (table = direct exec, string = shell)
@@ -96,26 +97,27 @@ function Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
 end
 
 --- Try password-based authentication for mounting with retry attempts
---- @param host table Host object with Name, User, Port, and Path fields
+--- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
 --- @param max_attempts number|nil Maximum password attempts (default: 3)
 --- @return boolean True if authentication succeeded
 --- @return string Result message or error output
 function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix, max_attempts)
-	remote_path_suffix = remote_path_suffix or (host.Path or "")
+	remote_path_suffix = remote_path_suffix or (host.path or "")
 	max_attempts = max_attempts or 3
 	local options = get_sshfs_options("password")
 
-	local remote_path = host.Name
-	if host.User then
-		remote_path = host.User .. "@" .. remote_path
+	-- Use host.name (the alias) to let SSH config resolution work properly
+	local remote_path = host.name
+	if host.user then
+		remote_path = host.user .. "@" .. remote_path
 	end
 	remote_path = remote_path .. ":" .. remote_path_suffix
 
 	for attempt = 1, max_attempts do
 		local password =
-			vim.fn.inputsecret(string.format("Password for %s (%d/%d): ", host.Name, attempt, max_attempts))
+			vim.fn.inputsecret(string.format("Password for %s (%d/%d): ", host.name, attempt, max_attempts))
 
 		if not password or password == "" then
 			return false, "User cancelled"
@@ -123,9 +125,9 @@ function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix
 
 		local cmd = { "sshfs", remote_path, mount_point, "-o", table.concat(options, ",") }
 
-		if host.Port then
+		if host.port then
 			table.insert(cmd, "-p")
-			table.insert(cmd, host.Port)
+			table.insert(cmd, host.port)
 		end
 
 		-- Pass command as table to avoid shell injection (table = direct exec, string = shell)
@@ -150,7 +152,7 @@ function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix
 end
 
 --- Authenticate and mount with automatic fallback from key to password auth
---- @param host table Host object with Name, User, Port, and Path fields
+--- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
 --- @return boolean True if authentication and mount succeeded
@@ -160,7 +162,7 @@ function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix)
 	if success then
 		return true, "Key authentication successful"
 	elseif not error_output then
-		return false, string.format("Unknown Error: Key authentication failed for %s@%s", host.User, host.Name)
+		return false, string.format("Unknown Error: Key authentication failed for %s@%s", host.user or "user", host.name)
 	end
 
 	local should_try_password, error_message = should_retry_with_password(error_output, host)

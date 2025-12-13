@@ -110,20 +110,13 @@ function Select.host(callback)
 	local SSHConfig = require("sshfs.lib.ssh_config")
 	local hosts = SSHConfig.get_hosts()
 
-	if not hosts or vim.tbl_count(hosts) == 0 then
+	if not hosts or #hosts == 0 then
 		vim.notify("No SSH hosts found in configuration", vim.log.levels.WARN)
 		return
 	end
 
-	local host_list = {}
-	local host_map = {}
-
-	for name, host in pairs(hosts) do
-		local display = name -- Just use the alias/hostname
-
-		table.insert(host_list, display)
-		host_map[display] = host
-	end
+	-- Sort hosts alphabetically
+	local host_list = vim.deepcopy(hosts)
 	table.sort(host_list)
 
 	vim.ui.select(host_list, {
@@ -132,8 +125,13 @@ function Select.host(callback)
 			return item
 		end,
 	}, function(choice)
-		if choice and host_map[choice] then
-			callback(host_map[choice])
+		if choice then
+			local host, err = SSHConfig.get_host_config(choice)
+			if not host then
+				vim.notify("Failed to resolve SSH config: " .. (err or "Unknown error"), vim.log.levels.ERROR)
+				return
+			end
+			callback(host)
 		end
 	end)
 end

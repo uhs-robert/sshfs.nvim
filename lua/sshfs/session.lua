@@ -6,16 +6,16 @@ local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
 
 --- Connect to a remote SSH host via SSHFS
----@param host table Host object with Name, User, Port, and Path fields
+---@param host table Host object with name, user, port, and path fields
 ---@return boolean|nil Success status (or nil if async callback)
 function Session.connect(host)
 	local MountPoint = require("sshfs.lib.mount_point")
 	local config = Config.get()
-	local mount_dir = config.mounts.base_dir .. "/" .. host.Name
+	local mount_dir = config.mounts.base_dir .. "/" .. host.name
 
 	-- Check if already mounted
 	if MountPoint.is_active(mount_dir) then
-		vim.notify("Host " .. host.Name .. " is already mounted at " .. mount_dir, vim.log.levels.WARN)
+		vim.notify("Host " .. host.name .. " is already mounted at " .. mount_dir, vim.log.levels.WARN)
 		return true
 	end
 
@@ -49,10 +49,10 @@ function Session.connect(host)
 		end
 
 		-- Add connection to cache and navigate to remote directory with picker
-		vim.notify("Connected to " .. host.Name .. " successfully!", vim.log.levels.INFO)
+		vim.notify("Connected to " .. host.name .. " successfully!", vim.log.levels.INFO)
 		local Connections = require("sshfs.lib.connections")
 		local Navigate = require("sshfs.ui.navigate")
-		Connections.add(host.Name, mount_dir, remote_path_suffix)
+		Connections.add(host.name, mount_dir, remote_path_suffix)
 		Navigate.with_picker(mount_dir, config)
 		return true
 	end)

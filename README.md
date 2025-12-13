@@ -39,6 +39,7 @@ No forced dependencies. Use your preferred file picker, search tools, and workfl
 ### 🏗️ **Modern Architecture**
 
 - **Modern Neovim APIs** - Built for Neovim 0.10+ with vim.uv
+- **Full SSH config support** - Uses `ssh -G` for proper config resolution, supporting Include, Match, ProxyJump, and all SSH config features
 - **Robust authentication** - Key authentication with password fallback mechanisms
 - **Connection reuse** - Built-in SSH ControlMaster support for password-free terminal sessions and faster connections
 - **Modular architecture** - Clean separation of core functionality, UI components, and utilities
