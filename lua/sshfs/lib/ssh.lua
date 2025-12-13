@@ -39,7 +39,7 @@ end
 function Ssh.open_terminal(host, remote_path)
 	local ssh_cmd = Ssh.build_command(host, remote_path)
 	vim.cmd("enew")
-	vim.fn.termopen(ssh_cmd)
+	vim.fn.jobstart(ssh_cmd, { term = true })
 	vim.cmd("startinsert")
 end
 
