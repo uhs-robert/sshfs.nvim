@@ -28,6 +28,7 @@ end
 --- @return table Array of sshfs options
 local function get_sshfs_options(auth_type)
 	local Config = require("sshfs.config")
+	local Ssh = require("sshfs.lib.ssh")
 	local opts = Config.get()
 	local options = {}
 
@@ -37,16 +38,14 @@ local function get_sshfs_options(auth_type)
 		vim.list_extend(options, sshfs_opts)
 	end
 
-	-- Add ControlMaster options if enabled (for connection reuse)
-	local control_opts = Config.get_control_master_options()
-	if control_opts then
-		vim.list_extend(options, control_opts)
+	-- Add SSH command with ControlMaster and auth options
+	local ssh_cmd = Ssh.build_command_string(auth_type == "key" and "key" or nil)
+	if ssh_cmd ~= "ssh" then
+		table.insert(options, "ssh_command=" .. ssh_cmd)
 	end
 
-	-- Add auth-specific options (essential for authentication to work)
-	if auth_type == "key" then
-		table.insert(options, "BatchMode=yes")
-	elseif auth_type == "password" then
+	-- Add password_stdin for password authentication
+	if auth_type == "password" then
 		table.insert(options, "password_stdin")
 	end
 
