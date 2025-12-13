@@ -84,7 +84,8 @@ function App.setup(user_opts)
 			callback = function()
 				local Session = require("sshfs.session")
 				local Connections = require("sshfs.lib.connections")
-				local all_connections = Connections.get_all()
+				-- Make a copy to avoid modifying table during iteration
+				local all_connections = vim.list_extend({}, Connections.get_all())
 
 				for _, connection in ipairs(all_connections) do
 					Session.disconnect_from(connection)
