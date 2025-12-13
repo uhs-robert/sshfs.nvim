@@ -75,6 +75,7 @@ function App.setup(user_opts)
 	-- Initialize other modules
 	local MountPoint = require("sshfs.lib.mount_point")
 	MountPoint.get_or_create()
+	MountPoint.cleanup_stale()
 	require("sshfs.ui.keymaps").setup(opts)
 
 	-- Setup exit handler if enabled
