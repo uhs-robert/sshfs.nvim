@@ -4,7 +4,6 @@
 local MountPoint = {}
 local Directory = require("sshfs.lib.directory")
 local Config = require("sshfs.config")
-local BASE_MOUNT_DIR = Config.get_base_dir()
 
 --- Check if a mount path is actively mounted
 --- @param mount_path string Path to check for active mount
@@ -40,11 +39,12 @@ end
 --- @return table Array of mount objects with host and mount_path fields
 function MountPoint.list_active()
 	local mounts = {}
+	local base_mount_dir = Config.get_base_dir()
 
 	local result = vim.fn.system("mount")
 	if vim.v.shell_error ~= 0 then
 		-- Fall back to directory scanning
-		local files = vim.fn.glob(BASE_MOUNT_DIR .. "/*", false, true)
+		local files = vim.fn.glob(base_mount_dir .. "/*", false, true)
 		for _, file in ipairs(files) do
 			if vim.fn.isdirectory(file) == 1 and not Directory.is_empty(file) then
 				local host = vim.fn.fnamemodify(file, ":t")
@@ -57,7 +57,7 @@ function MountPoint.list_active()
 	end
 
 	-- Look for sshfs mounts in the specified mount directory
-	local mount_dir_escaped = BASE_MOUNT_DIR:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+	local mount_dir_escaped = base_mount_dir:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 	local pattern = "%s+(" .. mount_dir_escaped .. "/[^%s]+)%s+type%s+fuse%.sshfs"
 
 	for line in result:gmatch("[^\r\n]+") do
@@ -74,10 +74,10 @@ function MountPoint.list_active()
 end
 
 --- Get or create mount directory
---- @param mount_dir string|nil Directory path (defaults to BASE_MOUNT_DIR)
+--- @param mount_dir string|nil Directory path (defaults to base mount dir from config)
 --- @return boolean True if directory exists or was created successfully
 function MountPoint.get_or_create(mount_dir)
-	mount_dir = mount_dir or BASE_MOUNT_DIR
+	mount_dir = mount_dir or Config.get_base_dir()
 	local stat = vim.uv.fs_stat(mount_dir)
 	if stat and stat.type == "directory" then
 		return true
@@ -122,9 +122,10 @@ end
 --- Clean up base mount directory if empty
 --- @return boolean True if cleanup succeeded
 function MountPoint.cleanup()
-	local stat = vim.uv.fs_stat(BASE_MOUNT_DIR)
-	if stat and stat.type == "directory" and Directory.is_empty(BASE_MOUNT_DIR) then
-		vim.fn.delete(BASE_MOUNT_DIR, "d")
+	local base_mount_dir = Config.get_base_dir()
+	local stat = vim.uv.fs_stat(base_mount_dir)
+	if stat and stat.type == "directory" and Directory.is_empty(base_mount_dir) then
+		vim.fn.delete(base_mount_dir, "d")
 		return true
 	end
 	return false
