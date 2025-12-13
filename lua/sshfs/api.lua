@@ -116,13 +116,25 @@ end
 --- @param opts table|nil Picker options
 Api.grep = function(pattern, opts)
 	local Connections = require("sshfs.lib.connections")
-	if not Connections.has_active() then
+	local active_connections = Connections.get_all()
+
+	if #active_connections == 0 then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
+	elseif #active_connections == 1 then
+		local Picker = require("sshfs.ui.picker")
+		Picker.grep_remote_files(pattern, opts)
+	else
+		local Select = require("sshfs.ui.select")
+		Select.mount(function(selected_mount)
+			if selected_mount then
+				local Picker = require("sshfs.ui.picker")
+				local grep_opts = opts or {}
+				grep_opts.dir = selected_mount.mount_path
+				Picker.grep_remote_files(pattern, grep_opts)
+			end
+		end)
 	end
-
-	local Picker = require("sshfs.ui.picker")
-	Picker.grep_remote_files(pattern, opts)
 end
 
 --- List all active mounts and open file picker for selected mount
