@@ -5,11 +5,11 @@ local Keymaps = {}
 
 local DEFAULT_PREFIX = "<leader>m"
 local DEFAULT_KEYMAPS = {
-	change_dir = "d",
-	edit = "e",
+	config = "c",
+	explore = "e",
+	files = "f",
 	grep = "g",
 	mount = "m",
-	open = "o",
 	reload = "r",
 	terminal = "t",
 	unmount = "u",
@@ -34,12 +34,27 @@ function Keymaps.setup(opts)
 	local Api = require("sshfs.api")
 	vim.keymap.set("n", keymaps.mount, Api.mount, { desc = "Mount a SSH Server" })
 	vim.keymap.set("n", keymaps.unmount, Api.unmount, { desc = "Unmount a SSH Server" })
-	vim.keymap.set("n", keymaps.change_dir, Api.change_to_mount_dir, { desc = "Set current directory to SSH mount" })
-	vim.keymap.set("n", keymaps.edit, Api.edit, { desc = "Edit ssh_configs" })
-	vim.keymap.set("n", keymaps.reload, Api.reload, { desc = "Reload ssh_configs" })
-	vim.keymap.set("n", keymaps.open, Api.browse, { desc = "Browse Mounted Directory" })
-	vim.keymap.set("n", keymaps.grep, Api.grep, { desc = "GREP Mounted Directory" })
+	vim.keymap.set("n", keymaps.explore, Api.explore, { desc = "Explore SSH mount" })
+	vim.keymap.set("n", keymaps.config, Api.config, { desc = "Edit SSH config" })
+	vim.keymap.set("n", keymaps.reload, Api.reload, { desc = "Reload SSH config" })
+	vim.keymap.set("n", keymaps.files, Api.files, { desc = "Browse files" })
+	vim.keymap.set("n", keymaps.grep, Api.grep, { desc = "Grep files" })
 	vim.keymap.set("n", keymaps.terminal, Api.ssh_terminal, { desc = "Open SSH Terminal" })
+
+	-- TODO: Delete after January 15th.
+	-- Handle deprecated keymap names
+	if user_keymaps.change_dir then
+		vim.notify("sshfs.nvim: Keymap 'change_dir' is deprecated. Use 'explore' instead.", vim.log.levels.WARN)
+	end
+	if user_keymaps.open_dir then
+		vim.notify("sshfs.nvim: Keymap 'open_dir' is deprecated. Use 'explore' instead.", vim.log.levels.WARN)
+	end
+	if user_keymaps.open then
+		vim.notify("sshfs.nvim: Keymap 'open' is deprecated. Use 'files' instead.", vim.log.levels.WARN)
+	end
+	if user_keymaps.edit then
+		vim.notify("sshfs.nvim: Keymap 'edit' is deprecated. Use 'config' instead.", vim.log.levels.WARN)
+	end
 
 	-- Check if which-key is installed before registering the group with an icon
 	local ok, wk = pcall(require, "which-key")

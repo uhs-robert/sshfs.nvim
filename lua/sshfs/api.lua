@@ -67,7 +67,7 @@ Api.get_active = function()
 end
 
 --- Edit SSH config files using native picker
-Api.edit = function()
+Api.config = function()
 	local Select = require("sshfs.ui.select")
 	Select.ssh_config(function(config_file)
 		if config_file then
@@ -97,7 +97,7 @@ end
 
 --- Browse remote files - smart handling for multiple mounts
 --- @param opts table|nil Picker options
-Api.browse = function(opts)
+Api.files = function(opts)
 	local Connections = require("sshfs.lib.connections")
 	local active_connections = Connections.get_all()
 
@@ -144,8 +144,8 @@ Api.list_mounts = function()
 	end)
 end
 
---- Change current directory to SSH mount
-Api.change_to_mount_dir = function()
+--- Explore SSH mount (opens directory as buffer, triggering file explorer)
+Api.explore = function()
 	local Navigate = require("sshfs.ui.navigate")
 	Navigate.to_mount_dir()
 end
@@ -155,5 +155,16 @@ Api.ssh_terminal = function()
 	local Navigate = require("sshfs.ui.navigate")
 	Navigate.open_ssh_terminal()
 end
+
+-- TODO: Remove these after January 15th
+-- Deprecated aliases (kept for backward compatibility)
+--- @deprecated Use config instead
+Api.edit = Api.config
+
+--- @deprecated Use files instead
+Api.browse = Api.files
+
+--- @deprecated Use explore instead
+Api.change_to_mount_dir = Api.explore
 
 return Api

@@ -174,10 +174,10 @@ require("sshfs").setup({
   keymaps = {
     mount = "<leader>mm",         -- change any keymap below
     unmount = "<leader>mu",
-    change_dir = "<leader>md",
-    edit = "<leader>me",
+    explore = "<leader>me",
+    config = "<leader>mc",
     reload = "<leader>mr",
-    open = "<leader>mo",
+    files = "<leader>mf",
     grep = "<leader>mg",
   },
 })
@@ -192,11 +192,11 @@ require("sshfs").setup({
 
 - `:SSHConnect [host]` - Connect to SSH host (picker or direct)
 - `:SSHDisconnect` - Disconnect from current host (picker shown if multiple mounts)
-- `:SSHEdit` - Edit SSH config files
+- `:SSHConfig` - Edit SSH config files
 - `:SSHReload` - Reload SSH configuration
-- `:SSHBrowse` - Browse remote files using auto-detected file picker
+- `:SSHFiles` - Browse remote files using auto-detected file picker
 - `:SSHGrep [pattern]` - Search remote files using auto-detected search tool
-- `:SSHChangeDir` - Set current directory to SSH mount (picker shown if multiple mounts)
+- `:SSHExplore` - Explore SSH mount (picker shown if multiple mounts)
 - `:SSHTerminal` - Open SSH terminal session to remote host (picker shown if multiple mounts)
 
 ## 🎹 Key Mapping
@@ -205,16 +205,16 @@ This plugin optionally provides default keybindings under `<leader>m`. These can
 
 ### 🎯 Default Keymaps
 
-| Mapping      | Description                        |
-| ------------ | ---------------------------------- |
-| `<leader>mm` | Mount an SSH host                  |
-| `<leader>mu` | Unmount an active session          |
-| `<leader>md` | Set current directory to SSH mount |
-| `<leader>me` | Edit SSH config files              |
-| `<leader>mr` | Reload SSH configuration           |
-| `<leader>mo` | Browse remote mount                |
-| `<leader>mg` | Grep remote files                  |
-| `<leader>mt` | Open SSH terminal session          |
+| Mapping      | Description                   |
+| ------------ | ----------------------------- |
+| `<leader>mm` | Mount an SSH host             |
+| `<leader>mu` | Unmount an active session     |
+| `<leader>me` | Explore SSH mount             |
+| `<leader>mc` | Edit SSH config               |
+| `<leader>mr` | Reload SSH configuration      |
+| `<leader>mf` | Browse files                  |
+| `<leader>mg` | Grep files                    |
+| `<leader>mt` | Open SSH terminal session     |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
 
@@ -228,10 +228,10 @@ require("sshfs").setup({
   keymaps = {
     mount = "<leader>mm",
     unmount = "<leader>mu",
-    change_dir = "<leader>md",
-    edit = "<leader>me",
+    explore = "<leader>me",
+    config = "<leader>mc",
     reload = "<leader>mr",
-    open = "<leader>mo",
+    files = "<leader>mf",
     grep = "<leader>mg",
   },
 })
@@ -271,7 +271,7 @@ When you run `:SSHConnect`, you'll be prompted to:
 
 After connecting to a host, the plugin mounts the remote filesystem locally. You can then:
 
-1. **Browse files**: Use `:SSHBrowse` to automatically launch your preferred file picker:
+1. **Browse files**: Use `:SSHFiles` to automatically launch your preferred file picker:
    - **Auto-detected pickers**: telescope, oil, neo-tree, nvim-tree, snacks, fzf-lua, mini, yazi, lf, nnn, ranger
    - **Fallback**: netrw if no other picker is available
    - **Your choice**: Configure `preferred_picker = "yazi"` to force a specific picker

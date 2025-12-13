@@ -18,8 +18,8 @@ App.setup_api_commands = function()
 		end
 	end, { nargs = "?", desc = "Remotely connect to host via picker or command as argument." })
 
-	vim.api.nvim_create_user_command("SSHEdit", function()
-		Api.edit()
+	vim.api.nvim_create_user_command("SSHConfig", function()
+		Api.config()
 	end, { desc = "Edit SSH config files" })
 
 	vim.api.nvim_create_user_command("SSHReload", function()
@@ -30,8 +30,8 @@ App.setup_api_commands = function()
 		Api.unmount()
 	end, { desc = "Disconnect from current SSH host" })
 
-	vim.api.nvim_create_user_command("SSHBrowse", function()
-		Api.browse()
+	vim.api.nvim_create_user_command("SSHFiles", function()
+		Api.files()
 	end, { desc = "Browse remote files" })
 
 	vim.api.nvim_create_user_command("SSHGrep", function(opts)
@@ -39,14 +39,30 @@ App.setup_api_commands = function()
 		Api.grep(pattern)
 	end, { nargs = "?", desc = "Search text in remote files" })
 
+	vim.api.nvim_create_user_command("SSHExplore", function()
+		Api.explore()
+	end, { desc = "Explore SSH mount" })
+
+	-- TODO: Delete these after January 15th
+	-- Deprecated command aliases
+	vim.api.nvim_create_user_command("SSHEdit", function()
+		vim.notify("SSHEdit is deprecated. Use :SSHConfig instead.", vim.log.levels.WARN)
+		Api.config()
+	end, { desc = "Edit SSH config files (deprecated: use SSHConfig)" })
+
+	vim.api.nvim_create_user_command("SSHBrowse", function()
+		vim.notify("SSHBrowse is deprecated. Use :SSHFiles instead.", vim.log.levels.WARN)
+		Api.files()
+	end, { desc = "Browse remote files (deprecated: use SSHFiles)" })
+
 	vim.api.nvim_create_user_command("SSHChangeDir", function()
-		Api.change_to_mount_dir()
-	end, { desc = "Set current directory to SSH mount" })
+		vim.notify("SSHChangeDir is deprecated. Use :SSHExplore instead.", vim.log.levels.WARN)
+		Api.explore()
+	end, { desc = "Explore SSH mount (deprecated: use SSHExplore)" })
 
 	vim.api.nvim_create_user_command("SSHTerminal", function()
 		Api.ssh_terminal()
 	end, { desc = "Open SSH terminal session to remote host" })
-
 end
 
 --- Main entry point for plugin initialization.
