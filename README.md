@@ -121,7 +121,11 @@ You can optionally customize behavior by passing a config table to setup().
 ```lua
 require("sshfs").setup({
   connections = {
-    sshfs_args = {                  -- these are the sshfs options that will be used
+    ssh_configs = {                 -- Table of ssh config file locations to use
+      "~/.ssh/config",
+      "/etc/ssh/ssh_config",
+    },
+    sshfs_args = {                  -- These are the sshfs options that will be used
       "-o reconnect",               -- Automatically reconnect if the connection drops
       "-o ConnectTimeout=5",        -- Time (in seconds) to wait before failing a connection attempt
       "-o compression=yes",         -- Enable compression to reduce bandwidth usage
