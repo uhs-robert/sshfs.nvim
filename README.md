@@ -126,19 +126,21 @@ require("sshfs").setup({
       "~/.ssh/config",
       "/etc/ssh/ssh_config",
     },
-    -- SSHFS mount options (array of strings passed directly to sshfs -o)
+    -- SSHFS mount options (table of key-value pairs converted to sshfs -o arguments)
+    -- Boolean flags: set to true to include, false/nil to omit
+    -- String/number values: converted to key=value format
     sshfs_options = {
-      "reconnect",                  -- Auto-reconnect on connection loss
-      "ConnectTimeout=5",           -- Connection timeout in seconds
-      "compression=yes",            -- Enable compression
-      "ServerAliveInterval=15",     -- Keep-alive interval (15s × 3 = 45s timeout)
-      "ServerAliveCountMax=3",      -- Keep-alive message count
-      "dir_cache=yes",              -- Enable directory caching
-      "dcache_timeout=300",         -- Cache timeout in seconds
-      "dcache_max_size=10000",      -- Max cache size
-      -- "allow_other",             -- Allow other users to access mount
-      -- "uid=1000,gid=1000",       -- Set file ownership
-      -- "follow_symlinks",         -- Follow symbolic links
+      reconnect = true,             -- Auto-reconnect on connection loss
+      ConnectTimeout = 5,           -- Connection timeout in seconds
+      compression = "yes",          -- Enable compression
+      ServerAliveInterval = 15,     -- Keep-alive interval (15s × 3 = 45s timeout)
+      ServerAliveCountMax = 3,      -- Keep-alive message count
+      dir_cache = "yes",            -- Enable directory caching
+      dcache_timeout = 300,         -- Cache timeout in seconds
+      dcache_max_size = 10000,      -- Max cache size
+      -- allow_other = true,        -- Allow other users to access mount
+      -- uid = "1000,gid=1000",     -- Set file ownership (use string for complex values)
+      -- follow_symlinks = true,    -- Follow symbolic links
     },
     enable_control_master = true,  -- Use SSH ControlMaster to reuse connections (faster, no password re-entry)
     control_persist = "10m",        -- How long to keep ControlMaster connection alive after last use

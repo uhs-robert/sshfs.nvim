@@ -3,6 +3,26 @@
 
 local Sshfs = {}
 
+--- Convert sshfs_options table to array format for sshfs -o
+--- @param options_table table Table of options (e.g., {reconnect = true, ConnectTimeout = 5})
+--- @return table Array of option strings (e.g., {"reconnect", "ConnectTimeout=5"})
+local function build_sshfs_args(options_table)
+	local result = {}
+
+	for key, value in pairs(options_table) do
+		if value == true then
+			-- Boolean true: just add the key
+			table.insert(result, key)
+		elseif value ~= false and value ~= nil then
+			-- String or number: add as key=value
+			table.insert(result, string.format("%s=%s", key, tostring(value)))
+		end
+		-- false or nil: skip this option
+	end
+
+	return result
+end
+
 --- Build sshfs options array based on authentication type
 --- @param auth_type string Authentication type ("key" or "password")
 --- @return table Array of sshfs options
@@ -11,9 +31,10 @@ local function get_sshfs_options(auth_type)
 	local opts = Config.get()
 	local options = {}
 
-	-- Add user-configured sshfs options from config
+	-- Add user-configured sshfs options from config (convert table to array)
 	if opts.connections and opts.connections.sshfs_options then
-		vim.list_extend(options, opts.connections.sshfs_options)
+		local sshfs_opts = build_sshfs_args(opts.connections.sshfs_options)
+		vim.list_extend(options, sshfs_opts)
 	end
 
 	-- Add ControlMaster options if enabled (for connection reuse)
