@@ -37,18 +37,9 @@ function Session.connect(host)
 			return
 		end
 
-		-- SSH connection options from config
-		local ssh_options = {
-			compression = true,
-			server_alive_interval = 15,
-			server_alive_count_max = 3,
-		}
-
 		-- Attempt authentication and mounting
 		local Sshfs = require("sshfs.lib.sshfs")
-		local user_sshfs_args = config.connections and config.connections.sshfs_args
-		local success, result =
-			Sshfs.authenticate_and_mount(host, mount_dir, ssh_options, remote_path_suffix, user_sshfs_args)
+		local success, result = Sshfs.authenticate_and_mount(host, mount_dir, remote_path_suffix)
 
 		-- Handle connection failure
 		if not success then

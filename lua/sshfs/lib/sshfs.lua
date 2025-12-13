@@ -5,31 +5,21 @@ local Sshfs = {}
 
 --- Build sshfs options array based on authentication type
 --- @param auth_type string Authentication type ("key" or "password")
---- @param ssh_options table|nil SSH configuration options
---- @param user_sshfs_args table|nil User-provided sshfs arguments
 --- @return table Array of sshfs options
-local function get_sshfs_options(auth_type, ssh_options, user_sshfs_args)
-	ssh_options = ssh_options or {}
-
+local function get_sshfs_options(auth_type)
+	local Config = require("sshfs.config")
+	local opts = Config.get()
 	local options = {}
 
-	-- Add user-configured sshfs args first (so they take precedence)
-	if user_sshfs_args then
-		for _, arg in ipairs(user_sshfs_args) do
-			if arg:match("^%-o%s+(.+)") then
-				local opt = arg:match("^%-o%s+(.+)")
-				table.insert(options, opt)
-			end
-		end
+	-- Add user-configured sshfs options from config
+	if opts.connections and opts.connections.sshfs_options then
+		vim.list_extend(options, opts.connections.sshfs_options)
 	end
 
-	-- Add optional dir_cache options if configured
-	if ssh_options.dir_cache then
-		vim.list_extend(options, {
-			"dir_cache=yes",
-			string.format("dcache_timeout=%d", ssh_options.dcache_timeout or 300),
-			string.format("dcache_max_size=%d", ssh_options.dcache_max_size or 10000),
-		})
+	-- Add ControlMaster options if enabled (for connection reuse)
+	local control_opts = Config.get_control_master_options()
+	if control_opts then
+		vim.list_extend(options, control_opts)
 	end
 
 	-- Add auth-specific options (essential for authentication to work)
@@ -59,14 +49,12 @@ end
 --- Try SSH key-based authentication for mounting
 --- @param host table Host object with Name, User, Port, and Path fields
 --- @param mount_point string Local mount point directory
---- @param ssh_options table|nil SSH configuration options
 --- @param remote_path_suffix string|nil Remote path to mount
---- @param user_sshfs_args table|nil User-provided sshfs arguments
 --- @return boolean True if authentication succeeded
 --- @return string Result message or error output
-function Sshfs.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
+function Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
 	remote_path_suffix = remote_path_suffix or (host.Path or "")
-	local options = get_sshfs_options("key", ssh_options, user_sshfs_args)
+	local options = get_sshfs_options("key")
 
 	local remote_path = host.Name
 	if host.User then
@@ -88,23 +76,14 @@ end
 --- Try password-based authentication for mounting with retry attempts
 --- @param host table Host object with Name, User, Port, and Path fields
 --- @param mount_point string Local mount point directory
---- @param ssh_options table|nil SSH configuration options
 --- @param remote_path_suffix string|nil Remote path to mount
 --- @param max_attempts number|nil Maximum password attempts (default: 3)
---- @param user_sshfs_args table|nil User-provided sshfs arguments
 --- @return boolean True if authentication succeeded
 --- @return string Result message or error output
-function Sshfs.try_password_authentication(
-	host,
-	mount_point,
-	ssh_options,
-	remote_path_suffix,
-	max_attempts,
-	user_sshfs_args
-)
+function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix, max_attempts)
 	remote_path_suffix = remote_path_suffix or (host.Path or "")
 	max_attempts = max_attempts or 3
-	local options = get_sshfs_options("password", ssh_options, user_sshfs_args)
+	local options = get_sshfs_options("password")
 
 	local remote_path = host.Name
 	if host.User then
@@ -150,14 +129,11 @@ end
 --- Authenticate and mount with automatic fallback from key to password auth
 --- @param host table Host object with Name, User, Port, and Path fields
 --- @param mount_point string Local mount point directory
---- @param ssh_options table|nil SSH configuration options
 --- @param remote_path_suffix string|nil Remote path to mount
---- @param user_sshfs_args table|nil User-provided sshfs arguments
 --- @return boolean True if authentication and mount succeeded
 --- @return string Result message or error output
-function Sshfs.authenticate_and_mount(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
-	local success, error_output =
-		Sshfs.try_key_authentication(host, mount_point, ssh_options, remote_path_suffix, user_sshfs_args)
+function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix)
+	local success, error_output = Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
 	if success then
 		return true, "Key authentication successful"
 	elseif not error_output then
@@ -169,7 +145,7 @@ function Sshfs.authenticate_and_mount(host, mount_point, ssh_options, remote_pat
 		return false, error_message
 	end
 
-	return Sshfs.try_password_authentication(host, mount_point, ssh_options, remote_path_suffix, nil, user_sshfs_args)
+	return Sshfs.try_password_authentication(host, mount_point, remote_path_suffix)
 end
 
 return Sshfs

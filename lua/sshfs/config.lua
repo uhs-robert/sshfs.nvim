@@ -6,13 +6,22 @@ local Config = {}
 local DEFAULT_CONFIG = {
 	connections = {
 		ssh_configs = require("sshfs.lib.ssh_config").get_default_files(),
-    sshfs_args = {                      -- These are the sshfs options that will be used
-      "-o reconnect",                   -- Automatically reconnect if the connection drops
-      "-o ConnectTimeout=5",            -- Time (in seconds) to wait before failing a connection attempt
-      "-o compression=yes",             -- Enable compression to reduce bandwidth usage
-      "-o ServerAliveInterval=15",      -- Send a keepalive packet every 15 seconds to prevent timeouts
-      "-o ServerAliveCountMax=3",       -- Number of missed keepalive packets before disconnecting
+    -- SSHFS mount options (array of strings passed directly to sshfs -o)
+    sshfs_options = {
+      "reconnect",                      -- Auto-reconnect on connection loss
+      "ConnectTimeout=5",               -- Connection timeout in seconds
+      "compression=yes",                -- Enable compression
+      "ServerAliveInterval=15",         -- Keep-alive interval (15s × 3 = 45s timeout)
+      "ServerAliveCountMax=3",          -- Keep-alive message count
+      "dir_cache=yes",                  -- Enable directory caching (default: yes)
+      "dcache_timeout=300",             -- Cache timeout in seconds
+      "dcache_max_size=10000",          -- Max cache size
+      -- "allow_other",                 -- Allow other users to access mount
+      -- "uid=1000,gid=1000",           -- Set file ownership
+      -- "follow_symlinks",             -- Follow symbolic links
     },
+    enable_control_master = true,      -- Use SSH ControlMaster to reuse connections (faster, no password re-entry)
+    control_persist = "10m",            -- How long to keep ControlMaster connection alive after last use
 	},
 	mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
@@ -60,11 +69,40 @@ function Config.get()
 	return Config.options
 end
 
--- Get the configured base directory for mounts
+--- Get the configured base directory for mounts
 ---@return string base_dir The base directory path for mounts
 function Config.get_base_dir()
 	local opts = Config.options
 	return opts.mounts and opts.mounts.base_dir
+end
+
+--- Get ControlMaster options for SSH/SSHFS if enabled
+---@return table|nil Array of ControlMaster options, or nil if disabled
+function Config.get_control_master_options()
+	local opts = Config.options
+	if not opts.connections or not opts.connections.enable_control_master then
+		return nil
+	end
+
+	local socket_dir = vim.fn.expand("$HOME/.ssh/sockets")
+	local control_path = socket_dir .. "/%C"
+	local control_persist = opts.connections.control_persist or "10m"
+
+	return {
+		"ControlMaster=auto",
+		"ControlPath=" .. control_path,
+		"ControlPersist=" .. control_persist,
+	}
+end
+
+--- Get SSH socket directory path
+---@return string|nil socket_dir The socket directory path, or nil if ControlMaster disabled
+function Config.get_socket_dir()
+	local opts = Config.options
+	if not opts.connections or not opts.connections.enable_control_master then
+		return nil
+	end
+	return vim.fn.expand("$HOME/.ssh/sockets")
 end
 
 return Config

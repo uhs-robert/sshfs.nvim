@@ -40,6 +40,7 @@ No forced dependencies. Use your preferred file picker, search tools, and workfl
 
 - **Modern Neovim APIs** - Built for Neovim 0.10+ with vim.uv
 - **Robust authentication** - Key authentication with password fallback mechanisms
+- **Connection reuse** - Built-in SSH ControlMaster support for password-free terminal sessions and faster connections
 - **Modular architecture** - Clean separation of core functionality, UI components, and utilities
 - **Cross-platform support** - Tested on Linux with Windows/MacOS compatibility
 
@@ -125,13 +126,22 @@ require("sshfs").setup({
       "~/.ssh/config",
       "/etc/ssh/ssh_config",
     },
-    sshfs_args = {                  -- These are the sshfs options that will be used
-      "-o reconnect",               -- Automatically reconnect if the connection drops
-      "-o ConnectTimeout=5",        -- Time (in seconds) to wait before failing a connection attempt
-      "-o compression=yes",         -- Enable compression to reduce bandwidth usage
-      "-o ServerAliveInterval=15",  -- Send a keepalive packet every 15 seconds to prevent timeouts
-      "-o ServerAliveCountMax=3",   -- Number of missed keepalive packets before disconnecting
+    -- SSHFS mount options (array of strings passed directly to sshfs -o)
+    sshfs_options = {
+      "reconnect",                  -- Auto-reconnect on connection loss
+      "ConnectTimeout=5",           -- Connection timeout in seconds
+      "compression=yes",            -- Enable compression
+      "ServerAliveInterval=15",     -- Keep-alive interval (15s × 3 = 45s timeout)
+      "ServerAliveCountMax=3",      -- Keep-alive message count
+      "dir_cache=yes",              -- Enable directory caching
+      "dcache_timeout=300",         -- Cache timeout in seconds
+      "dcache_max_size=10000",      -- Max cache size
+      -- "allow_other",             -- Allow other users to access mount
+      -- "uid=1000,gid=1000",       -- Set file ownership
+      -- "follow_symlinks",         -- Follow symbolic links
     },
+    enable_control_master = true,  -- Use SSH ControlMaster to reuse connections (faster, no password re-entry)
+    control_persist = "10m",        -- How long to keep ControlMaster connection alive after last use
   },
   mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
@@ -272,5 +282,14 @@ After connecting to a host, the plugin mounts the remote filesystem locally. You
 
 ## 💡 Tips and Performance
 
+### Authentication & Connection Reuse
+
 - If key authentication fails, the plugin will prompt for a password up to 3 times before giving up.
 - SSH keys vastly speed up repeated mounts (no password prompt), leverage your `ssh_config` rather than manually adding hosts to make this as easy as possible.
+- **ControlMaster (Enabled by default)**: The plugin uses SSH ControlMaster to reuse SSH connections, which means:
+  - **Enter password once** - After the initial mount, `:SSHTerminal` and other SSH operations won't ask for your password again
+  - **Faster connections** - New SSH sessions reuse the existing authenticated connection (no re-authentication delay)
+  - **Works everywhere** - Git, SCP, and any SSH command to the same host automatically reuse the connection
+  - **Auto-cleanup** - Connections persist for 10 minutes after last use (configurable via `control_persist`)
+  - 💡 To disable: Set `enable_control_master = false` in your config
+
