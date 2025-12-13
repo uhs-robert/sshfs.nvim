@@ -76,4 +76,33 @@ function Ssh.open_terminal(host, remote_path)
 	vim.cmd("startinsert")
 end
 
+--- Close ControlMaster connection and clean up socket
+--- Sends "exit" command to ControlMaster to gracefully close connection and remove socket
+---@param host string SSH host name
+---@return boolean True if cleanup command was sent successfully
+function Ssh.cleanup_control_master(host)
+	local Config = require("sshfs.config")
+	local control_opts = Config.get_control_master_options()
+
+	-- Only if ControlMaster is enabled
+	if not control_opts then
+		return true
+	end
+
+	-- Build ssh -O exit command for ControlPath
+	local cmd = { "ssh" }
+	for _, opt in ipairs(control_opts) do
+		table.insert(cmd, "-o")
+		table.insert(cmd, opt)
+	end
+	table.insert(cmd, "-O")
+	table.insert(cmd, "exit")
+	table.insert(cmd, host)
+
+	-- Execute synchronously (must complete before nvim exit)
+	vim.fn.system(cmd)
+	-- Ignore exit code - socket may already be closed/expired
+	return true
+end
+
 return Ssh

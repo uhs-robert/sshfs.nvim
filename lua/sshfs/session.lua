@@ -98,6 +98,10 @@ function Session.disconnect_from(connection)
 	if success then
 		vim.notify("Disconnected from " .. connection.host, vim.log.levels.INFO)
 
+		-- Clean up ControlMaster socket
+		local Ssh = require("sshfs.lib.ssh")
+		Ssh.cleanup_control_master(connection.host)
+
 		-- Remove connection from cache
 		local Connections = require("sshfs.lib.connections")
 		Connections.remove(connection.mount_path)
