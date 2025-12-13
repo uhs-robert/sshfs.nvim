@@ -5,11 +5,11 @@ local Api = {}
 local Config = require("sshfs.config")
 
 --- Connect to SSH host - use picker if no host provided, otherwise connect directly
---- @param host string|nil SSH host to connect to (optional)
+--- @param host table|nil SSH host object (optional)
 Api.connect = function(host)
 	local Session = require("sshfs.session")
 	if host then
-		Session.connect({ Name = host })
+		Session.connect(host)
 	else
 		local Select = require("sshfs.ui.select")
 		Select.host(function(selected_host)
