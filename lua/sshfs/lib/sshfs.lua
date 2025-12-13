@@ -64,16 +64,20 @@ local function should_retry_with_password(error_output, host)
 	end
 
 	return true,
-		string.format("Authentication Error for %s@%s: %s", host.user or "user", host.name, error_output or "Unknown Error")
+		string.format(
+			"Authentication Error for %s@%s: %s",
+			host.user or "user",
+			host.name,
+			error_output or "Unknown Error"
+		)
 end
 
---- Try SSH key-based authentication for mounting
+--- Try SSH key-based authentication for mounting (async)
 --- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
---- @return boolean True if authentication succeeded
---- @return string Result message or error output
-function Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
+--- @param callback function Callback function(success: boolean, result: string)
+function Sshfs.try_key_authentication(host, mount_point, remote_path_suffix, callback)
 	remote_path_suffix = remote_path_suffix or (host.path or "")
 	local options = get_sshfs_options("key")
 
@@ -91,19 +95,23 @@ function Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
 		table.insert(cmd, host.port)
 	end
 
-	-- Pass command as table to avoid shell injection (table = direct exec, string = shell)
-	local result = vim.fn.system(cmd)
-	return vim.v.shell_error == 0, result
+	-- Async execution via vim.system
+	vim.system(cmd, { text = true }, function(obj)
+		local result = obj.stderr or obj.stdout or ""
+		-- Schedule to avoid fast event context restrictions
+		vim.schedule(function()
+			callback(obj.code == 0, result)
+		end)
+	end)
 end
 
---- Try password-based authentication for mounting with retry attempts
+--- Try password-based authentication for mounting with retry attempts (async)
 --- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
 --- @param max_attempts number|nil Maximum password attempts (default: 3)
---- @return boolean True if authentication succeeded
---- @return string Result message or error output
-function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix, max_attempts)
+--- @param callback function Callback function(success: boolean, result: string)
+function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix, max_attempts, callback)
 	remote_path_suffix = remote_path_suffix or (host.path or "")
 	max_attempts = max_attempts or 3
 	local options = get_sshfs_options("password")
@@ -115,12 +123,18 @@ function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix
 	end
 	remote_path = remote_path .. ":" .. remote_path_suffix
 
-	for attempt = 1, max_attempts do
+	local function try_attempt(attempt)
+		if attempt > max_attempts then
+			callback(false, "Authentication failed after " .. max_attempts .. " attempts")
+			return
+		end
+
 		local password =
 			vim.fn.inputsecret(string.format("Password for %s (%d/%d): ", host.name, attempt, max_attempts))
 
 		if not password or password == "" then
-			return false, "User cancelled"
+			callback(false, "User cancelled")
+			return
 		end
 
 		local cmd = { "sshfs", remote_path, mount_point, "-o", table.concat(options, ",") }
@@ -130,47 +144,71 @@ function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix
 			table.insert(cmd, host.port)
 		end
 
-		-- Pass command as table to avoid shell injection (table = direct exec, string = shell)
-		-- Password passed via stdin (second argument)
-		local error_output = vim.fn.system(cmd, password)
+		-- Async execution via vim.system with password via stdin
+		vim.system(cmd, { text = true, stdin = password }, function(obj)
+			-- Schedule to avoid fast event context restrictions
+			vim.schedule(function()
+				if obj.code == 0 then
+					callback(true, "Success")
+					return
+				end
 
-		if vim.v.shell_error == 0 then
-			return true, "Success"
-		end
+				local error_output = obj.stderr or obj.stdout or ""
 
-		local should_retry, error_message = should_retry_with_password(error_output, host)
-		if not should_retry then
-			return false, error_message
-		end
+				local should_retry, error_message = should_retry_with_password(error_output, host)
+				if not should_retry then
+					callback(false, error_message)
+					return
+				end
 
-		if attempt < max_attempts then
-			vim.notify(string.format("Authentication failed for %s, try again.", remote_path), vim.log.levels.WARN)
-		end
+				if attempt < max_attempts then
+					vim.notify(
+						string.format("Authentication failed for %s, try again.", remote_path),
+						vim.log.levels.WARN
+					)
+					try_attempt(attempt + 1)
+				else
+					callback(false, "Authentication failed after " .. max_attempts .. " attempts")
+				end
+			end)
+		end)
 	end
 
-	return false, "Authentication failed after " .. max_attempts .. " attempts"
+	try_attempt(1)
 end
 
---- Authenticate and mount with automatic fallback from key to password auth
+--- Authenticate and mount with automatic fallback from key to password auth (async)
 --- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
---- @return boolean True if authentication and mount succeeded
---- @return string Result message or error output
-function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix)
-	local success, error_output = Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
-	if success then
-		return true, "Key authentication successful"
-	elseif not error_output then
-		return false, string.format("Unknown Error: Key authentication failed for %s@%s", host.user or "user", host.name)
-	end
+--- @param callback function Callback function(success: boolean, result: string)
+function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, callback)
+	-- Notify user that connection is starting
+	vim.notify("Connecting to " .. host.name .. "...", vim.log.levels.INFO)
 
-	local should_try_password, error_message = should_retry_with_password(error_output, host)
-	if not should_try_password then
-		return false, error_message
-	end
+	Sshfs.try_key_authentication(host, mount_point, remote_path_suffix, function(success, error_output)
+		if success then
+			callback(true, "Key authentication successful")
+			return
+		end
 
-	return Sshfs.try_password_authentication(host, mount_point, remote_path_suffix)
+		if not error_output then
+			callback(
+				false,
+				string.format("Unknown Error: Key authentication failed for %s@%s", host.user or "user", host.name)
+			)
+			return
+		end
+
+		local should_try_password, error_message = should_retry_with_password(error_output, host)
+		if not should_try_password then
+			callback(false, error_message)
+			return
+		end
+
+		-- Fallback to password authentication
+		Sshfs.try_password_authentication(host, mount_point, remote_path_suffix, nil, callback)
+	end)
 end
 
 return Sshfs
