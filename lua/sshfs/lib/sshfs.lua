@@ -90,7 +90,8 @@ function Sshfs.try_key_authentication(host, mount_point, remote_path_suffix)
 		table.insert(cmd, host.Port)
 	end
 
-	local result = vim.fn.system(table.concat(cmd, " "))
+	-- Pass command as table to avoid shell injection (table = direct exec, string = shell)
+	local result = vim.fn.system(cmd)
 	return vim.v.shell_error == 0, result
 end
 
@@ -127,8 +128,9 @@ function Sshfs.try_password_authentication(host, mount_point, remote_path_suffix
 			table.insert(cmd, host.Port)
 		end
 
-		-- Use more secure password passing to avoid shell injection
-		local error_output = vim.fn.system(table.concat(cmd, " "), password)
+		-- Pass command as table to avoid shell injection (table = direct exec, string = shell)
+		-- Password passed via stdin (second argument)
+		local error_output = vim.fn.system(cmd, password)
 
 		if vim.v.shell_error == 0 then
 			return true, "Success"

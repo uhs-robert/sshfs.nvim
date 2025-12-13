@@ -6,27 +6,31 @@ local Ssh = {}
 --- Build SSH command with optional remote path and ControlMaster options
 ---@param host string SSH host name
 ---@param remote_path string|nil Optional remote path to cd into
----@return string SSH command string
+---@return table SSH command as array (safer than string to avoid shell injection)
 function Ssh.build_command(host, remote_path)
 	local Config = require("sshfs.config")
-	local ssh_cmd = "ssh"
+	local cmd = { "ssh" }
 
 	-- Add ControlMaster options if enabled (to reuse existing connection)
 	local control_opts = Config.get_control_master_options()
 	if control_opts then
 		for _, opt in ipairs(control_opts) do
-			ssh_cmd = ssh_cmd .. " -o " .. vim.fn.shellescape(opt)
+			table.insert(cmd, "-o")
+			table.insert(cmd, opt)
 		end
 	end
 
-	ssh_cmd = ssh_cmd .. " " .. vim.fn.shellescape(host)
+	table.insert(cmd, host)
 
 	-- If remote_path specified, cd into it and start a login shell
 	if remote_path and remote_path ~= "" then
-		ssh_cmd = ssh_cmd .. " -t " .. vim.fn.shellescape("cd " .. remote_path .. " && exec $SHELL -l")
+		table.insert(cmd, "-t")
+		-- Escape remote_path for remote shell by wrapping in single quotes and escaping any single quotes as '\''
+		local escaped_path = "'" .. remote_path:gsub("'", "'\\''") .. "'"
+		table.insert(cmd, "cd " .. escaped_path .. " && exec $SHELL -l")
 	end
 
-	return ssh_cmd
+	return cmd
 end
 
 --- Open SSH terminal session
