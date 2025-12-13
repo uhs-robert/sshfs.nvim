@@ -22,7 +22,6 @@ local DEFAULT_CONFIG = {
       -- uid = "1000,gid=1000",         -- Set file ownership (use string for complex values)
       -- follow_symlinks = true,        -- Follow symbolic links
     },
-    enable_control_master = true,       -- Use SSH ControlMaster to reuse connections (faster, no password re-entry)
     control_persist = "10m",            -- How long to keep ControlMaster connection alive after last use
 	},
 	mounts = {
@@ -78,17 +77,13 @@ function Config.get_base_dir()
 	return opts.mounts and opts.mounts.base_dir
 end
 
---- Get ControlMaster options for SSH/SSHFS if enabled
----@return table|nil Array of ControlMaster options, or nil if disabled
+--- Get ControlMaster options for SSH/SSHFS
+---@return table Array of ControlMaster options
 function Config.get_control_master_options()
 	local opts = Config.options
-	if not opts.connections or not opts.connections.enable_control_master then
-		return nil
-	end
-
 	local socket_dir = vim.fn.expand("$HOME/.ssh/sockets")
 	local control_path = socket_dir .. "/%C"
-	local control_persist = opts.connections.control_persist or "10m"
+	local control_persist = (opts.connections and opts.connections.control_persist) or "10m"
 
 	return {
 		"ControlMaster=auto",
@@ -98,12 +93,8 @@ function Config.get_control_master_options()
 end
 
 --- Get SSH socket directory path
----@return string|nil socket_dir The socket directory path, or nil if ControlMaster disabled
+---@return string socket_dir The socket directory path
 function Config.get_socket_dir()
-	local opts = Config.options
-	if not opts.connections or not opts.connections.enable_control_master then
-		return nil
-	end
 	return vim.fn.expand("$HOME/.ssh/sockets")
 end
 

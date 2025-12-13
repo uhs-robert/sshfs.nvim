@@ -40,19 +40,19 @@ No forced dependencies. Use your preferred file picker, search tools, and workfl
 
 - **Modern Neovim APIs** - Built for Neovim 0.10+ with vim.uv
 - **Full SSH config support** - Uses `ssh -G` for proper config resolution, supporting Include, Match, ProxyJump, and all SSH config features
-- **Robust authentication** - Key authentication with password fallback mechanisms
-- **Connection reuse** - Built-in SSH ControlMaster support for password-free terminal sessions and faster connections
+- **SSH-first auth** - Tries key-based batch connect first, then launches a floating SSH terminal for passwords/2FA/passphrases when needed
+- **Connection reuse** - Requires SSH ControlMaster sockets for password-free terminal sessions and faster connections
 - **Modular architecture** - Clean separation of core functionality, UI components, and utilities
 - **Cross-platform support** - Tested on Linux with Windows/MacOS compatibility
 
 ## 📋 Requirements
 
-| Software   | Minimum       | Notes                                                       |
-| ---------- | ------------- | ----------------------------------------------------------- |
-| Neovim     | `>=0.10`      | Requires `vim.uv` support                                   |
-| sshfs      | any           | `sudo dnf/apt/pacman install sshfs` or `brew install sshfs` |
-| SSH client | any           | Usually pre-installed on most systems                       |
-| SSH config | working hosts | Hosts come from `~/.ssh/config`                             |
+| Software   | Minimum       | Notes                                                                                                  |
+| ---------- | ------------- | ------------------------------------------------------------------------------------------------------ |
+| Neovim     | `>=0.10`      | Requires `vim.uv` support                                                                              |
+| sshfs      | any           | `sudo dnf/apt/pacman install sshfs` or `brew install sshfs`                                            |
+| SSH client | any           | OpenSSH with ControlMaster support (default). Create `~/.ssh/sockets` (chmod 700) for control sockets. |
+| SSH config | working hosts | Hosts come from `~/.ssh/config`                                                                        |
 
 ## 📦 Installation
 
@@ -143,7 +143,6 @@ require("sshfs").setup({
       -- uid = "1000,gid=1000",     -- Set file ownership (use string for complex values)
       -- follow_symlinks = true,    -- Follow symbolic links
     },
-    enable_control_master = true,  -- Use SSH ControlMaster to reuse connections (faster, no password re-entry)
     control_persist = "10m",        -- How long to keep ControlMaster connection alive after last use
   },
   mounts = {
@@ -189,6 +188,13 @@ require("sshfs").setup({
 >
 > In addition, sshfs also supports a variety of options from [sftp](https://man7.org/linux/man-pages/man1/sftp.1.html) and [ssh_config](https://man7.org/linux/man-pages/man5/ssh_config.5.html).
 
+> [!IMPORTANT]
+> ControlMaster sockets are stored at `~/.ssh/sockets/%C`. If the directory doesn't exist, create it once:
+>
+> ```bash
+> mkdir -p ~/.ssh/sockets && chmod 700 ~/.ssh/sockets
+> ```
+
 ## 🔧 Commands
 
 - `:SSHConnect [host]` - Connect to SSH host (picker or direct)
@@ -198,7 +204,7 @@ require("sshfs").setup({
 - `:SSHFiles` - Browse remote files using auto-detected file picker
 - `:SSHGrep [pattern]` - Search remote files using auto-detected search tool
 - `:SSHExplore` - Explore SSH mount (picker shown if multiple mounts)
-- `:SSHTerminal` - Open SSH terminal session to remote host (picker shown if multiple mounts)
+- `:SSHTerminal` - Open SSH terminal session to remote host (picker shown if multiple mounts), reusing the ControlMaster socket (no extra auth prompt)
 
 ## 🎹 Key Mapping
 
@@ -206,16 +212,16 @@ This plugin optionally provides default keybindings under `<leader>m`. These can
 
 ### 🎯 Default Keymaps
 
-| Mapping      | Description                   |
-| ------------ | ----------------------------- |
-| `<leader>mm` | Mount an SSH host             |
-| `<leader>mu` | Unmount an active session     |
-| `<leader>me` | Explore SSH mount             |
-| `<leader>mc` | Edit SSH config               |
-| `<leader>mr` | Reload SSH configuration      |
-| `<leader>mf` | Browse files                  |
-| `<leader>mg` | Grep files                    |
-| `<leader>mt` | Open SSH terminal session     |
+| Mapping      | Description               |
+| ------------ | ------------------------- |
+| `<leader>mm` | Mount an SSH host         |
+| `<leader>mu` | Unmount an active session |
+| `<leader>me` | Explore SSH mount         |
+| `<leader>mc` | Edit SSH config           |
+| `<leader>mr` | Reload SSH configuration  |
+| `<leader>mf` | Browse files              |
+| `<leader>mg` | Grep files                |
+| `<leader>mt` | Open SSH terminal session |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
 
@@ -283,16 +289,17 @@ After connecting to a host, the plugin mounts the remote filesystem locally. You
 
 **🎯 The Magic**: The plugin intelligently detects what you have installed and launches it automatically via lazyloading, respecting your existing Neovim setup and preferences. No configuration required, it just works with whatever you're already using.
 
+**Authentication flow**: `:SSHConnect` first attempts a non-interactive batch connection using your SSH keys. If that fails, a floating SSH terminal opens so you can complete any required authentication (passwords, 2FA, key passphrases, or host verification). After the ControlMaster socket is established, the mount and future terminals reuse it without re-prompting.
+
 ## 💡 Tips and Performance
 
 ### Authentication & Connection Reuse
 
-- If key authentication fails, the plugin will prompt for a password up to 3 times before giving up.
+- **SSH-First Authentication**: The plugin first attempts non-interactive key-based authentication. If that fails, it opens an interactive SSH terminal in a floating window where you can complete any authentication method (password, 2FA, key passphrase, host verification, etc.).
 - SSH keys vastly speed up repeated mounts (no password prompt), leverage your `ssh_config` rather than manually adding hosts to make this as easy as possible.
-- **ControlMaster (Enabled by default)**: The plugin uses SSH ControlMaster to reuse SSH connections, which means:
+- **ControlMaster (Required)**: The plugin uses SSH ControlMaster for authentication and connection reuse, which means:
   - **Enter password once** - After the initial mount, `:SSHTerminal` and other SSH operations won't ask for your password again
   - **Faster connections** - New SSH sessions reuse the existing authenticated connection (no re-authentication delay)
   - **Works everywhere** - Git, SCP, and any SSH command to the same host automatically reuse the connection
   - **Auto-cleanup** - Connections persist for 10 minutes after last use (configurable via `control_persist`)
-  - 💡 To disable: Set `enable_control_master = false` in your config
-
+  - **Universal auth support** - Handles all SSH authentication methods including 2FA, key passphrases, and host verification
