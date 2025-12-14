@@ -197,6 +197,7 @@ require("sshfs").setup({
 
 ## 🔧 Commands
 
+- `:checkhealth sshfs` - Verify system dependencies, SSH config, mount directories, and integrations
 - `:SSHConnect [host]` - Connect to SSH host (picker or direct)
 - `:SSHDisconnect` - Disconnect from current host (picker shown if multiple mounts)
 - `:SSHConfig` - Edit SSH config files
