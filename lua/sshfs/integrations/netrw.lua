@@ -1,6 +1,8 @@
 -- lua/sshfs/integrations/netrw.lua
 -- Netrw file explorer integration (built-in fallback)
 
+local config = require("sshfs.config")
+
 local Netrw = {}
 
 --- Attempts to open netrw file explorer
@@ -8,7 +10,9 @@ local Netrw = {}
 ---@return boolean success True if netrw was successfully opened
 function Netrw.explore_files(cwd)
 	local ok = pcall(function()
-		vim.cmd("Explore " .. vim.fn.fnameescape(cwd))
+		local opts = config.get()
+		local netrw_cmd = opts.ui.file_picker.netrw_command or "Explore"
+		vim.cmd(netrw_cmd .. " " .. vim.fn.fnameescape(cwd))
 	end)
 	return ok
 end

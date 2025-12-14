@@ -168,6 +168,7 @@ require("sshfs").setup({
       preferred_picker = "auto",  -- one of: "auto", "snacks", "fzf-lua", "mini", "telescope", "oil", "neo-tree", "nvim-tree", "yazi", "lf", "nnn", "ranger", "netrw"
       auto_open_on_mount = true,  -- auto-open picker after connecting
       fallback_to_netrw = true,   -- fallback to netrw if no picker is available
+      netrw_command = "Explore",  -- netrw command: "Explore", "Lexplore", "Sexplore", "Vexplore", "Texplore"
     },
   },
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
@@ -283,6 +284,7 @@ After connecting to a host, the plugin mounts the remote filesystem locally. You
    - **Auto-detected pickers**: telescope, oil, neo-tree, nvim-tree, snacks, fzf-lua, mini, yazi, lf, nnn, ranger
    - **Fallback**: netrw if no other picker is available
    - **Your choice**: Configure `preferred_picker = "yazi"` to force a specific picker
+   - **Netrw customization**: Configure `netrw_command = "Lexplore"` to use side panel, or "Sexplore"/"Vexplore"/"Texplore" for split/tab layouts
 
 2. **Search files**: Use `:SSHGrep [pattern]` to automatically launch your preferred search tool:
    - **Auto-detected search**: telescope live_grep, snacks grep, fzf-lua live_grep, mini grep_live

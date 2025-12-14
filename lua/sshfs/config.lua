@@ -47,6 +47,7 @@ local DEFAULT_CONFIG = {
 			auto_open_on_mount = true,      -- Auto-open file picker after mounting
 			preferred_picker = "auto",      -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
 			fallback_to_netrw = true,       -- fallback to netrw if no picker is available
+			netrw_command = "Explore",      -- "Explore", "Lexplore", "Sexplore", "Vexplore", "Texplore"
 		},
 	},
 	keymaps = nil,                      -- Override individual keymaps (e.g., {mount = "<leader>mm", unmount = "<leader>mu"})
