@@ -8,8 +8,7 @@ local Netrw = {}
 ---@return boolean success True if netrw was successfully opened
 function Netrw.explore_files(cwd)
 	local ok = pcall(function()
-		vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
-		vim.cmd("Explore")
+		vim.cmd("Explore " .. vim.fn.fnameescape(cwd))
 	end)
 	return ok
 end
