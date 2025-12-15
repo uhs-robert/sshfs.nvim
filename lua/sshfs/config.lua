@@ -26,8 +26,6 @@ local DEFAULT_CONFIG = {
 	},
 	mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
-    unmount_on_exit = true,                      -- auto-disconnect all mounts on :q or exit
-    auto_change_dir_on_mount = false,            -- auto-change current directory to mount point (default: false)
 	},
 	host_paths = {
       -- Optionally define default mount paths for specific hosts
@@ -37,21 +35,33 @@ local DEFAULT_CONFIG = {
       -- Multiple paths (array):
       -- ["dev-server"] = { "/var/www", "~/projects", "/opt/app" }
   },
-	handlers = {
-		on_disconnect = {
-			clean_mount_folders = true,     -- Unmounts all mounts on nvim exit
+	hooks = {
+		on_mount = {
+			auto_change_to_dir = false,       -- auto-change current directory to mount point
+			-- Action to run after a successful mount
+			-- "files" (default): open file picker
+			-- "grep": open grep picker
+			-- "live_find": run remote find over SSH and stream results
+			-- "live_grep": run remote rg/grep over SSH and stream results
+			-- "terminal": open SSH terminal to the mounted host
+			-- "none" or nil: do nothing
+			-- function(ctx): custom handler with { mount_path, host, remote_path }
+			auto_run = "files",
+		},
+		on_exit = {
+			auto_unmount = true,              -- auto-disconnect all mounts on :q or exit
+			clean_mount_folders = true,       -- Unmounts all mounts on nvim exit
 		},
 	},
 	ui = {
-		-- Used for SSHFS mount directory file operations
-		file_picker = {
-			auto_open_on_mount = true,      -- Auto-open file picker after mounting
+		-- Used for mounted file operations
+		local_picker = {
 			preferred_picker = "auto",      -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
 			fallback_to_netrw = true,       -- fallback to netrw if no picker is available
 			netrw_command = "Explore",      -- "Explore", "Lexplore", "Sexplore", "Vexplore", "Texplore"
 		},
-		-- Used for SSH remote operations (i.e. live_grep, live_find)
-		live_remote_picker = {
+		-- Used for remote streaming operations (live_grep, live_find)
+		remote_picker = {
 			preferred_picker = "auto",      -- "auto", "telescope", "fzf-lua", "snacks", "mini"
 		},
 	},

@@ -223,15 +223,22 @@ local function check_mount_config()
 		)
 	end
 
-	-- Info about unmount_on_exit setting
-	if config.mounts.unmount_on_exit then
+	-- Info about auto_unmount setting
+	local on_exit = config.hooks and config.hooks.on_exit or {}
+	if on_exit.auto_unmount then
 		health.info("Auto-unmount on exit is enabled")
 	else
 		health.info("Auto-unmount on exit is disabled (mounts will persist)")
 	end
+	if on_exit.clean_mount_folders then
+		health.info("Mount folders will be cleaned after unmount")
+	else
+		health.info("Mount folders will be left on disk after unmount")
+	end
 
-	-- Info about auto_change_dir_on_mount setting
-	if config.mounts.auto_change_dir_on_mount then
+	-- Info about auto_change_to_dir setting
+	local hook_cfg = config.hooks and config.hooks.on_mount or {}
+	if hook_cfg.auto_change_to_dir then
 		health.info("Auto-change directory on mount is enabled")
 	else
 		health.info("Auto-change directory on mount is disabled")
@@ -244,7 +251,7 @@ local function check_integrations()
 
 	local Config = require("sshfs.config")
 	local config = Config.get()
-	local preferred = config.ui.file_picker.preferred_picker
+	local preferred = config.ui.local_picker.preferred_picker
 
 	health.info("Preferred picker: " .. preferred)
 
@@ -299,7 +306,7 @@ local function check_integrations()
 
 	-- Fallback to netrw
 	if #available_pickers == 0 and #available_managers == 0 then
-		if config.ui.file_picker.fallback_to_netrw then
+		if config.ui.local_picker.fallback_to_netrw then
 			health.ok("Will fallback to netrw (built-in)")
 		else
 			health.warn(

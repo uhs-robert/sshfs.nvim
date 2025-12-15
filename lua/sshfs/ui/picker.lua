@@ -100,15 +100,9 @@ end
 ---@return boolean success True if a picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
 function Picker.open_file_picker(cwd, config, is_manual)
-	local file_picker_config = config.ui and config.ui.file_picker or {}
-	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
+	local file_picker_config = config.ui and config.ui.local_picker or {}
 	local preferred = file_picker_config.preferred_picker or "auto"
 	local fallback_to_netrw = file_picker_config.fallback_to_netrw ~= false -- default true
-
-	-- Only check auto_open setting for automatic calls (not manual user commands)
-	if not is_manual and not auto_open then
-		return false, "Auto-open disabled"
-	end
 
 	-- Determine which pickers to try
 	local pickers_to_try = FILE_PICKERS
@@ -130,14 +124,8 @@ end
 ---@return boolean success True if a search picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
 function Picker.open_search_picker(cwd, pattern, config, is_manual)
-	local file_picker_config = config.ui and config.ui.file_picker or {}
-	local auto_open = file_picker_config.auto_open_on_mount ~= false -- default true
+	local file_picker_config = config.ui and config.ui.local_picker or {}
 	local preferred = file_picker_config.preferred_picker or "auto"
-
-	-- Only check auto_open setting for automatic calls (not manual user commands)
-	if not is_manual and not auto_open then
-		return false, "Auto-open disabled"
-	end
 
 	return try_picker(SEARCH_PICKERS, preferred, { cwd, pattern })
 end

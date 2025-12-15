@@ -93,7 +93,9 @@ function App.setup(user_opts)
 	require("sshfs.ui.keymaps").setup(opts)
 
 	-- Setup exit handler if enabled
-	if opts.mounts.unmount_on_exit then
+	local hooks = opts.hooks or {}
+	local on_exit = hooks.on_exit or {}
+	if on_exit.auto_unmount then
 		vim.api.nvim_create_autocmd("VimLeave", {
 			callback = function()
 				local Session = require("sshfs.session")

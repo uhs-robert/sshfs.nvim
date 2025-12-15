@@ -50,9 +50,9 @@ function Session.connect(host)
 			-- Add connection to cache and navigate to remote directory with picker
 			vim.notify("Connected to " .. host.name, vim.log.levels.INFO)
 			local Connections = require("sshfs.lib.connections")
-			local Navigate = require("sshfs.ui.navigate")
+			local Hooks = require("sshfs.ui.hooks")
 			Connections.add(host.name, mount_dir, remote_path_suffix)
-			Navigate.with_picker(mount_dir, config)
+			Hooks.on_mount(mount_dir, host.name, remote_path_suffix, config)
 		end)
 	end)
 end
@@ -109,7 +109,7 @@ function Session.disconnect_from(connection)
 		-- Remove pre-mount cache and mount point
 		PRE_MOUNT_DIRS[connection.mount_path] = nil
 		local config = Config.get()
-		if config.handlers and config.handlers.on_disconnect and config.handlers.on_disconnect.clean_mount_folders then
+		if config.hooks and config.hooks.on_exit and config.hooks.on_exit.clean_mount_folders then
 			MountPoint.cleanup()
 		end
 

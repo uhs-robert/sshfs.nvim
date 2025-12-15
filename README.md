@@ -31,6 +31,7 @@ Auto-detects your tools: **snacks**, **telescope**, **fzf-lua**, **mini**, **oil
 
 - **Zero dependencies** - Works with your existing file pickers and search tools, no forced plugins
 - **Auto-detection** - Launches telescope, oil, snacks, fzf-lua, mini, yazi, neo-tree, nvim-tree, ranger, lf, nnn, or netrw
+- **On-mount hooks** - Run your own function or built-ins (files, grep, live find/grep) right after a mount
 - **Live remote search** - Stream `rg`/`find` over SSH with snacks, fzf-lua, telescope, or mini (no local mount thrashing)
 - **Flexible workflow** - Explore files, change directories (`tcd`), run custom commands, or open SSH terminals
 - **Universal auth** - Handles SSH keys, 2FA, passwords, passphrases, host verification via floating terminal
@@ -140,8 +141,6 @@ require("sshfs").setup({
   },
   mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
-    unmount_on_exit = true,                      -- auto-disconnect all mounts on :q or exit
-    auto_change_dir_on_mount = false,            -- auto-change current directory to mount point (default: false)
   },
   host_paths = {
     -- Optionally define default mount paths for specific hosts
@@ -151,15 +150,19 @@ require("sshfs").setup({
     -- Multiple paths (array):
     -- ["dev-server"] = { "/var/www", "~/projects", "/opt/app" }
   },
-  handlers = {
-    on_disconnect = {
+  hooks = {
+    on_exit = {
+      auto_unmount = true,        -- auto-disconnect all mounts on :q or exit
       clean_mount_folders = true, -- optionally clean up mount folders after disconnect
+    },
+    on_mount = {
+      auto_change_to_dir = false, -- auto-change current directory to mount point
+      auto_run = "files",         -- "files" (default), "grep", "live_find", "live_grep", "terminal", "none", or a custom function(ctx)
     },
   },
   ui = {
     file_picker = {
       preferred_picker = "auto",  -- one of: "auto", "snacks", "fzf-lua", "mini", "telescope", "oil", "neo-tree", "nvim-tree", "yazi", "lf", "nnn", "ranger", "netrw"
-      auto_open_on_mount = true,  -- auto-open picker after connecting
       fallback_to_netrw = true,   -- fallback to netrw if no picker is available
       netrw_command = "Explore",  -- netrw command: "Explore", "Lexplore", "Sexplore", "Vexplore", "Texplore"
     },
@@ -234,26 +237,17 @@ If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `
 
 ## 🚀 Usage
 
-Run `:SSHConnect` to select a host and mount location (home, root, custom path, or configured `host_paths`).
+1. `:SSHConnect` — pick a host and mount path (home/root/custom/host_paths).
+2. Work from the mount:
+   - `:SSHFiles`, `:SSHGrep`, or `:SSHChangeDir`
+   - Live remote search: `:SSHLiveFind` / `:SSHLiveGrep` (streams over SSH, still mounted)
+   - Terminals/commands: `:SSHTerminal`, `:SSHCommand`
+3. Disconnect with `:SSHDisconnect` (or let `hooks.on_exit.auto_unmount` handle it).
 
-After mounting, use `:SSHFiles` to browse with your auto-detected picker, `:SSHGrep` to search, `:SSHChangeDir` to change directories, or `:SSHCommand` to run custom commands.
-
-For large repos on slow links, you still mount first, but `:SSHLiveFind` / `:SSHLiveGrep` run `find`/`rg` over SSH and stream results instead of traversing the mounted filesystem; previews and opens are handled by snacks, fzf-lua, telescope, or mini.
-
-**Auth**: Tries SSH keys first, then opens floating terminal for passwords/2FA/passphrases. ControlMaster reuses the connection for all operations.
-
-> [!TIP]
-> Define default paths per host:
-> ```lua
-> host_paths = {
->   ["prod"] = "/var/www/html",
->   ["dev"] = { "/var/www", "~/projects" },  -- multiple paths
-> }
-> ```
+Auth flow: keys first, then floating terminal for passphrases/passwords/2FA; ControlMaster keeps the session alive across operations.
 
 ## 💡 Tips
 
 - **Use SSH keys** for faster connections (no password prompts)
-- **ControlMaster** enables connection reuse - enter credentials once, works for mount, terminal, git, scp
 - **Configure `host_paths`** for frequently-used hosts to skip path selection
-- **Set `preferred_picker`** to force a specific file picker instead of auto-detection
+- **Set `preferred_picker` for local/remote pickers** to force specific file picker(s) instead of auto-detection
