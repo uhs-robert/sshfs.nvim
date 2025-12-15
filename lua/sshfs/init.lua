@@ -30,14 +30,28 @@ App.setup_api_commands = function()
 		Api.unmount()
 	end, { desc = "Disconnect from current SSH host" })
 
+	vim.api.nvim_create_user_command("SSHTerminal", function()
+		Api.ssh_terminal()
+	end, { desc = "Open SSH terminal session to remote host" })
+
 	vim.api.nvim_create_user_command("SSHFiles", function()
 		Api.files()
 	end, { desc = "Browse remote files" })
+
+	vim.api.nvim_create_user_command("SSHLiveFind", function(opts)
+		local pattern = opts.args and opts.args ~= "" and opts.args or nil
+		Api.live_find(pattern)
+	end, { nargs = "?", desc = "Live find on mounted remote host" })
 
 	vim.api.nvim_create_user_command("SSHGrep", function(opts)
 		local pattern = opts.args and opts.args ~= "" and opts.args or nil
 		Api.grep(pattern)
 	end, { nargs = "?", desc = "Search text in remote files" })
+
+	vim.api.nvim_create_user_command("SSHLiveGrep", function(opts)
+		local pattern = opts.args and opts.args ~= "" and opts.args or nil
+		Api.live_grep(pattern)
+	end, { nargs = "?", desc = "Live grep on mounted remote host" })
 
 	vim.api.nvim_create_user_command("SSHExplore", function()
 		Api.explore()
@@ -63,10 +77,6 @@ App.setup_api_commands = function()
 		vim.notify("SSHBrowse is deprecated. Use :SSHFiles instead.", vim.log.levels.WARN)
 		Api.files()
 	end, { desc = "Browse remote files (deprecated: use SSHFiles)" })
-
-	vim.api.nvim_create_user_command("SSHTerminal", function()
-		Api.ssh_terminal()
-	end, { desc = "Open SSH terminal session to remote host" })
 end
 
 --- Main entry point for plugin initialization.

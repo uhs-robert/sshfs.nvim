@@ -181,6 +181,98 @@ Api.ssh_terminal = function()
 	Navigate.open_ssh_terminal()
 end
 
+--- Live grep on mounted remote host (requires telescope or fzf-lua and active connection)
+--- Executes ripgrep/grep directly on remote server via SSH and streams results
+--- Note: Requires an active mount. Use :SSHConnect first.
+---@param path string|nil Remote path to search (defaults to mounted remote path)
+Api.live_grep = function(path)
+	local Connections = require("sshfs.lib.connections")
+	local active_connections = Connections.get_all()
+
+	if #active_connections == 0 then
+		vim.notify("Not connected to any remote host. Use :SSHConnect first.", vim.log.levels.WARN)
+		return
+	end
+
+	local function execute_live_grep(connection)
+		local Picker = require("sshfs.ui.picker")
+		local config = Config.get()
+		local search_path = path or connection.remote_path or "."
+
+		local success, picker_name = Picker.open_live_remote_grep(
+			connection.host,
+			connection.mount_path,
+			search_path,
+			config
+		)
+
+		if not success then
+			vim.notify(
+				"Live grep not available: " .. picker_name .. ". Install telescope or fzf-lua.",
+				vim.log.levels.ERROR
+			)
+		end
+	end
+
+	if #active_connections == 1 then
+		execute_live_grep(active_connections[1])
+	else
+		-- Multiple mounts - prompt for selection
+		local Select = require("sshfs.ui.select")
+		Select.mount(function(selected_mount)
+			if selected_mount then
+				execute_live_grep(selected_mount)
+			end
+		end)
+	end
+end
+
+--- Live find on mounted remote host (requires telescope or fzf-lua and active connection)
+--- Executes fd/find directly on remote server via SSH and streams results
+--- Note: Requires an active mount. Use :SSHConnect first.
+---@param path string|nil Remote path to search (defaults to mounted remote path)
+Api.live_find = function(path)
+	local Connections = require("sshfs.lib.connections")
+	local active_connections = Connections.get_all()
+
+	if #active_connections == 0 then
+		vim.notify("Not connected to any remote host. Use :SSHConnect first.", vim.log.levels.WARN)
+		return
+	end
+
+	local function execute_live_find(connection)
+		local Picker = require("sshfs.ui.picker")
+		local config = Config.get()
+		local search_path = path or connection.remote_path or "."
+
+		local success, picker_name = Picker.open_live_remote_find(
+			connection.host,
+			connection.mount_path,
+			search_path,
+			config
+		)
+
+		if not success then
+			vim.notify(
+				"Live find not available: " .. picker_name .. ". Install telescope or fzf-lua.",
+				vim.log.levels.ERROR
+			)
+		end
+	end
+
+	if #active_connections == 1 then
+		execute_live_find(active_connections[1])
+	else
+		-- Multiple mounts - prompt for selection
+		local Select = require("sshfs.ui.select")
+		Select.mount(function(selected_mount)
+			if selected_mount then
+				execute_live_find(selected_mount)
+			end
+		end)
+	end
+end
+
 -- TODO: Remove these after January 15th
 -- Deprecated aliases (kept for backward compatibility)
 --- @deprecated Use config instead

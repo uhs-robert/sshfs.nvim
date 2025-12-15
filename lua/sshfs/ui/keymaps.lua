@@ -11,6 +11,8 @@ local DEFAULT_KEYMAPS = {
 	explore = "e",
 	files = "f",
 	grep = "g",
+	live_find = "F",
+	live_grep = "G",
 	mount = "m",
 	reload = "r",
 	terminal = "t",
@@ -43,6 +45,8 @@ function Keymaps.setup(opts)
 	vim.keymap.set("n", keymaps.reload, Api.reload, { desc = "Reload SSH config" })
 	vim.keymap.set("n", keymaps.files, Api.files, { desc = "Browse files" })
 	vim.keymap.set("n", keymaps.grep, Api.grep, { desc = "Grep files" })
+	vim.keymap.set("n", keymaps.live_find, Api.live_find, { desc = "Live find (remote)" })
+	vim.keymap.set("n", keymaps.live_grep, Api.live_grep, { desc = "Live grep (remote)" })
 	vim.keymap.set("n", keymaps.terminal, Api.ssh_terminal, { desc = "Open SSH Terminal" })
 
 	-- TODO: Delete after January 15th.

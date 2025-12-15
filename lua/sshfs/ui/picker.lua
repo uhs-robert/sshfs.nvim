@@ -6,7 +6,7 @@ local Config = require("sshfs.config")
 
 -- Integration registry, modules are lazy-loaded on first use
 local FILE_PICKERS = {
-	-- Notes about speed as well, nothing we can do about another plugin's design though.
+	-- In order of speed on SSHFS
 	{ name = "snacks", module = "sshfs.integrations.snacks", method = "explore_files" }, -- FAST
 	{ name = "yazi", module = "sshfs.integrations.yazi", method = "explore_files" }, -- FAST
 	{ name = "telescope", module = "sshfs.integrations.telescope", method = "explore_files" }, -- FAST
@@ -22,11 +22,19 @@ local FILE_PICKERS = {
 }
 
 local SEARCH_PICKERS = {
+	-- In order of speed on SSHFS
 	{ name = "snacks", module = "sshfs.integrations.snacks", method = "grep" },
 	{ name = "telescope", module = "sshfs.integrations.telescope", method = "grep" },
 	{ name = "mini", module = "sshfs.integrations.mini", method = "grep" },
 	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "grep" },
 	{ name = "builtin", module = "sshfs.integrations.builtin", method = "grep" },
+}
+
+local LIVE_REMOTE_GREP_PICKERS = {
+	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "live_grep" },
+
+local LIVE_REMOTE_FIND_PICKERS = {
+	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "live_find" },
 }
 
 -- Cache for loaded integration modules
@@ -205,6 +213,94 @@ function Picker.grep_remote_files(pattern, opts)
 		"Grep failed for: " .. picker_name .. ". Please use :grep, :vimgrep, or your preferred search tool manually.",
 		vim.log.levels.WARN
 	)
+end
+
+--- Attempts to open a live remote grep picker
+--- Executes grep directly on remote server via SSH and streams results
+---@param host string SSH host name
+---@param mount_path string Local mount path to map remote files
+---@param path? string Optional remote path to search (defaults to home)
+---@param config table Plugin configuration table
+---@return boolean success True if a picker was successfully opened
+---@return string picker_name Name of the picker that was opened, or error message
+function Picker.open_live_remote_grep(host, mount_path, path, config)
+	local live_picker_config = config.ui and config.ui.live_remote_picker or {}
+	local preferred = live_picker_config.preferred_picker or "auto"
+
+	-- Try preferred picker first if specified
+	if preferred and preferred ~= "auto" then
+		for _, picker in ipairs(LIVE_REMOTE_GREP_PICKERS) do
+			if picker.name == preferred then
+				local integration = get_integration(picker.module)
+				local success = false
+				integration[picker.method](host, mount_path, path, function(result)
+					success = result
+				end)
+				if success then
+					return true, picker.name
+				end
+				break
+			end
+		end
+	end
+
+	-- Auto-detect available pickers in order of preference
+	for _, picker in ipairs(LIVE_REMOTE_GREP_PICKERS) do
+		local integration = get_integration(picker.module)
+		local success = false
+		integration[picker.method](host, mount_path, path, function(result)
+			success = result
+		end)
+		if success then
+			return true, picker.name
+		end
+	end
+
+	return false, "No picker available"
+end
+
+--- Attempts to open a live remote find picker
+--- Executes find directly on remote server via SSH and streams results
+---@param host string SSH host name
+---@param mount_path string Local mount path to map remote files
+---@param path? string Optional remote path to search (defaults to home)
+---@param config table Plugin configuration table
+---@return boolean success True if a picker was successfully opened
+---@return string picker_name Name of the picker that was opened, or error message
+function Picker.open_live_remote_find(host, mount_path, path, config)
+	local live_picker_config = config.ui and config.ui.live_remote_picker or {}
+	local preferred = live_picker_config.preferred_picker or "auto"
+
+	-- Try preferred picker first if specified
+	if preferred and preferred ~= "auto" then
+		for _, picker in ipairs(LIVE_REMOTE_FIND_PICKERS) do
+			if picker.name == preferred then
+				local integration = get_integration(picker.module)
+				local success = false
+				integration[picker.method](host, mount_path, path, function(result)
+					success = result
+				end)
+				if success then
+					return true, picker.name
+				end
+				break
+			end
+		end
+	end
+
+	-- Auto-detect available pickers in order of preference
+	for _, picker in ipairs(LIVE_REMOTE_FIND_PICKERS) do
+		local integration = get_integration(picker.module)
+		local success = false
+		integration[picker.method](host, mount_path, path, function(result)
+			success = result
+		end)
+		if success then
+			return true, picker.name
+		end
+	end
+
+	return false, "No picker available"
 end
 
 return Picker
