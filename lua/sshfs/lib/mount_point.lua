@@ -192,7 +192,7 @@ function MountPoint.run_command(command)
 
 	-- Prompt for command if not provided
 	if not command then
-		vim.ui.input({ prompt = "Command to run on mount: ", default = "edit" }, function(input)
+		vim.ui.input({ prompt = "Command to run on mount: ", default = "" }, function(input)
 			if input and input ~= "" then
 				MountPoint.run_command(input)
 			end
