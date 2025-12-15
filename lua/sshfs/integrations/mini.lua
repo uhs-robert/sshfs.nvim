@@ -32,7 +32,6 @@ function Mini.grep(cwd, pattern)
 	return false
 end
 
--- FIX: Live grep not returing any files?
 --- Attempts to open mini.pick live grep with remote SSH execution
 ---@param host string SSH host name
 ---@param mount_path string Local mount path to map remote files
@@ -88,16 +87,20 @@ function Mini.live_grep(host, mount_path, path, callback)
 		end)
 	end
 
-	-- Create a custom source that executes SSH grep
+	-- MiniPick source that refreshes items on every keystroke.
+	-- `items` is initialized empty; `match` repopulates it per query.
+	local set_items_opts = { do_match = false }
 	local source = {
 		name = "Remote Grep (" .. host .. ")",
-		items = function(query)
-			-- Execute SSH grep for each query
-			if not query or query == "" then
-				return {}
+		items = {},
+		match = function(_, _, query)
+			-- mini.pick passes the current input as a table of characters.
+			if type(query) == "table" then
+				query = table.concat(query)
 			end
-
-			vim.notify("DEBUG: Query = " .. query, vim.log.levels.INFO)
+			if not query or query == "" then
+				return mini_pick.set_picker_items({}, set_items_opts)
+			end
 
 			-- Build SSH grep command
 			local ssh_cmd = Ssh.build_command(host)
@@ -110,23 +113,17 @@ function Mini.live_grep(host, mount_path, path, callback)
 			)
 			table.insert(ssh_cmd, grep_cmd)
 
-			vim.notify("DEBUG: SSH command = " .. table.concat(ssh_cmd, " "), vim.log.levels.INFO)
-
 			-- Execute command and collect results
-			local results = {}
 			local output = vim.fn.systemlist(ssh_cmd)
-
-			vim.notify("DEBUG: Got " .. #output .. " lines of output", vim.log.levels.INFO)
-
+			local results = {}
 			for _, line in ipairs(output) do
 				if line and line ~= "" then
 					table.insert(results, line)
 				end
 			end
 
-			vim.notify("DEBUG: Returning " .. #results .. " results", vim.log.levels.INFO)
-
-			return results
+			-- Replace picker items without extra matching
+			return mini_pick.set_picker_items(results, set_items_opts)
 		end,
 		choose = function(item)
 			open_grep_result(item)
