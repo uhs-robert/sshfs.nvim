@@ -35,6 +35,7 @@ local LIVE_REMOTE_GREP_PICKERS = {
 	{ name = "snacks", module = "sshfs.integrations.snacks", method = "live_grep" },
 	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "live_grep" },
 	{ name = "telescope", module = "sshfs.integrations.telescope", method = "live_grep" },
+	{ name = "mini", module = "sshfs.integrations.mini", method = "live_grep" },
 }
 
 local LIVE_REMOTE_FIND_PICKERS = {
@@ -42,6 +43,7 @@ local LIVE_REMOTE_FIND_PICKERS = {
 	{ name = "snacks", module = "sshfs.integrations.snacks", method = "live_find" },
 	{ name = "fzf-lua", module = "sshfs.integrations.fzf_lua", method = "live_find" },
 	{ name = "telescope", module = "sshfs.integrations.telescope", method = "live_find" },
+	{ name = "mini", module = "sshfs.integrations.mini", method = "live_find" },
 }
 
 -- Cache for loaded integration modules
