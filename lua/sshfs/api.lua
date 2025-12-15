@@ -194,6 +194,11 @@ Api.live_grep = function(path)
 		return
 	end
 
+	local function fallback_to_local_grep(connection)
+		local Picker = require("sshfs.ui.picker")
+		Picker.grep_remote_files(nil, { dir = connection.mount_path })
+	end
+
 	local function execute_live_grep(connection)
 		local Picker = require("sshfs.ui.picker")
 		local config = Config.get()
@@ -204,9 +209,10 @@ Api.live_grep = function(path)
 
 		if not success then
 			vim.notify(
-				"Live grep not available: " .. picker_name .. ". Install telescope or fzf-lua.",
-				vim.log.levels.ERROR
+				"Live grep not available: " .. picker_name .. ". Falling back to local grep on mounted path.",
+				vim.log.levels.WARN
 			)
+			return fallback_to_local_grep(connection)
 		end
 	end
 
@@ -236,6 +242,22 @@ Api.live_find = function(path)
 		return
 	end
 
+	local function fallback_to_local_find(connection)
+		local Picker = require("sshfs.ui.picker")
+		local config = Config.get()
+		local ok, picker_name = Picker.open_file_picker(connection.mount_path, config, false)
+		if not ok then
+			vim.notify(
+				"Fallback file picker failed for "
+					.. connection.mount_path
+					.. " ("
+					.. picker_name
+					.. "). Install a supported picker.",
+				vim.log.levels.ERROR
+			)
+		end
+	end
+
 	local function execute_live_find(connection)
 		local Picker = require("sshfs.ui.picker")
 		local config = Config.get()
@@ -246,9 +268,10 @@ Api.live_find = function(path)
 
 		if not success then
 			vim.notify(
-				"Live find not available: " .. picker_name .. ". Install telescope or fzf-lua.",
-				vim.log.levels.ERROR
+				"Live find not available: " .. picker_name .. ". Falling back to local find on mounted path.",
+				vim.log.levels.WARN
 			)
+			return fallback_to_local_find(connection)
 		end
 	end
 
