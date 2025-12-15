@@ -19,31 +19,23 @@ A minimal, fast <strong>SSHFS</strong> integration for <strong>NeoVim</strong> t
 
 ## 🕶️ What does it do?
 
-Mount any host from your `~/.ssh/config` and browse remote files as if they were local. Jump between your local machine and remote mounts with a keystroke.
+Mount remote hosts from your SSH config and work with remote files/hosts as if they were local.
 
-No forced dependencies. Use your preferred file picker, search tools, and workflow to edit remote files without leaving your editor.
+Browse, search, change directories, run commands, or open ssh terminal connections from NeoVim with zero forced dependencies.
 
-**🎯 Smart Integration**: Automatically detects and launches **telescope**, **oil**, **neo-tree**, **nvim-tree**, **snacks**, **fzf-lua**, **mini**, **yazi**, **lf**, **nnn**, **ranger**, or **netrw**. Your workflow, your choice.
+Auto-detects your tools: **snacks**, **telescope**, **fzf-lua**, **mini**, **oil**, **yazi**, **nnn**, **ranger**, **lf**, **neo-tree**, **nvim-tree**, or **netrw**.
 
 <https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11>
 
 ## ✨ Features
 
-### 🎯 **Works With Your Existing Setup**
-
-- **Smart picker auto-detection** - Automatically detects and launches YOUR preferred file pickers
-- **Universal compatibility** - Supports **telescope**, **oil**, **neo-tree**, **nvim-tree**, **snacks**, **fzf-lua**, **mini**, **yazi**, **lf**, **nnn**, **ranger**, with **netrw** fallback
-- **Search integration** - Auto-launches your preferred search tool (telescope live_grep, snacks grep, fzf-lua live_grep, mini grep_live, or built-in grep)
-- **Zero forced dependencies** - No telescope, plenary, or other plugin dependencies required
-
-### 🏗️ **Modern Architecture**
-
-- **Modern Neovim APIs** - Built for Neovim 0.10+ with vim.uv
-- **Full SSH config support** - Uses `ssh -G` for proper config resolution, supporting Include, Match, ProxyJump, and all SSH config features
-- **SSH-first auth** - Tries key-based batch connect first, then launches a floating SSH terminal for passwords/2FA/passphrases when needed
-- **Connection reuse** - Requires SSH ControlMaster sockets for password-free terminal sessions and faster connections
-- **Modular architecture** - Clean separation of core functionality, UI components, and utilities
-- **Cross-platform support** - Tested on Linux with Windows/MacOS compatibility
+- **Zero dependencies** - Works with your existing file pickers and search tools, no forced plugins
+- **Auto-detection** - Launches telescope, oil, snacks, fzf-lua, mini, yazi, neo-tree, nvim-tree, ranger, lf, nnn, or netrw
+- **Flexible workflow** - Explore files, change directories (`tcd`), run custom commands, or open SSH terminals
+- **Universal auth** - Handles SSH keys, 2FA, passwords, passphrases, host verification via floating terminal
+- **ControlMaster** - Enter credentials once, reuse for all operations (mount, terminal, git, scp)
+- **Full SSH config** - Supports Include, Match, ProxyJump, and all `ssh_config` features via `ssh -G`
+- **Modern Neovim** - Built for 0.10+ with vim.uv, modular architecture, cross-platform
 
 ## 📋 Requirements
 
@@ -173,14 +165,16 @@ require("sshfs").setup({
   },
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
-    mount = "<leader>mm",         -- change any keymap below
-    unmount = "<leader>mu",
-    config = "<leader>mc",
-    reload = "<leader>mr",
-    files = "<leader>mf",
-    grep = "<leader>mg",
+    mount = "<leader>mm",         -- creates an ssh connection and mounts via sshfs
+    unmount = "<leader>mu",       -- disconnects an ssh connection and unmounts via sshfs
     explore = "<leader>me",       -- explore an sshfs mount using your native editor
     change_dir = "<leader>md",    -- change dir to mount
+    command = "<leader>mo",       -- run command on mount
+    config = "<leader>mc",        -- edit ssh config
+    reload = "<leader>mr",        -- manually reload ssh config
+    files = "<leader>mf",         -- browse files using chosen picker
+    grep = "<leader>mg",          -- grep files using chosen picker
+    terminal = "<leader>mt",      -- open ssh terminal session
   },
 })
 ```
@@ -199,113 +193,57 @@ require("sshfs").setup({
 
 ## 🔧 Commands
 
-- `:checkhealth sshfs` - Verify system dependencies, SSH config, mount directories, and integrations
-- `:SSHConnect [host]` - Connect to SSH host (picker or direct)
-- `:SSHDisconnect` - Disconnect from current host (picker shown if multiple mounts)
+- `:checkhealth sshfs` - Verify dependencies and configuration
+- `:SSHConnect [host]` - Mount a remote host
+- `:SSHDisconnect` - Unmount current host
 - `:SSHConfig` - Edit SSH config files
 - `:SSHReload` - Reload SSH configuration
-- `:SSHFiles` - Browse remote files using auto-detected file picker
-- `:SSHGrep [pattern]` - Search remote files using auto-detected search tool
-- `:SSHTerminal` - Open SSH terminal session to remote host (picker shown if multiple mounts), reusing the ControlMaster socket (no extra auth prompt)
+- `:SSHFiles` - Browse files with auto-detected picker
+- `:SSHGrep [pattern]` - Search files with auto-detected tool
 - `:SSHExplore` - Open file browser on mount
 - `:SSHChangeDir` - Change directory to mount (`tcd`)
+- `:SSHCommand [cmd]` - Run custom command (e.g. `Oil`, `Telescope`)
+- `:SSHTerminal` - Open terminal session (reuses auth)
 
 ## 🎹 Key Mapping
 
-This plugin optionally provides default keybindings under `<leader>m`. These can be fully customized.
+Default keybindings under `<leader>m` (fully customizable):
 
-### 🎯 Default Keymaps
-
-| Mapping      | Description               |
-| ------------ | ------------------------- |
-| `<leader>mm` | Mount an SSH host         |
-| `<leader>mu` | Unmount an active session |
-| `<leader>mc` | Edit SSH config           |
-| `<leader>mr` | Reload SSH configuration  |
-| `<leader>mf` | Browse files              |
-| `<leader>mg` | Grep files                |
-| `<leader>mt` | Open SSH terminal session |
+| Mapping      | Description                       |
+| ------------ | --------------------------------- |
+| `<leader>mm` | Mount an SSH host                 |
+| `<leader>mu` | Unmount an active session         |
 | `<leader>me` | Explore SSH mount via native edit |
 | `<leader>md` | Change dir to mount               |
+| `<leader>mo` | Run command on mount              |
+| `<leader>mc` | Edit SSH config                   |
+| `<leader>mr` | Reload SSH configuration          |
+| `<leader>mf` | Browse files                      |
+| `<leader>mg` | Grep files                        |
+| `<leader>mt` | Open SSH terminal session         |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
 
-### 🛠️ Custom Keymap Configuration
-
-You can override the keymaps or the prefix like this:
-
-```lua
-require("sshfs").setup({
-  lead_prefix = "<leader>m", -- change keymap prefix (default: <leader>m)
-  keymaps = {
-    mount = "<leader>mm",
-    unmount = "<leader>mu",
-    explore = "<leader>me",
-    config = "<leader>mc",
-    reload = "<leader>mr",
-    files = "<leader>mf",
-    grep = "<leader>mg",
-  },
-})
-```
-
 ## 🚀 Usage
 
-### Connecting to a Host
+Run `:SSHConnect` to select a host and mount location (home, root, custom path, or configured `host_paths`).
 
-When you run `:SSHConnect`, you'll be prompted to:
+After mounting, use `:SSHFiles` to browse with your auto-detected picker, `:SSHGrep` to search, `:SSHChangeDir` to change directories, or `:SSHCommand` to run custom commands.
 
-1. **Select a host** from your SSH config
-2. **Choose a mount location** with the following options:
-   - **Home directory (~)**: Mounts your remote home directory
-   - **Root directory (/)**: Mounts the entire remote filesystem
-   - **Custom path**: Enter any custom path (e.g., `/var/www`, `~/projects`, `/opt/app`)
-   - **Configured paths**: Any paths you've defined in `host_paths` for this host
+**Auth**: Tries SSH keys first, then opens floating terminal for passwords/2FA/passphrases. ControlMaster reuses the connection for all operations.
 
 > [!TIP]
-> Use `host_paths` to define one or more default paths for frequently-used hosts:
->
+> Define default paths per host:
 > ```lua
 > host_paths = {
->   -- Single path
->   ["production-server"] = "/var/www/html",
->
->   -- Multiple paths for the same host
->   ["dev-server"] = {
->     "/var/www",
->     "~/projects",
->     "/opt/app",
->   },
+>   ["prod"] = "/var/www/html",
+>   ["dev"] = { "/var/www", "~/projects" },  -- multiple paths
 > }
 > ```
 
-### Working with Remote Files
+## 💡 Tips
 
-After connecting to a host, the plugin mounts the remote filesystem locally. You can then:
-
-1. **Browse files**: Use `:SSHFiles` to automatically launch your preferred file picker:
-   - **Auto-detected pickers**: telescope, oil, neo-tree, nvim-tree, snacks, fzf-lua, mini, yazi, lf, nnn, ranger
-   - **Fallback**: netrw if no other picker is available
-   - **Your choice**: Configure `preferred_picker = "yazi"` to force a specific picker
-   - **Netrw customization**: Configure `netrw_command = "Lexplore"` to use side panel, or "Sexplore"/"Vexplore"/"Texplore" for split/tab layouts
-
-2. **Search files**: Use `:SSHGrep [pattern]` to automatically launch your preferred search tool:
-   - **Auto-detected search**: telescope live_grep, snacks grep, fzf-lua live_grep, mini grep_live
-   - **Fallback**: built-in grep with quickfix list
-
-**🎯 The Magic**: The plugin intelligently detects what you have installed and launches it automatically via lazyloading, respecting your existing Neovim setup and preferences. No configuration required, it just works with whatever you're already using.
-
-**Authentication flow**: `:SSHConnect` first attempts a non-interactive batch connection using your SSH keys. If that fails, a floating SSH terminal opens so you can complete any required authentication (passwords, 2FA, key passphrases, or host verification). After the ControlMaster socket is established, the mount and future terminals reuse it without re-prompting.
-
-## 💡 Tips and Performance
-
-### Authentication & Connection Reuse
-
-- **SSH-First Authentication**: The plugin first attempts non-interactive key-based authentication. If that fails, it opens an interactive SSH terminal in a floating window where you can complete any authentication method (password, 2FA, key passphrase, host verification, etc.).
-- SSH keys vastly speed up repeated mounts (no password prompt), leverage your `ssh_config` rather than manually adding hosts to make this as easy as possible.
-- **ControlMaster (Required)**: The plugin uses SSH ControlMaster for authentication and connection reuse, which means:
-  - **Enter password once** - After the initial mount, `:SSHTerminal` and other SSH operations won't ask for your password again
-  - **Faster connections** - New SSH sessions reuse the existing authenticated connection (no re-authentication delay)
-  - **Works everywhere** - Git, SCP, and any SSH command to the same host automatically reuse the connection
-  - **Auto-cleanup** - Connections persist for 10 minutes after last use (configurable via `control_persist`)
-  - **Universal auth support** - Handles all SSH authentication methods including 2FA, key passphrases, and host verification
+- **Use SSH keys** for faster connections (no password prompts)
+- **ControlMaster** enables connection reuse - enter credentials once, works for mount, terminal, git, scp
+- **Configure `host_paths`** for frequently-used hosts to skip path selection
+- **Set `preferred_picker`** to force a specific file picker instead of auto-detection
