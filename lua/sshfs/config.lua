@@ -43,16 +43,16 @@ local DEFAULT_CONFIG = {
 		},
 	},
 	ui = {
-    -- Used for SSHFS mount directory file operations
+		-- Used for SSHFS mount directory file operations
 		file_picker = {
 			auto_open_on_mount = true,      -- Auto-open file picker after mounting
 			preferred_picker = "auto",      -- "auto", "telescope", "oil", "neo-tree", "nvim-tree", "snacks", "fzf-lua", "mini", "yazi", "lf", "nnn", "ranger", "netrw"
 			fallback_to_netrw = true,       -- fallback to netrw if no picker is available
 			netrw_command = "Explore",      -- "Explore", "Lexplore", "Sexplore", "Vexplore", "Texplore"
 		},
-    -- Used for SSH remote operations (i.e. live_grep, live_find)
+		-- Used for SSH remote operations (i.e. live_grep, live_find)
 		live_remote_picker = {
-			preferred_picker = "auto",      -- "auto", "telescope", "fzf-lua"
+			preferred_picker = "auto",      -- "auto", "telescope", "fzf-lua", "snacks", "mini"
 		},
 	},
 	keymaps = nil,                      -- Override individual keymaps (e.g., {mount = "<leader>mm", unmount = "<leader>mu"})

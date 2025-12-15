@@ -31,6 +31,7 @@ Auto-detects your tools: **snacks**, **telescope**, **fzf-lua**, **mini**, **oil
 
 - **Zero dependencies** - Works with your existing file pickers and search tools, no forced plugins
 - **Auto-detection** - Launches telescope, oil, snacks, fzf-lua, mini, yazi, neo-tree, nvim-tree, ranger, lf, nnn, or netrw
+- **Live remote search** - Stream `rg`/`find` over SSH with snacks, fzf-lua, telescope, or mini (no local mount thrashing)
 - **Flexible workflow** - Explore files, change directories (`tcd`), run custom commands, or open SSH terminals
 - **Universal auth** - Handles SSH keys, 2FA, passwords, passphrases, host verification via floating terminal
 - **ControlMaster** - Enter credentials once, reuse for all operations (mount, terminal, git, scp)
@@ -162,6 +163,9 @@ require("sshfs").setup({
       fallback_to_netrw = true,   -- fallback to netrw if no picker is available
       netrw_command = "Explore",  -- netrw command: "Explore", "Lexplore", "Sexplore", "Vexplore", "Texplore"
     },
+    live_remote_picker = {
+      preferred_picker = "auto",  -- one of: "auto", "snacks", "fzf-lua", "telescope", "mini"
+    },
   },
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
@@ -200,6 +204,8 @@ require("sshfs").setup({
 - `:SSHReload` - Reload SSH configuration
 - `:SSHFiles` - Browse files with auto-detected picker
 - `:SSHGrep [pattern]` - Search files with auto-detected tool
+- `:SSHLiveFind [pattern]` - Stream remote `find`/`fd` results over SSH (snacks/fzf-lua/telescope/mini)
+- `:SSHLiveGrep [pattern]` - Stream remote `rg`/`grep` results over SSH (snacks/fzf-lua/telescope/mini)
 - `:SSHExplore` - Open file browser on mount
 - `:SSHChangeDir` - Change directory to mount (`tcd`)
 - `:SSHCommand [cmd]` - Run custom command (e.g. `Oil`, `Telescope`)
@@ -220,6 +226,8 @@ Default keybindings under `<leader>m` (fully customizable):
 | `<leader>mr` | Reload SSH configuration          |
 | `<leader>mf` | Browse files                      |
 | `<leader>mg` | Grep files                        |
+| `<leader>mF` | Live find (remote)                |
+| `<leader>mG` | Live grep (remote)                |
 | `<leader>mt` | Open SSH terminal session         |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
@@ -229,6 +237,8 @@ If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `
 Run `:SSHConnect` to select a host and mount location (home, root, custom path, or configured `host_paths`).
 
 After mounting, use `:SSHFiles` to browse with your auto-detected picker, `:SSHGrep` to search, `:SSHChangeDir` to change directories, or `:SSHCommand` to run custom commands.
+
+For large repos on slow links, you still mount first, but `:SSHLiveFind` / `:SSHLiveGrep` run `find`/`rg` over SSH and stream results instead of traversing the mounted filesystem; previews and opens are handled by snacks, fzf-lua, telescope, or mini.
 
 **Auth**: Tries SSH keys first, then opens floating terminal for passwords/2FA/passphrases. ControlMaster reuses the connection for all operations.
 
