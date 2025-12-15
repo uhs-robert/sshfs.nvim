@@ -72,8 +72,9 @@ function Telescope.live_grep(host, mount_path, path, callback)
 	local ok_finders, finders = pcall(require, "telescope.finders")
 	local ok_make_entry, make_entry = pcall(require, "telescope.make_entry")
 	local ok_conf, conf = pcall(require, "telescope.config")
+	local ok_previewers, previewers = pcall(require, "telescope.previewers")
 
-	if not (ok_pickers and ok_finders and ok_make_entry and ok_conf) then
+	if not (ok_pickers and ok_finders and ok_make_entry and ok_conf and ok_previewers) then
 		if callback then
 			callback(false)
 		end
@@ -119,11 +120,38 @@ function Telescope.live_grep(host, mount_path, path, callback)
 		return ssh_cmd
 	end, ssh_to_sshfs_entry_maker(mount_path, remote_path, parse_grep_line))
 
+	-- Custom SSH-based previewer for grep results
+	local ssh_grep_previewer = previewers.new_termopen_previewer({
+		get_command = function(entry)
+			if not entry or not entry.value then
+				return { "echo", "No preview available" }
+			end
+
+			-- Parse the grep output to get filename and line
+			local data = parse_grep_line(entry.value)
+			if not data.filename then
+				return { "echo", "No preview available" }
+			end
+
+			-- Build SSH command to preview file with bat/cat
+			-- Limit to first 10000 lines to avoid huge files, bat handles binary files gracefully
+			local ssh_cmd = Ssh.build_command(host)
+			local preview_cmd = string.format(
+				"bat --color=always --style=numbers --highlight-line=%d --line-range=:10000 %s 2>/dev/null || head -n 10000 %s",
+				data.lnum or 1,
+				vim.fn.shellescape(data.filename),
+				vim.fn.shellescape(data.filename)
+			)
+			table.insert(ssh_cmd, preview_cmd)
+			return ssh_cmd
+		end,
+	})
+
 	pickers
 		.new({}, {
 			prompt_title = "Remote Live Grep (" .. host .. ")",
 			finder = live_grepper,
-			previewer = conf.values.grep_previewer({}),
+			previewer = ssh_grep_previewer,
 			sorter = conf.values.generic_sorter({}),
 		})
 		:find()
@@ -143,8 +171,9 @@ function Telescope.live_find(host, mount_path, path, callback)
 	local ok_finders, finders = pcall(require, "telescope.finders")
 	local ok_make_entry, make_entry = pcall(require, "telescope.make_entry")
 	local ok_conf, conf = pcall(require, "telescope.config")
+	local ok_previewers, previewers = pcall(require, "telescope.previewers")
 
-	if not (ok_pickers and ok_finders and ok_make_entry and ok_conf) then
+	if not (ok_pickers and ok_finders and ok_make_entry and ok_conf and ok_previewers) then
 		if callback then
 			callback(false)
 		end
@@ -172,11 +201,34 @@ function Telescope.live_find(host, mount_path, path, callback)
 		entry_maker = ssh_to_sshfs_entry_maker(mount_path, remote_path, parse_find_line),
 	})
 
+	-- Custom SSH-based previewer for file contents
+	local ssh_file_previewer = previewers.new_termopen_previewer({
+		get_command = function(entry)
+			if not entry or not entry.value then
+				return { "echo", "No preview available" }
+			end
+
+			-- Get the filename from the entry
+			local filename = entry.value
+
+			-- Build SSH command to preview file with bat/cat
+			-- Limit to first 10000 lines to avoid huge files, bat handles binary files gracefully
+			local preview_ssh_cmd = Ssh.build_command(host)
+			local preview_cmd = string.format(
+				"bat --color=always --style=numbers --line-range=:10000 %s 2>/dev/null || head -n 10000 %s",
+				vim.fn.shellescape(filename),
+				vim.fn.shellescape(filename)
+			)
+			table.insert(preview_ssh_cmd, preview_cmd)
+			return preview_ssh_cmd
+		end,
+	})
+
 	pickers
 		.new({}, {
 			prompt_title = "Remote Find (" .. host .. ")",
 			finder = file_finder,
-			previewer = conf.values.file_previewer({}),
+			previewer = ssh_file_previewer,
 			sorter = conf.values.file_sorter({}),
 		})
 		:find()
