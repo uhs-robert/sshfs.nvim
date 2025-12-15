@@ -9,7 +9,7 @@ local FzfLua = {}
 function FzfLua.explore_files(cwd)
 	local ok, fzf = pcall(require, "fzf-lua")
 	if ok and fzf.files then
-		fzf.files({ cwd = cwd })
+		fzf.files({ cwd = cwd, previewer = "builtin" })
 		return true
 	end
 	return false
@@ -22,7 +22,7 @@ end
 function FzfLua.grep(cwd, pattern)
 	local ok, fzf = pcall(require, "fzf-lua")
 	if ok and fzf.live_grep then
-		local opts = { cwd = cwd }
+		local opts = { cwd = cwd, previewer = "builtin" }
 		if pattern and pattern ~= "" then
 			opts.query = pattern
 		end
@@ -57,10 +57,20 @@ function FzfLua.live_grep(host, mount_path, path, callback)
 		remote_path
 	)
 
-	-- Configure fzf-lua live grep
+	-- Configure fzf-lua live grep with preview
+	local preview_cmd = string.format(
+		[[%s "bat --color=always --style=numbers --highlight-line={2} {1} 2>/dev/null || cat {1}" 2>/dev/null || echo "Preview unavailable"]],
+		ssh_base
+	)
+
 	local opts = {
 		prompt = "Remote Grep (" .. host .. ")> ",
 		cmd = rg_cmd,
+		preview = preview_cmd,
+		fzf_opts = {
+			["--delimiter"] = ":",
+			["--preview-window"] = "right:50%:+{2}-/2",
+		},
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
@@ -123,9 +133,15 @@ function FzfLua.live_find(host, mount_path, path, callback)
 		remote_path
 	)
 
-	-- Configure fzf-lua with custom command
+	-- Configure fzf-lua with custom command and preview
+	local preview_cmd = string.format(
+		[[%s "bat --color=always --style=numbers {} 2>/dev/null || cat {}" 2>/dev/null || echo "Preview unavailable"]],
+		ssh_base
+	)
+
 	local opts = {
 		prompt = "Remote Find (" .. host .. ")> ",
+		preview = preview_cmd,
 		actions = {
 			["default"] = function(selected)
 				if not selected or #selected == 0 then
