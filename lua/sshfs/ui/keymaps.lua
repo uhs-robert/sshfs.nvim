@@ -5,6 +5,8 @@ local Keymaps = {}
 
 local DEFAULT_PREFIX = "<leader>m"
 local DEFAULT_KEYMAPS = {
+	change_dir = "d",
+	command = "o",
 	config = "c",
 	explore = "e",
 	files = "f",
@@ -35,6 +37,8 @@ function Keymaps.setup(opts)
 	vim.keymap.set("n", keymaps.mount, Api.mount, { desc = "Mount a SSH Server" })
 	vim.keymap.set("n", keymaps.unmount, Api.unmount, { desc = "Unmount a SSH Server" })
 	vim.keymap.set("n", keymaps.explore, Api.explore, { desc = "Explore SSH mount" })
+	vim.keymap.set("n", keymaps.change_dir, Api.change_dir, { desc = "Change dir to mount" })
+	vim.keymap.set("n", keymaps.command, Api.command, { desc = "Run command on mount" })
 	vim.keymap.set("n", keymaps.config, Api.config, { desc = "Edit SSH config" })
 	vim.keymap.set("n", keymaps.reload, Api.reload, { desc = "Reload SSH config" })
 	vim.keymap.set("n", keymaps.files, Api.files, { desc = "Browse files" })
@@ -43,9 +47,6 @@ function Keymaps.setup(opts)
 
 	-- TODO: Delete after January 15th.
 	-- Handle deprecated keymap names
-	if user_keymaps.change_dir then
-		vim.notify("sshfs.nvim: Keymap 'change_dir' is deprecated. Use 'explore' instead.", vim.log.levels.WARN)
-	end
 	if user_keymaps.open_dir then
 		vim.notify("sshfs.nvim: Keymap 'open_dir' is deprecated. Use 'explore' instead.", vim.log.levels.WARN)
 	end

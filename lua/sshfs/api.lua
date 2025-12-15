@@ -156,10 +156,23 @@ Api.list_mounts = function()
 	end)
 end
 
---- Explore SSH mount (opens directory as buffer, triggering file explorer)
+--- Run a custom command on SSHFS mount (prompts for command if not provided)
+--- @param cmd string|nil Command to run (e.g., "edit", "tcd", "Oil"). If nil, prompts user.
+Api.command = function(cmd)
+	local MountPoint = require("sshfs.lib.mount_point")
+	MountPoint.run_command(cmd)
+end
+
+--- Explore SSHFS mount (opens directory as buffer, triggering file explorer)
 Api.explore = function()
-	local Navigate = require("sshfs.ui.navigate")
-	Navigate.to_mount_dir()
+	local MountPoint = require("sshfs.lib.mount_point")
+	MountPoint.run_command("edit")
+end
+
+--- Change directory to an SSHFS mount
+Api.change_dir = function()
+	local MountPoint = require("sshfs.lib.mount_point")
+	MountPoint.run_command("tcd")
 end
 
 --- Open SSH terminal session to remote host

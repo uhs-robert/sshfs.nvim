@@ -43,6 +43,15 @@ App.setup_api_commands = function()
 		Api.explore()
 	end, { desc = "Explore SSH mount" })
 
+	vim.api.nvim_create_user_command("SSHCommand", function(opts)
+		local cmd = opts.args and opts.args ~= "" and opts.args or nil
+		Api.command(cmd)
+	end, { nargs = "?", desc = "Run command on SSH mount (e.g., :SSHCommand tcd)" })
+
+	vim.api.nvim_create_user_command("SSHChangeDir", function()
+		Api.change_dir()
+	end, { desc = "Change directory to SSH mount" })
+
 	-- TODO: Delete these after January 15th
 	-- Deprecated command aliases
 	vim.api.nvim_create_user_command("SSHEdit", function()
@@ -54,11 +63,6 @@ App.setup_api_commands = function()
 		vim.notify("SSHBrowse is deprecated. Use :SSHFiles instead.", vim.log.levels.WARN)
 		Api.files()
 	end, { desc = "Browse remote files (deprecated: use SSHFiles)" })
-
-	vim.api.nvim_create_user_command("SSHChangeDir", function()
-		vim.notify("SSHChangeDir is deprecated. Use :SSHExplore instead.", vim.log.levels.WARN)
-		Api.explore()
-	end, { desc = "Explore SSH mount (deprecated: use SSHExplore)" })
 
 	vim.api.nvim_create_user_command("SSHTerminal", function()
 		Api.ssh_terminal()

@@ -175,11 +175,12 @@ require("sshfs").setup({
   keymaps = {
     mount = "<leader>mm",         -- change any keymap below
     unmount = "<leader>mu",
-    explore = "<leader>me",
     config = "<leader>mc",
     reload = "<leader>mr",
     files = "<leader>mf",
     grep = "<leader>mg",
+    explore = "<leader>me",       -- explore an sshfs mount using your native editor
+    change_dir = "<leader>md",    -- change dir to mount
   },
 })
 ```
@@ -205,8 +206,9 @@ require("sshfs").setup({
 - `:SSHReload` - Reload SSH configuration
 - `:SSHFiles` - Browse remote files using auto-detected file picker
 - `:SSHGrep [pattern]` - Search remote files using auto-detected search tool
-- `:SSHExplore` - Explore SSH mount (picker shown if multiple mounts)
 - `:SSHTerminal` - Open SSH terminal session to remote host (picker shown if multiple mounts), reusing the ControlMaster socket (no extra auth prompt)
+- `:SSHExplore` - Open file browser on mount
+- `:SSHChangeDir` - Change directory to mount (`tcd`)
 
 ## 🎹 Key Mapping
 
@@ -218,12 +220,13 @@ This plugin optionally provides default keybindings under `<leader>m`. These can
 | ------------ | ------------------------- |
 | `<leader>mm` | Mount an SSH host         |
 | `<leader>mu` | Unmount an active session |
-| `<leader>me` | Explore SSH mount         |
 | `<leader>mc` | Edit SSH config           |
 | `<leader>mr` | Reload SSH configuration  |
 | `<leader>mf` | Browse files              |
 | `<leader>mg` | Grep files                |
 | `<leader>mt` | Open SSH terminal session |
+| `<leader>me` | Explore SSH mount via native edit |
+| `<leader>md` | Change dir to mount               |
 
 If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `<leader>m` group will be labeled with a custom icon (`󰌘`).
 

@@ -41,8 +41,8 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
 			return
 		end
 
-		local Directory = require("sshfs.lib.directory")
-		Directory.change(vim.fs.dirname(path))
+		vim.cmd("tcd " .. vim.fn.dirname(path))
+
 		STATE.armed = false
 		STATE.base_dir = nil
 	end,

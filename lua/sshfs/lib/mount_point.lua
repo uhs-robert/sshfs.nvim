@@ -1,5 +1,5 @@
 -- lua/sshfs/lib/mount_point.lua
--- Mount point management, detection, creation, unmounting, and cleanup
+-- Mount point management, detection, creation, unmounting, cleanup, and command execution
 
 local MountPoint = {}
 local Directory = require("sshfs.lib.directory")
@@ -176,6 +176,49 @@ function MountPoint.cleanup_stale()
 	end
 
 	return removed_count
+end
+
+--- Run a command on a mounted directory
+--- Prompts user to select a mount if multiple connections are active
+--- @param command string|nil Command to run on mount path (e.g., "edit", "tcd", "Oil"). If nil, prompts user for input.
+function MountPoint.run_command(command)
+	local Connections = require("sshfs.lib.connections")
+	local active_connections = Connections.get_all()
+
+	if #active_connections == 0 then
+		vim.notify("No active SSH connections", vim.log.levels.WARN)
+		return
+	end
+
+	-- Prompt for command if not provided
+	if not command then
+		vim.ui.input({ prompt = "Command to run on mount: ", default = "edit" }, function(input)
+			if input and input ~= "" then
+				MountPoint.run_command(input)
+			end
+		end)
+		return
+	end
+
+	if #active_connections == 1 then
+		local mount_dir = active_connections[1].mount_path
+		vim.cmd(command .. " " .. vim.fn.fnameescape(mount_dir))
+		return
+	end
+
+	local items = {}
+	for _, conn in ipairs(active_connections) do
+		table.insert(items, conn.host)
+	end
+
+	vim.ui.select(items, {
+		prompt = "Select mount to " .. command .. ":",
+	}, function(_, idx)
+		if idx then
+			local mount_dir = active_connections[idx].mount_path
+			vim.cmd(command .. " " .. vim.fn.fnameescape(mount_dir))
+		end
+	end)
 end
 
 return MountPoint

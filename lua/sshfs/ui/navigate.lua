@@ -2,37 +2,6 @@
 
 local Navigate = {}
 
---- Change to mounted directory by opening it as a buffer
-function Navigate.to_mount_dir()
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
-
-	if #active_connections == 0 then
-		vim.notify("No active SSH connections", vim.log.levels.WARN)
-		return
-	end
-
-	if #active_connections == 1 then
-		local mount_dir = active_connections[1].mount_path
-		vim.cmd("edit " .. vim.fn.fnameescape(mount_dir))
-		return
-	end
-
-	local items = {}
-	for _, conn in ipairs(active_connections) do
-		table.insert(items, conn.host)
-	end
-
-	vim.ui.select(items, {
-		prompt = "Select mount to change to:",
-	}, function(_, idx)
-		if idx then
-			local mount_dir = active_connections[idx].mount_path
-			vim.cmd("edit " .. vim.fn.fnameescape(mount_dir))
-		end
-	end)
-end
-
 --- Navigate with file picker (with auto-change of dir if enabled)
 --- @param mount_dir string Mount directory path
 --- @param config table Plugin configuration
