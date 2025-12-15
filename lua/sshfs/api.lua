@@ -177,8 +177,8 @@ end
 
 --- Open SSH terminal session to remote host
 Api.ssh_terminal = function()
-	local Navigate = require("sshfs.ui.navigate")
-	Navigate.open_ssh_terminal()
+	local Terminal = require("sshfs.ui.terminal")
+	Terminal.open_ssh()
 end
 
 --- Live grep on mounted remote host (requires telescope or fzf-lua and active connection)
@@ -199,12 +199,8 @@ Api.live_grep = function(path)
 		local config = Config.get()
 		local search_path = path or connection.remote_path or "."
 
-		local success, picker_name = Picker.open_live_remote_grep(
-			connection.host,
-			connection.mount_path,
-			search_path,
-			config
-		)
+		local success, picker_name =
+			Picker.open_live_remote_grep(connection.host, connection.mount_path, search_path, config)
 
 		if not success then
 			vim.notify(
@@ -245,12 +241,8 @@ Api.live_find = function(path)
 		local config = Config.get()
 		local search_path = path or connection.remote_path or "."
 
-		local success, picker_name = Picker.open_live_remote_find(
-			connection.host,
-			connection.mount_path,
-			search_path,
-			config
-		)
+		local success, picker_name =
+			Picker.open_live_remote_find(connection.host, connection.mount_path, search_path, config)
 
 		if not success then
 			vim.notify(

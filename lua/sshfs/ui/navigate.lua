@@ -22,36 +22,4 @@ function Navigate.with_picker(mount_dir, config)
 	end
 end
 
---- Open SSH terminal session to remote host
-function Navigate.open_ssh_terminal()
-	local Connections = require("sshfs.lib.connections")
-	local Ssh = require("sshfs.lib.ssh")
-	local active_connections = Connections.get_all()
-
-	if #active_connections == 0 then
-		vim.notify("No active SSH connections", vim.log.levels.WARN)
-		return
-	end
-
-	if #active_connections == 1 then
-		local conn = active_connections[1]
-		Ssh.open_terminal(conn.host, conn.remote_path)
-		return
-	end
-
-	local items = {}
-	for _, conn in ipairs(active_connections) do
-		table.insert(items, conn.host)
-	end
-
-	vim.ui.select(items, {
-		prompt = "Select host for SSH terminal:",
-	}, function(_, idx)
-		if idx then
-			local conn = active_connections[idx]
-			Ssh.open_terminal(conn.host, conn.remote_path)
-		end
-	end)
-end
-
 return Navigate

@@ -3,6 +3,38 @@
 
 local Terminal = {}
 
+--- Open SSH terminal session to remote host
+function Terminal.open_ssh()
+	local Connections = require("sshfs.lib.connections")
+	local Ssh = require("sshfs.lib.ssh")
+	local active_connections = Connections.get_all()
+
+	if #active_connections == 0 then
+		vim.notify("No active SSH connections", vim.log.levels.WARN)
+		return
+	end
+
+	if #active_connections == 1 then
+		local conn = active_connections[1]
+		Ssh.open_terminal(conn.host, conn.remote_path)
+		return
+	end
+
+	local items = {}
+	for _, conn in ipairs(active_connections) do
+		table.insert(items, conn.host)
+	end
+
+	vim.ui.select(items, {
+		prompt = "Select host for SSH terminal:",
+	}, function(_, idx)
+		if idx then
+			local conn = active_connections[idx]
+			Ssh.open_terminal(conn.host, conn.remote_path)
+		end
+	end)
+end
+
 --- Open SSH authentication terminal in a floating window
 --- Creates a centered floating window and runs the SSH command in a terminal buffer
 ---@param cmd table SSH command as array (e.g., {"ssh", "-o", "ControlMaster=yes", "host", "exit"})
