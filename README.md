@@ -14,30 +14,28 @@
 </p>
 
 <p align="center">
-A minimal, fast <strong>SSHFS</strong> integration for <strong>NeoVim</strong> that <strong>works with YOUR setup</strong>.
+A fast <strong>SSHFS/SSH</strong> integration for <strong>NeoVim</strong> that <strong>works with your setup</strong>.
 </p>
 
-## 🕶️ What does it do?
+## 🕶️ What It Is & Why
 
-Mount remote hosts from your SSH config and work with remote files/hosts as if they were local.
+sshfs.nvim mounts hosts from your SSH config and makes them feel local. You can bbrowse, search, change directories, run commands, or open SSH terminals across multiple mounts without changing your workflow.
 
-Browse, search, change directories, run commands, or open ssh terminal connections from NeoVim with zero forced dependencies.
-
-Auto-detects your tools: **snacks**, **telescope**, **fzf-lua**, **mini**, **oil**, **yazi**, **nnn**, **ranger**, **lf**, **neo-tree**, **nvim-tree**, or **netrw**.
+It stays lightweight and modern: no forced dependencies, built for Neovim 0.10+ with `sshfs` and `ssh` toolkits using your existing tools.
 
 <https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11>
 
 ## ✨ Features
 
-- **Zero dependencies** - Works with your existing file pickers and search tools, no forced plugins
-- **Auto-detection** - Launches telescope, oil, snacks, fzf-lua, mini, yazi, neo-tree, nvim-tree, ranger, lf, nnn, or netrw
-- **On-mount hooks** - Run your own function or built-ins (find, grep, live find/grep) right after a mount
-- **Live remote search** - Stream `rg`/`find` over SSH with snacks, fzf-lua, telescope, or mini (no local mount thrashing)
-- **Flexible workflow** - Explore files, change directories (`tcd`), run custom commands, or open SSH terminals
-- **Universal auth** - Handles SSH keys, 2FA, passwords, passphrases, host verification via floating terminal
-- **ControlMaster** - Enter credentials once, reuse for all operations (mount, terminal, git, scp)
-- **Full SSH config** - Supports Include, Match, ProxyJump, and all `ssh_config` features via `ssh -G`
-- **Modern Neovim** - Built for 0.10+ with vim.uv, modular architecture, cross-platform
+- **Uses your toolkit** – Auto-detects **snacks**, **telescope**, **fzf-lua**, **mini**, **oil**, **yazi**, **nnn**, **ranger**, **lf**, **neo-tree**, **nvim-tree**, or **netrw**.
+- **Auth that sticks** – ControlMaster sockets + floating auth handle keys/passwords/2FA once, then reuse for mounts, live search, terminals, git, or scp.
+- **Real SSH config support** – Honors Include/Match/ProxyJump and all `ssh_config` options via `ssh -G`; optional per-host default paths.
+- **On-mount hooks** – Auto-run find/grep/live find/live grep/terminal or your own function after connecting.
+- **Live remote search** – Stream `rg`/`find` over SSH (snacks, fzf-lua, telescope, mini) while keeping mounts quiet.
+- **Multi-mount aware** – Connect to several hosts, clean up on exit, and jump between mounts with keymaps or commands.
+- **Command suite** – `:SSHFiles`, `:SSHGrep`, `:SSHLiveFind/Grep`, `:SSHTerminal`, `:SSHCommand`, `:SSHChangeDir`, `:SSHConfig`, `:SSHReload`.
+- **Host-aware defaults** – Optional per-host default paths so you can skip path prompts on common servers.
+- **Modern Neovim** – Built for 0.10+ with `vim.uv` for reliable jobs, sockets, and cleanup.
 
 ## 📋 Requirements
 
