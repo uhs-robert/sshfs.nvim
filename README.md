@@ -31,7 +31,7 @@ Auto-detects your tools: **snacks**, **telescope**, **fzf-lua**, **mini**, **oil
 
 - **Zero dependencies** - Works with your existing file pickers and search tools, no forced plugins
 - **Auto-detection** - Launches telescope, oil, snacks, fzf-lua, mini, yazi, neo-tree, nvim-tree, ranger, lf, nnn, or netrw
-- **On-mount hooks** - Run your own function or built-ins (files, grep, live find/grep) right after a mount
+- **On-mount hooks** - Run your own function or built-ins (find, grep, live find/grep) right after a mount
 - **Live remote search** - Stream `rg`/`find` over SSH with snacks, fzf-lua, telescope, or mini (no local mount thrashing)
 - **Flexible workflow** - Explore files, change directories (`tcd`), run custom commands, or open SSH terminals
 - **Universal auth** - Handles SSH keys, 2FA, passwords, passphrases, host verification via floating terminal
@@ -157,7 +157,7 @@ require("sshfs").setup({
     },
     on_mount = {
       auto_change_to_dir = false, -- auto-change current directory to mount point
-      auto_run = "files",         -- "files" (default), "grep", "live_find", "live_grep", "terminal", "none", or a custom function(ctx)
+      auto_run = "find",          -- "find" (default), "grep", "live_find", "live_grep", "terminal", "none", or a custom function(ctx)
     },
   },
   ui = {

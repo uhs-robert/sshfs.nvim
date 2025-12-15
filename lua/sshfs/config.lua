@@ -39,14 +39,14 @@ local DEFAULT_CONFIG = {
 		on_mount = {
 			auto_change_to_dir = false,       -- auto-change current directory to mount point
 			-- Action to run after a successful mount
-			-- "files" (default): open file picker
+			-- "find" (default): open file picker
 			-- "grep": open grep picker
 			-- "live_find": run remote find over SSH and stream results
 			-- "live_grep": run remote rg/grep over SSH and stream results
 			-- "terminal": open SSH terminal to the mounted host
 			-- "none" or nil: do nothing
 			-- function(ctx): custom handler with { mount_path, host, remote_path }
-			auto_run = "files",
+			auto_run = "find",
 		},
 		on_exit = {
 			auto_unmount = true,              -- auto-disconnect all mounts on :q or exit
