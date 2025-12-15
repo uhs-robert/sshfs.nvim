@@ -57,9 +57,9 @@ function FzfLua.live_grep(host, mount_path, path, callback)
 		remote_path
 	)
 
-	-- Configure fzf-lua live grep with preview
+	-- Configure fzf-lua live grep with preview (10000 line limit for large files)
 	local preview_cmd = string.format(
-		[[%s "bat --color=always --style=numbers --highlight-line={2} {1} 2>/dev/null || cat {1}" 2>/dev/null || echo "Preview unavailable"]],
+		[[%s "bat --color=always --style=numbers --highlight-line={2} --line-range=:10000 {1} 2>/dev/null || head -n 10000 {1}" 2>/dev/null || echo "Preview unavailable"]],
 		ssh_base
 	)
 
@@ -133,9 +133,9 @@ function FzfLua.live_find(host, mount_path, path, callback)
 		remote_path
 	)
 
-	-- Configure fzf-lua with custom command and preview
+	-- Configure fzf-lua with custom command and preview (10000 line limit for large files)
 	local preview_cmd = string.format(
-		[[%s "bat --color=always --style=numbers {} 2>/dev/null || cat {}" 2>/dev/null || echo "Preview unavailable"]],
+		[[%s "bat --color=always --style=numbers --line-range=:10000 {} 2>/dev/null || head -n 10000 {}" 2>/dev/null || echo "Preview unavailable"]],
 		ssh_base
 	)
 
