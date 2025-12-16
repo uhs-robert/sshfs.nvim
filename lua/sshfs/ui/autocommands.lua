@@ -41,7 +41,7 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
 			return
 		end
 
-		vim.cmd("tcd " .. vim.fn.dirname(path))
+		vim.cmd("tcd " .. vim.fs.dirname(path))
 
 		STATE.armed = false
 		STATE.base_dir = nil
