@@ -10,13 +10,15 @@ local Config = require("sshfs.config")
 local function get_system_mounts()
 	local mount_paths = {}
 
-	-- Try findmnt first (Linux only)
-	local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs", "-n", "-o", "TARGET" })
-	if vim.v.shell_error == 0 then
-		for line in findmnt_result:gmatch("[^\r\n]+") do
-			table.insert(mount_paths, line)
+	-- Try findmnt first (Linux only) if available
+	if vim.fn.executable("findmnt") == 1 then
+		local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs", "-n", "-o", "TARGET" })
+		if vim.v.shell_error == 0 then
+			for line in findmnt_result:gmatch("[^\r\n]+") do
+				table.insert(mount_paths, line)
+			end
+			return mount_paths
 		end
-		return mount_paths
 	end
 
 	-- Fallback to mount command for broader compatibility
