@@ -96,10 +96,9 @@ end
 --- Auto-detects available file pickers (telescope, oil, snacks, etc.) and falls back to netrw
 ---@param cwd string Current working directory to open picker in
 ---@param config table Plugin configuration table
----@param is_manual boolean True if called manually by user command, false if automatic
 ---@return boolean success True if a picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
-function Picker.open_file_picker(cwd, config, is_manual)
+function Picker.open_file_picker(cwd, config)
 	local file_picker_config = config.ui and config.ui.local_picker or {}
 	local preferred = file_picker_config.preferred_picker or "auto"
 	local fallback_to_netrw = file_picker_config.fallback_to_netrw ~= false -- default true
@@ -120,10 +119,9 @@ end
 ---@param cwd string Current working directory to search in
 ---@param pattern? string Optional search pattern to pre-populate
 ---@param config table Plugin configuration table
----@param is_manual boolean True if called manually by user command, false if automatic
 ---@return boolean success True if a search picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
-function Picker.open_search_picker(cwd, pattern, config, is_manual)
+function Picker.open_search_picker(cwd, pattern, config)
 	local file_picker_config = config.ui and config.ui.local_picker or {}
 	local preferred = file_picker_config.preferred_picker or "auto"
 
@@ -176,7 +174,7 @@ function Picker.browse_remote_files(opts)
 
 	-- Try to open file picker (manual user command)
 	AutoCommands.chdir_on_next_open(active_connection.mount_path)
-	local success, picker_name = Picker.open_file_picker(target_dir, config, true)
+	local success, picker_name = Picker.open_file_picker(target_dir, config)
 	if not success then
 		vim.notify("Failed to open " .. picker_name .. ". Please open manually.", vim.log.levels.WARN)
 	end
@@ -196,7 +194,7 @@ function Picker.grep_remote_files(pattern, opts)
 
 	-- Try to open search picker (manual user command)
 	AutoCommands.chdir_on_next_open(active_connection.mount_path)
-	local success, picker_name = Picker.open_search_picker(target_dir, pattern, config, true)
+	local success, picker_name = Picker.open_search_picker(target_dir, pattern, config)
 	if success then
 		return
 	end

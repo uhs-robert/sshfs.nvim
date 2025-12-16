@@ -144,7 +144,7 @@ Api.list_mounts = function()
 		if selected_mount then
 			local Picker = require("sshfs.ui.picker")
 			local config = Config.get()
-			local success, picker_name = Picker.open_file_picker(selected_mount.mount_path, config, true)
+			local success, picker_name = Picker.open_file_picker(selected_mount.mount_path, config)
 
 			if not success then
 				vim.notify(
@@ -245,7 +245,7 @@ Api.live_find = function(path)
 	local function fallback_to_local_find(connection)
 		local Picker = require("sshfs.ui.picker")
 		local config = Config.get()
-		local ok, picker_name = Picker.open_file_picker(connection.mount_path, config, false)
+		local ok, picker_name = Picker.open_file_picker(connection.mount_path, config)
 		if not ok then
 			vim.notify(
 				"Fallback file picker failed for "

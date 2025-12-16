@@ -57,7 +57,7 @@ end
 local function run_preset_action(preset, mount_dir, config)
 	if preset == "find" then
 		local Picker = require("sshfs.ui.picker")
-		local ok, picker_name = Picker.open_file_picker(mount_dir, config, false)
+		local ok, picker_name = Picker.open_file_picker(mount_dir, config)
 		if not ok then
 			vim.notify("Failed to open " .. picker_name .. " for new mount: " .. mount_dir, vim.log.levels.ERROR)
 		end
