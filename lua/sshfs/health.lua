@@ -167,13 +167,17 @@ local function check_ssh_config()
 		-- Check socket directory
 		local socket_dir = Config.get_socket_dir()
 		if vim.fn.isdirectory(socket_dir) == 0 then
-			local ok = pcall(vim.fn.mkdir, socket_dir, "p")
+			local ok = pcall(vim.fn.mkdir, socket_dir, "p", "0700")
 			if ok then
-				health.ok("Created SSH socket directory: " .. socket_dir)
+				health.ok("Created SSH socket directory with proper permissions (0700): " .. socket_dir)
 			else
-				health.warn(
-					"Could not create SSH socket directory: " .. socket_dir,
-					"ControlMaster connections may not work. Create directory manually with: mkdir -p " .. socket_dir
+				health.info(
+					"Socket directory does not exist: " .. socket_dir,
+					"It will be created automatically during connection (or create manually: mkdir -p "
+						.. socket_dir
+						.. " && chmod 700 "
+						.. socket_dir
+						.. ")"
 				)
 			end
 		else

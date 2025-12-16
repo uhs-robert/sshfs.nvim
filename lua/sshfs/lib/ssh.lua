@@ -3,6 +3,25 @@
 
 local Ssh = {}
 
+--- Get SSH socket directory, creating it if it doesn't exist
+--- @return string|nil socket_dir The socket directory path, or nil if creation failed
+--- @return string|nil error_msg Error message if creation failed
+local function get_or_create_socket_dir()
+	local Config = require("sshfs.config")
+	local socket_dir = Config.get_socket_dir()
+
+	if vim.fn.isdirectory(socket_dir) == 1 then
+		return socket_dir, nil
+	end
+
+	local ok, err = pcall(vim.fn.mkdir, socket_dir, "p", "0700")
+	if ok then
+		return socket_dir, nil
+	else
+		return nil, "Failed to create socket directory: " .. socket_dir .. " (" .. tostring(err) .. ")"
+	end
+end
+
 --- Build SSH options array (ControlMaster + optional auth options)
 --- @param auth_type string|nil Authentication type:
 ---   - "batch": ControlMaster=yes + BatchMode=yes (socket creation, non-interactive)
@@ -124,6 +143,15 @@ end
 ---@param host string SSH host name
 ---@param callback function Callback(success: boolean, exit_code: number, error: string|nil)
 function Ssh.try_batch_connect(host, callback)
+	-- Ensure socket directory exists before attempting connection
+	local socket_dir, err = get_or_create_socket_dir()
+	if not socket_dir then
+		vim.schedule(function()
+			callback(false, 1, err)
+		end)
+		return
+	end
+
 	local cmd = { "ssh" }
 
 	-- Add SSH options for batch connection (ControlMaster=yes + BatchMode=yes)
@@ -153,6 +181,16 @@ end
 ---@param host string SSH host name
 ---@param callback function Callback(success: boolean, exit_code: number)
 function Ssh.open_auth_terminal(host, callback)
+	-- Ensure socket directory exists before attempting connection
+	local socket_dir, err = get_or_create_socket_dir()
+	if not socket_dir then
+		vim.notify("sshfs.nvim: " .. err, vim.log.levels.ERROR)
+		vim.schedule(function()
+			callback(false, 1)
+		end)
+		return
+	end
+
 	-- Build SSH command for authentication (ControlMaster=yes to create socket)
 	local cmd = { "ssh" }
 	local options = get_ssh_options(nil) -- Get ControlMaster options

@@ -98,12 +98,12 @@ Built for Neovim 0.10+ using the best of both `sshfs` and `ssh` in tandem with y
 
 ## 📋 Requirements
 
-| Software   | Minimum       | Notes                                                                                                  |
-| ---------- | ------------- | ------------------------------------------------------------------------------------------------------ |
-| Neovim     | `>=0.10`      | Requires `vim.uv` support                                                                              |
-| sshfs      | any           | `sudo dnf/apt/pacman install sshfs` or `brew install sshfs`                                            |
-| SSH client | any           | OpenSSH with ControlMaster support (default). Create `~/.ssh/sockets` (chmod 700) for control sockets. |
-| SSH config | working hosts | Hosts come from `~/.ssh/config`                                                                        |
+| Software   | Minimum       | Notes                                                                                            |
+| ---------- | ------------- | ------------------------------------------------------------------------------------------------ |
+| Neovim     | `>=0.10`      | Requires `vim.uv` support                                                                        |
+| sshfs      | any           | `sudo dnf/apt/pacman install sshfs` or `brew install sshfs`                                      |
+| SSH client | any           | OpenSSH with ControlMaster support (default). Socket directory created automatically if missing. |
+| SSH config | working hosts | Hosts come from `~/.ssh/config`                                                                  |
 
 ## 📦 Installation
 
@@ -195,6 +195,7 @@ require("sshfs").setup({
       -- follow_symlinks = true,    -- Follow symbolic links
     },
     control_persist = "10m",        -- How long to keep ControlMaster connection alive after last use
+    socket_dir = vim.fn.expand("$HOME/.ssh/sockets"), -- Directory for ControlMaster sockets
   },
   mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
@@ -248,12 +249,8 @@ require("sshfs").setup({
 >
 > In addition, sshfs also supports a variety of options from [sftp](https://man7.org/linux/man-pages/man1/sftp.1.html) and [ssh_config](https://man7.org/linux/man-pages/man5/ssh_config.5.html).
 
-> [!IMPORTANT]
-> ControlMaster sockets are stored at `~/.ssh/sockets/%C`. If the directory doesn't exist, create it once:
->
-> ```bash
-> mkdir -p ~/.ssh/sockets && chmod 700 ~/.ssh/sockets
-> ```
+> [!NOTE]
+> ControlMaster sockets are stored at `~/.ssh/sockets/%C` (configurable via `connections.socket_dir`). The directory is created automatically with proper permissions (0700) during the first connection.
 
 ## 🔧 Commands
 

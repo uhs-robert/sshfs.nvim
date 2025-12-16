@@ -23,6 +23,7 @@ local DEFAULT_CONFIG = {
       -- follow_symlinks = true,        -- Follow symbolic links
     },
     control_persist = "10m",            -- How long to keep ControlMaster connection alive after last use
+    socket_dir = vim.fn.expand("$HOME/.ssh/sockets"), -- Directory for ControlMaster sockets
 	},
 	mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
@@ -139,7 +140,7 @@ end
 ---@return table Array of ControlMaster options
 function Config.get_control_master_options()
 	local opts = Config.options
-	local socket_dir = vim.fn.expand("$HOME/.ssh/sockets")
+	local socket_dir = Config.get_socket_dir()
 	local control_path = socket_dir .. "/%C"
 	local control_persist = (opts.connections and opts.connections.control_persist) or "10m"
 
@@ -153,7 +154,8 @@ end
 --- Get SSH socket directory path
 ---@return string socket_dir The socket directory path
 function Config.get_socket_dir()
-	return vim.fn.expand("$HOME/.ssh/sockets")
+	local opts = Config.options
+	return (opts.connections and opts.connections.socket_dir) or vim.fn.expand("$HOME/.ssh/sockets")
 end
 
 return Config
