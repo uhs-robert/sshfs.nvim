@@ -11,7 +11,7 @@ local Netrw = {}
 function Netrw.explore_files(cwd)
 	local ok = pcall(function()
 		local opts = config.get()
-		local netrw_cmd = opts.ui.file_picker.netrw_command or "Explore"
+		local netrw_cmd = opts.ui.local_picker.netrw_command or "Explore"
 		vim.cmd(netrw_cmd .. " " .. vim.fn.fnameescape(cwd))
 	end)
 	return ok
