@@ -52,7 +52,7 @@ function Keymaps.setup(opts)
 	-- TODO: Delete after January 15th.
 	-- Handle deprecated keymap names
 	if user_keymaps.open_dir then
-		vim.notify("sshfs.nvim: Keymap 'open_dir' is deprecated. Use 'explore' instead.", vim.log.levels.WARN)
+		vim.notify("sshfs.nvim: Keymap 'open_dir' is deprecated. Use 'change_dir' instead.", vim.log.levels.WARN)
 	end
 	if user_keymaps.open then
 		vim.notify("sshfs.nvim: Keymap 'open' is deprecated. Use 'files' instead.", vim.log.levels.WARN)
