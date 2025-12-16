@@ -28,7 +28,7 @@ local function normalize_remote_path(path, host)
 			home_dir = "/home/" .. host.user
 		end
 
-		return path:gsub("^~", home_dir)
+		return (path:gsub("^~", home_dir))
 	end
 
 	-- Handle paths without leading slash -> prepend /
