@@ -202,7 +202,7 @@ Api.live_grep = function(path)
 	local function execute_live_grep(connection)
 		local Picker = require("sshfs.ui.picker")
 		local config = Config.get()
-		local search_path = path or connection.remote_path or "."
+		local search_path = connection.remote_path or path or "."
 
 		local success, picker_name =
 			Picker.open_live_remote_grep(connection.host, connection.mount_path, search_path, config)
@@ -261,7 +261,7 @@ Api.live_find = function(path)
 	local function execute_live_find(connection)
 		local Picker = require("sshfs.ui.picker")
 		local config = Config.get()
-		local search_path = path or connection.remote_path or "."
+		local search_path = connection.remote_path or path or "."
 
 		local success, picker_name =
 			Picker.open_live_remote_find(connection.host, connection.mount_path, search_path, config)
