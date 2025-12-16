@@ -78,9 +78,11 @@ local function open_ranger_nvim(cwd)
 	vim.api.nvim_win_set_buf(orig_win, scratch_buf) -- Switch to scratch buffer so expand("%") picks it up
 	setup_cleanup_autocmds(orig_win, orig_buf, scratch_buf)
 	local ok, ranger = pcall(require, "ranger-nvim")
-	ranger.open(true) -- select_current_file= true to use expand("%")
+	if ok then
+		ranger.open(true) -- select_current_file= true to use expand("%")
+	end
 
-	return true
+	return ok
 end
 
 --- Opens rnvimr in the specified directory
