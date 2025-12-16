@@ -25,6 +25,38 @@ It stays lightweight and modern: no forced dependencies, built for Neovim 0.10+ 
 
 <https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11>
 
+<details>
+<summary>✨ What's New / 🚨 Breaking Changes</summary>
+<br/>
+<!-- whats-new:start -->
+
+  <details>
+    <summary>🚨 v2.0 Breaking Changes </summary>
+    <h3>Config reshuffle & hooks</h3>
+    <ul>
+      <li><code>mounts.unmount_on_exit</code> → <code>hooks.on_exit.auto_unmount</code>; <code>mounts.auto_change_dir_on_mount</code> → <code>hooks.on_mount.auto_change_to_dir</code>.</li>
+      <li><code>ui.file_picker</code> → <code>ui.local_picker</code>; removed <code>ui.file_picker.auto_open_on_mount</code> in favor of <code>hooks.on_mount.auto_run</code>.</li>
+    </ul>
+    <h3>SSH-first ControlMaster required</h3>
+    <ul>
+      <li>Mounting now tries a non-interactive socket first, then opens an auth terminal. This passes all login responsibility to ssh to support 2FA etc.</li>
+    </ul>
+    <h3><code>sshfs_options</code> format change</h3>
+    <ul>
+      <li><code>connections.sshfs_options</code> must be a key/value table (e.g., <code>{ reconnect = true, ConnectTimeout = 5 }</code>); string arrays are ignored.</li>
+      <li>Booleans <code>true</code> add flags, strings/numbers render as <code>key=value</code>, and <code>false</code>/nil drop the option.</li>
+    </ul>
+    <h3>Commands, API, and keymaps renamed (aliases removed after January 15, 2026)</h3>
+    <ul>
+      <li>API: use <code>config</code>/<code>files</code>/<code>explore</code>; old <code>edit</code>/<code>browse</code>/<code>change_to_mount_dir</code> are deprecated.</li>
+      <li>Commands: use <code>:SSHConfig</code>, <code>:SSHFiles</code>, <code>:SSHExplore</code>; legacy <code>:SSHEdit</code> and <code>:SSHBrowse</code> only warn for now (the new <code>:SSHChangeDir</code> strictly changes the current directory).</li>
+      <li>Keymap option names now <code>config</code>, <code>files</code>, <code>explore</code>; deprecated <code>edit</code>/<code>open</code>/<code>open_dir</code> will stop working after January 15, 2026.</li>
+    </ul>
+  </details>
+
+<!-- whats-new:end -->
+</details>
+
 ## ✨ Features
 
 - **Uses your toolkit** – Auto-detects **snacks**, **telescope**, **fzf-lua**, **mini**, **oil**, **yazi**, **nnn**, **ranger**, **lf**, **neo-tree**, **nvim-tree**, or **netrw**.
