@@ -23,7 +23,7 @@ sshfs.nvim mounts hosts from your SSH config and makes them feel local. You can 
 
 It stays lightweight and modern: no forced dependencies, built for Neovim 0.10+ with `sshfs` and `ssh` toolkits using your existing tools.
 
-<https://github.com/user-attachments/assets/20419da8-37b9-4325-a942-90a85754ce11>
+https://github.com/user-attachments/assets/d6453878-f93b-429a-9f36-8580cd9ed889
 
 <details>
 <summary>✨ What's New / 🚨 Breaking Changes</summary>
