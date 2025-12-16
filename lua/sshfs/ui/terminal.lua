@@ -43,7 +43,7 @@ end
 function Terminal.open_auth_floating(cmd, host, callback)
 	-- Create buffer for terminal
 	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
+	vim.bo[buf].bufhidden = "wipe"
 
 	-- Calculate floating window dimensions (80% of editor)
 	local width = math.floor(vim.o.columns * 0.8)
