@@ -219,7 +219,7 @@ end
 ---@return boolean success True if a picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
 function Picker.open_live_remote_grep(host, mount_path, path, config)
-	local live_picker_config = config.ui and config.ui.live_remote_picker or {}
+	local live_picker_config = config.ui and config.ui.remote_picker or {}
 	local preferred = live_picker_config.preferred_picker or "auto"
 
 	-- Try preferred picker first if specified
@@ -263,7 +263,7 @@ end
 ---@return boolean success True if a picker was successfully opened
 ---@return string picker_name Name of the picker that was opened, or error message
 function Picker.open_live_remote_find(host, mount_path, path, config)
-	local live_picker_config = config.ui and config.ui.live_remote_picker or {}
+	local live_picker_config = config.ui and config.ui.remote_picker or {}
 	local preferred = live_picker_config.preferred_picker or "auto"
 
 	-- Try preferred picker first if specified
