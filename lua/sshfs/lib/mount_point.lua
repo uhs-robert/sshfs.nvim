@@ -5,50 +5,55 @@ local MountPoint = {}
 local Directory = require("sshfs.lib.directory")
 local Config = require("sshfs.config")
 
---- Get all active SSHFS mount paths from the system
---- @return table Array of mount path strings
+--- Get all active SSHFS mount paths and remote info from the system
+--- @return table Array of mount info tables with {mount_path, remote_spec} where remote_spec is "user@host:/path" or "host:/path"
 local function get_system_mounts()
-	local mount_paths = {}
+	local mounts = {}
 
-	-- Try findmnt first (Linux only) if available
+	-- Try findmnt first (Linux only) if available - it can show both SOURCE and TARGET
 	if vim.fn.executable("findmnt") == 1 then
-		local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs", "-n", "-o", "TARGET" })
+		local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs", "-n", "-o", "SOURCE,TARGET" })
 		if vim.v.shell_error == 0 then
 			for line in findmnt_result:gmatch("[^\r\n]+") do
-				table.insert(mount_paths, line)
+				-- findmnt output: "user@host:/remote/path /local/mount"
+				local remote_spec, mount_path = line:match("^(%S+)%s+(.+)$")
+				if remote_spec and mount_path then
+					table.insert(mounts, { mount_path = mount_path, remote_spec = remote_spec })
+				end
 			end
-			return mount_paths
+			return mounts
 		end
 	end
 
 	-- Fallback to mount command for broader compatibility
 	local result = vim.fn.system("mount")
 	if vim.v.shell_error ~= 0 then
-		return mount_paths
+		return mounts
 	end
 
-	-- Cross-platform patterns for detecting SSHFS mounts
+	-- Cross-platform patterns for detecting SSHFS mounts with remote spec
+	-- Format: "user@host:/remote/path on /mount/path type fuse.sshfs" or "... (macfuse"
 	local pattern_templates = {
-		"%s+on%s+([^%s]+)%s+type%s+fuse%.sshfs", -- Linux: "on /mount/path type fuse.sshfs"
-		"%s+on%s+([^%s]+)%s+%(macfuse", -- macOS/osxfuse: "on /mount/path (macfuse"
-		"%s+on%s+([^%s]+)%s+%(osxfuse", -- macOS/osxfuse older: "on /mount/path (osxfuse"
-		"%s+on%s+([^%s]+)%s+%(fuse", -- Generic FUSE: "on /mount/path (fuse"
+		"^(%S+)%s+on%s+([^%s]+)%s+type%s+fuse%.sshfs", -- Linux: "user@host:/path on /mount/path type fuse.sshfs"
+		"^(%S+)%s+on%s+([^%s]+)%s+%(macfuse", -- macOS/macfuse: "user@host:/path on /mount/path (macfuse"
+		"^(%S+)%s+on%s+([^%s]+)%s+%(osxfuse", -- macOS/osxfuse older: "user@host:/path on /mount/path (osxfuse"
+		"^(%S+)%s+on%s+([^%s]+)%s+%(fuse", -- Generic FUSE: "user@host:/path on /mount/path (fuse"
 	}
 
 	-- Only process lines that contain 'sshfs' to avoid false positives
 	for line in result:gmatch("[^\r\n]+") do
 		if line:match("sshfs") then
 			for _, pattern in ipairs(pattern_templates) do
-				local mount_path = line:match(pattern)
-				if mount_path then
-					table.insert(mount_paths, mount_path)
+				local remote_spec, mount_path = line:match(pattern)
+				if remote_spec and mount_path then
+					table.insert(mounts, { mount_path = mount_path, remote_spec = remote_spec })
 					break
 				end
 			end
 		end
 	end
 
-	return mount_paths
+	return mounts
 end
 
 --- Check if a mount path is actively mounted
@@ -60,9 +65,9 @@ function MountPoint.is_active(mount_path)
 		return false
 	end
 
-	local mount_paths = get_system_mounts()
-	for _, path in ipairs(mount_paths) do
-		if path == mount_path then
+	local mounts = get_system_mounts()
+	for _, mount in ipairs(mounts) do
+		if mount.mount_path == mount_path then
 			return true
 		end
 	end
@@ -71,24 +76,49 @@ function MountPoint.is_active(mount_path)
 end
 
 --- List all active sshfs mounts
---- @return table Array of mount objects with host and mount_path fields
+--- @return table Array of mount objects with host, mount_path, and remote_path fields
 function MountPoint.list_active()
 	local mounts = {}
 	local base_mount_dir = Config.get_base_dir()
-	local mount_paths = get_system_mounts()
+	local system_mounts = get_system_mounts()
 
 	-- Filter to only include mounts under our base directory
 	local mount_dir_escaped = base_mount_dir:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 	local prefix_pattern = "^" .. mount_dir_escaped .. "/(.+)$"
 
-	for _, mount_path in ipairs(mount_paths) do
-		local host = mount_path:match(prefix_pattern)
+	for _, mount_info in ipairs(system_mounts) do
+		local host = mount_info.mount_path:match(prefix_pattern)
 		if host and host ~= "" then
-			table.insert(mounts, { host = host, mount_path = mount_path })
+			-- Parse remote_spec to extract remote path
+			-- Format: "user@host:/remote/path" or "host:/remote/path"
+			local remote_path = mount_info.remote_spec:match(":(.*)$")
+
+			table.insert(mounts, {
+				host = host,
+				mount_path = mount_info.mount_path,
+				remote_path = remote_path or "/", -- Default to root if parsing fails
+			})
 		end
 	end
 
 	return mounts
+end
+
+--- Check if any active mounts exist
+--- @return boolean True if any active mounts exist
+function MountPoint.has_active()
+	local mounts = MountPoint.list_active()
+	return #mounts > 0
+end
+
+--- Get first active mount (for backward compatibility with single-mount workflows)
+--- @return table|nil Mount object with host, mount_path, and remote_path fields, or nil if none
+function MountPoint.get_active()
+	local mounts = MountPoint.list_active()
+	if #mounts > 0 then
+		return mounts[1]
+	end
+	return nil
 end
 
 --- Get or create mount directory
@@ -189,8 +219,7 @@ end
 --- Prompts user to select a mount if multiple connections are active
 --- @param command string|nil Command to run on mount path (e.g., "edit", "tcd", "Oil"). If nil, prompts user for input.
 function MountPoint.run_command(command)
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("No active SSH connections", vim.log.levels.WARN)

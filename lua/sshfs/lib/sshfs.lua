@@ -147,7 +147,11 @@ function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, cal
 			else
 				callback({
 					success = false,
-					message = string.format("SSH authentication failed for %s (exit code: %d)", host.name, term_exit_code),
+					message = string.format(
+						"SSH authentication failed for %s (exit code: %d)",
+						host.name,
+						term_exit_code
+					),
 				})
 			end
 		end)

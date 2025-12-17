@@ -6,8 +6,8 @@ local Select = {}
 --- Get active mounts or display warning.
 ---@return table|nil Active mounts array or nil if none found
 local function get_active_mounts_or_warn()
-	local Connections = require("sshfs.lib.connections")
-	local active_mounts = Connections.get_all()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_mounts = MountPoint.list_active()
 	if not active_mounts or #active_mounts == 0 then
 		vim.notify("No active SSH mounts found", vim.log.levels.WARN)
 		return nil

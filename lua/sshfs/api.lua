@@ -34,8 +34,8 @@ end
 --- Unmount from a SSH host
 Api.unmount = function()
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("No active mounts to disconnect", vim.log.levels.WARN)
@@ -55,8 +55,8 @@ end
 --- Unmount all active SSH connections
 Api.unmount_all = function()
 	local Session = require("sshfs.session")
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("No active mounts to disconnect", vim.log.levels.WARN)
@@ -81,15 +81,15 @@ end
 --- Check connection status
 --- @return boolean True if any active connections exist
 Api.has_active = function()
-	local Connections = require("sshfs.lib.connections")
-	return Connections.has_active()
+	local MountPoint = require("sshfs.lib.mount_point")
+	return MountPoint.has_active()
 end
 
 --- Get current connection info
 --- @return table|nil Connection info or nil if none active
 Api.get_active = function()
-	local Connections = require("sshfs.lib.connections")
-	return Connections.get_active()
+	local MountPoint = require("sshfs.lib.mount_point")
+	return MountPoint.get_active()
 end
 
 --- Edit SSH config files using native picker
@@ -111,8 +111,8 @@ end
 --- Browse remote files using native file browser
 --- @param opts table|nil Picker options
 Api.find_files = function(opts)
-	local Connections = require("sshfs.lib.connections")
-	if not Connections.has_active() then
+	local MountPoint = require("sshfs.lib.mount_point")
+	if not MountPoint.has_active() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return
 	end
@@ -124,8 +124,8 @@ end
 --- Browse remote files - smart handling for multiple mounts
 --- @param opts table|nil Picker options
 Api.files = function(opts)
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -141,8 +141,8 @@ end
 --- @param pattern string|nil Search pattern
 --- @param opts table|nil Picker options
 Api.grep = function(pattern, opts)
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
@@ -212,8 +212,8 @@ end
 --- Note: Requires an active mount. Use :SSHConnect first.
 ---@param path string|nil Remote path to search (defaults to mounted remote path)
 Api.live_grep = function(path)
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("Not connected to any remote host. Use :SSHConnect first.", vim.log.levels.WARN)
@@ -260,8 +260,8 @@ end
 --- Note: Requires an active mount. Use :SSHConnect first.
 ---@param path string|nil Remote path to search (defaults to mounted remote path)
 Api.live_find = function(path)
-	local Connections = require("sshfs.lib.connections")
-	local active_connections = Connections.get_all()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("Not connected to any remote host. Use :SSHConnect first.", vim.log.levels.WARN)

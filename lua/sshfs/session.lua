@@ -47,13 +47,11 @@ function Session.connect(host)
 				return
 			end
 
-			-- Add connection to cache and navigate to remote directory with picker
+			-- Navigate to remote directory with picker
 			-- Use resolved_path (tilde-expanded) for accurate path mapping in live actions
 			vim.notify("Connected to " .. host.name, vim.log.levels.INFO)
-			local Connections = require("sshfs.lib.connections")
 			local Hooks = require("sshfs.ui.hooks")
 			local final_path = result.resolved_path or remote_path_suffix
-			Connections.add(host.name, mount_dir, final_path)
 			Hooks.on_mount(mount_dir, host.name, final_path, config)
 		end)
 	end)
@@ -62,8 +60,8 @@ end
 --- Disconnect from the currently active SSH mount
 ---@return boolean Success status
 function Session.disconnect()
-	local Connections = require("sshfs.lib.connections")
-	local active_connection = Connections.get_active()
+	local MountPoint = require("sshfs.lib.mount_point")
+	local active_connection = MountPoint.get_active()
 	if not active_connection or not active_connection.mount_path then
 		vim.notify("No active connection to disconnect", vim.log.levels.WARN)
 		return false
@@ -106,10 +104,6 @@ function Session.disconnect_from(connection, silent)
 		-- Clean up ControlMaster socket
 		local Ssh = require("sshfs.lib.ssh")
 		Ssh.cleanup_control_master(connection.host)
-
-		-- Remove connection from cache
-		local Connections = require("sshfs.lib.connections")
-		Connections.remove(connection.mount_path)
 
 		-- Remove pre-mount cache and mount point
 		PRE_MOUNT_DIRS[connection.mount_path] = nil

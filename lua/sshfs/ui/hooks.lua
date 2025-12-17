@@ -40,8 +40,8 @@ end
 --- @param mount_dir string
 --- @return table|nil connection
 local function find_connection_by_mount(mount_dir)
-	local Connections = require("sshfs.lib.connections")
-	for _, conn in ipairs(Connections.get_all()) do
+	local MountPoint = require("sshfs.lib.mount_point")
+	for _, conn in ipairs(MountPoint.list_active()) do
 		if conn.mount_path == mount_dir then
 			return conn
 		end
@@ -73,14 +73,26 @@ local function run_preset_action(preset, mount_dir, config)
 	if preset == "live_grep" or preset == "live_find" then
 		local conn = find_connection_by_mount(mount_dir)
 		if not conn then
-			vim.notify("No connection found for on_mount action: " .. mount_dir .. " – falling back to local " .. (preset == "live_grep" and "grep" or "find"), vim.log.levels.WARN)
+			vim.notify(
+				"No connection found for on_mount action: "
+					.. mount_dir
+					.. " – falling back to local "
+					.. (preset == "live_grep" and "grep" or "find"),
+				vim.log.levels.WARN
+			)
 			return run_preset_action(preset == "live_grep" and "grep" or "find", mount_dir, config)
 		end
 		local Picker = require("sshfs.ui.picker")
 		local fn = preset == "live_grep" and Picker.open_live_remote_grep or Picker.open_live_remote_find
 		local ok, picker_name = fn(conn.host, conn.mount_path, conn.remote_path or ".", config)
 		if not ok then
-			vim.notify("Live action failed: " .. picker_name .. " – falling back to local " .. (preset == "live_grep" and "grep" or "find"), vim.log.levels.WARN)
+			vim.notify(
+				"Live action failed: "
+					.. picker_name
+					.. " – falling back to local "
+					.. (preset == "live_grep" and "grep" or "find"),
+				vim.log.levels.WARN
+			)
 			return run_preset_action(preset == "live_grep" and "grep" or "find", mount_dir, config)
 		end
 		return

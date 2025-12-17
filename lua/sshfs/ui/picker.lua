@@ -136,15 +136,15 @@ end
 ---@private
 local function validate_remote_connection(opts)
 	opts = opts or {}
-	local Connections = require("sshfs.lib.connections")
+	local MountPoint = require("sshfs.lib.mount_point")
 
-	if not Connections.has_active() then
+	if not MountPoint.has_active() then
 		vim.notify("Not connected to any remote host", vim.log.levels.WARN)
 		return nil
 	end
 
 	-- Get active connection
-	local active_connection = Connections.get_active()
+	local active_connection = MountPoint.get_active()
 	local target_dir = opts.dir or (active_connection and active_connection.mount_path)
 	if not target_dir then
 		vim.notify("Invalid connection state", vim.log.levels.ERROR)

@@ -5,9 +5,9 @@ local Terminal = {}
 
 --- Open SSH terminal session to remote host
 function Terminal.open_ssh()
-	local Connections = require("sshfs.lib.connections")
+	local MountPoint = require("sshfs.lib.mount_point")
 	local Ssh = require("sshfs.lib.ssh")
-	local active_connections = Connections.get_all()
+	local active_connections = MountPoint.list_active()
 
 	if #active_connections == 0 then
 		vim.notify("No active SSH connections", vim.log.levels.WARN)
