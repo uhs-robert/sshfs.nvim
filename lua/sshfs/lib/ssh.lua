@@ -77,6 +77,26 @@ function Ssh.build_command_string(auth_type)
 	return table.concat(cmd_parts, " ")
 end
 
+--- Build a safe cd command that handles tilde expansion and path escaping
+--- @param remote_path string Remote path to cd into
+--- @return string Shell command to cd into the path
+local function build_cd_command(remote_path)
+	-- Escape path for safe use in single quotes
+	local function escape_single_quotes(path)
+		return "'" .. path:gsub("'", "'\\''") .. "'"
+	end
+
+	-- Handle ~ paths specially to allow shell expansion
+	if remote_path == "~" then
+		return "cd ~"
+	elseif remote_path:match("^~/") then
+		local rest = remote_path:sub(3) -- Remove "~/"
+		return "cd ~ && cd " .. escape_single_quotes(rest)
+	else
+		return "cd " .. escape_single_quotes(remote_path)
+	end
+end
+
 --- Build SSH command with optional remote path and ControlMaster options
 ---@param host string SSH host name
 ---@param remote_path string|nil Optional remote path to cd into
@@ -96,9 +116,8 @@ function Ssh.build_command(host, remote_path)
 	-- If remote_path specified, cd into it and start a login shell
 	if remote_path and remote_path ~= "" then
 		table.insert(cmd, "-t")
-		-- Escape remote_path for remote shell by wrapping in single quotes and escaping any single quotes as '\''
-		local escaped_path = "'" .. remote_path:gsub("'", "'\\''") .. "'"
-		table.insert(cmd, "cd " .. escaped_path .. " && exec $SHELL -l")
+		local cd_command = build_cd_command(remote_path)
+		table.insert(cmd, cd_command .. " && exec $SHELL -l")
 	end
 
 	return cmd
