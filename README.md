@@ -277,7 +277,7 @@ require("sshfs").setup({
 - `:SSHDisconnectAll` - Unmount all hosts
 - `:SSHConfig` - Edit SSH config files
 - `:SSHReload` - Reload SSH configuration
-- `:SSHFiles` - Browse files with auto-detected picker
+- `:SSHFiles` - Find files with auto-detected picker
 - `:SSHGrep [pattern]` - Search files with auto-detected tool
 - `:SSHLiveFind [pattern]` - Stream remote `find`/`fd` results over SSH (snacks/fzf-lua/telescope/mini)
 - `:SSHLiveGrep [pattern]` - Stream remote `rg`/`grep` results over SSH (snacks/fzf-lua/telescope/mini)
@@ -300,7 +300,7 @@ Default keybindings under `<leader>m` (fully customizable):
 | `<leader>mo` | Run command on mount              |
 | `<leader>mc` | Edit SSH config                   |
 | `<leader>mr` | Reload SSH configuration          |
-| `<leader>mf` | Browse files                      |
+| `<leader>mf` | Find files                        |
 | `<leader>mg` | Grep files                        |
 | `<leader>mF` | Live find (remote)                |
 | `<leader>mG` | Live grep (remote)                |
