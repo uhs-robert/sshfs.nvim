@@ -39,7 +39,7 @@ function Session.connect(host)
 
 		-- Attempt authentication and mounting (async)
 		local Sshfs = require("sshfs.lib.sshfs")
-		Sshfs.authenticate_and_mount(host, mount_dir, remote_path_suffix, function(success, result)
+		Sshfs.authenticate_and_mount(host, mount_dir, remote_path_suffix, function(success, result, resolved_path)
 			-- Handle connection failure
 			if not success then
 				vim.notify("Connection failed: " .. (result or "Unknown error"), vim.log.levels.ERROR)
@@ -48,11 +48,12 @@ function Session.connect(host)
 			end
 
 			-- Add connection to cache and navigate to remote directory with picker
+			-- Use resolved_path (tilde-expanded) for accurate path mapping in live actions
 			vim.notify("Connected to " .. host.name, vim.log.levels.INFO)
 			local Connections = require("sshfs.lib.connections")
 			local Hooks = require("sshfs.ui.hooks")
-			Connections.add(host.name, mount_dir, remote_path_suffix)
-			Hooks.on_mount(mount_dir, host.name, remote_path_suffix, config)
+			Connections.add(host.name, mount_dir, resolved_path or remote_path_suffix)
+			Hooks.on_mount(mount_dir, host.name, resolved_path or remote_path_suffix, config)
 		end)
 	end)
 end

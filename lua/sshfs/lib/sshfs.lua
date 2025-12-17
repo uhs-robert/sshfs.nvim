@@ -53,7 +53,7 @@ end
 --- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string Remote path to mount (already resolved)
---- @param callback function Callback function(success: boolean, result: string)
+--- @param callback function Callback function(success: boolean, result: string, resolved_path: string)
 local function mount_with_path(host, mount_point, remote_path_suffix, callback)
 	local options = get_sshfs_options("socket")
 
@@ -75,10 +75,10 @@ local function mount_with_path(host, mount_point, remote_path_suffix, callback)
 	vim.system(cmd, { text = true }, function(obj)
 		vim.schedule(function()
 			if obj.code == 0 then
-				callback(true, "Mount successful")
+				callback(true, "Mount successful", remote_path_suffix)
 			else
 				local error_msg = obj.stderr or obj.stdout or "Unknown error"
-				callback(false, "Mount failed: " .. error_msg)
+				callback(false, "Mount failed: " .. error_msg, nil)
 			end
 		end)
 	end)
@@ -89,7 +89,7 @@ end
 --- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
---- @param callback function Callback function(success: boolean, result: string)
+--- @param callback function Callback function(success: boolean, result: string, resolved_path: string)
 local function mount_via_socket(host, mount_point, remote_path_suffix, callback)
 	remote_path_suffix = remote_path_suffix or (host.path or "")
 
@@ -121,7 +121,7 @@ end
 --- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
 --- @param remote_path_suffix string|nil Remote path to mount
---- @param callback function Callback function(success: boolean, result: string)
+--- @param callback function Callback function(success: boolean, result: string, resolved_path: string)
 function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, callback)
 	local Ssh = require("sshfs.lib.ssh")
 	vim.notify("Connecting to " .. host.name .. "...", vim.log.levels.INFO)
@@ -140,7 +140,8 @@ function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, cal
 			else
 				callback(
 					false,
-					string.format("SSH authentication failed for %s (exit code: %d)", host.name, term_exit_code)
+					string.format("SSH authentication failed for %s (exit code: %d)", host.name, term_exit_code),
+					nil
 				)
 			end
 		end)
