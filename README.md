@@ -105,6 +105,23 @@ Built for Neovim 0.10+ using the best of both `sshfs` and `ssh` in tandem with y
 | SSH client | any           | OpenSSH with ControlMaster support (default). Socket directory created automatically if missing. |
 | SSH config | working hosts | Hosts come from `~/.ssh/config`                                                                  |
 
+> [!NOTE]
+> For Mac users, see the macOS setup steps below.
+
+---
+
+### 🍏 macOS Setup
+
+To use **sshfs.nvim** on macOS, follow these steps:
+
+1. **Install macFUSE**
+   Download and install macFUSE from the official site:
+   [https://macfuse.github.io/](https://macfuse.github.io/)
+
+2. **Install SSHFS for macFUSE**
+   Use the official SSHFS releases compatible with macFUSE:
+   [https://github.com/macfuse/macfuse/wiki/File-Systems-%E2%80%90-SSHFS](https://github.com/macfuse/macfuse/wiki/File-Systems-%E2%80%90-SSHFS)
+
 ## 📦 Installation
 
 ### Lazy.nvim (Recommended)
