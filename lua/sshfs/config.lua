@@ -28,8 +28,24 @@ local DEFAULT_CONFIG = {
 	mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
 	},
+	global_paths = {
+      -- Optionally define default mount paths for ALL hosts
+      -- These appear as options when connecting to any host
+      -- Examples:
+      -- "~/.config",
+      -- "/var/www",
+      -- "/srv",
+      -- "/opt"
+      -- "/var/log",
+      -- "/etc",
+      -- "/tmp",
+      -- "/usr/local",
+      -- "/data",
+      -- "/var/lib",
+  },
 	host_paths = {
       -- Optionally define default mount paths for specific hosts
+      -- These are shown in addition to global_paths
       -- Single path (string):
       -- ["my-server"] = "/var/www/html"
       --

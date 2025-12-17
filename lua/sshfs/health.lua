@@ -377,6 +377,13 @@ local function check_configuration()
 		health.warn("ControlMaster persist time not configured", "SSH terminal sessions may require re-authentication")
 	end
 
+	-- Check global_paths configuration
+	if config.global_paths and #config.global_paths > 0 then
+		health.ok("Global paths configured: " .. #config.global_paths .. " path(s)")
+	else
+		health.info("No global paths configured")
+	end
+
 	-- Check host_paths configuration
 	if config.host_paths and next(config.host_paths) then
 		local count = 0
@@ -385,7 +392,13 @@ local function check_configuration()
 		end
 		health.ok("Custom host paths configured for " .. count .. " host(s)")
 	else
-		health.info("No custom host paths configured (will prompt on connect)")
+		health.info("No custom host paths configured")
+	end
+
+	if
+		not (config.global_paths and #config.global_paths > 0) and not (config.host_paths and next(config.host_paths))
+	then
+		health.info("Will prompt for path on connect (no global or host-specific paths configured)")
 	end
 
 	health.ok("Plugin configuration is valid")

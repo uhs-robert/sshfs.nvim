@@ -50,7 +50,15 @@ function Ask.for_mount_path(host, config, callback)
 		{ label = "Custom Path", path = nil },
 	}
 
-	-- Add configured path options if available (string or array)
+	-- Add global paths that apply to all hosts
+	local global_paths = config.global_paths
+	if global_paths and type(global_paths) == "table" then
+		for _, path in ipairs(global_paths) do
+			table.insert(options, { label = path, path = path })
+		end
+	end
+
+	-- Add host-specific configured path options (string or array)
 	local configured_paths = config.host_paths and config.host_paths[host.name]
 	if configured_paths then
 		if type(configured_paths) == "string" then

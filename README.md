@@ -93,7 +93,7 @@ Built for Neovim 0.10+ using the best of both `sshfs` and `ssh` in tandem with y
 - **Live remote search** – Stream `rg`/`find` over SSH (snacks, fzf-lua, telescope, mini) while keeping mounts quiet.
 - **Multi-mount aware** – Connect to several hosts, clean up on exit, and jump between mounts with keymaps or commands.
 - **Command suite** – `:SSHFiles`, `:SSHGrep`, `:SSHLiveFind/Grep`, `:SSHTerminal`, `:SSHCommand`, `:SSHChangeDir`, `:SSHConfig`, `:SSHReload`.
-- **Host-aware defaults** – Optional per-host default paths so you can skip path prompts on common servers.
+- **Host-aware defaults** – Optional global and per-host default paths so you can skip path selection on common servers.
 - **Modern Neovim** – Built for 0.10+ with `vim.uv` for reliable jobs, sockets, and cleanup.
 
 ## 📋 Requirements
@@ -200,8 +200,24 @@ require("sshfs").setup({
   mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
   },
+  global_paths = {
+    -- Optionally define default mount paths for ALL hosts
+    -- These appear as options when connecting to any host
+    -- Examples:
+    -- "~/.config",
+    -- "/var/www",
+    -- "/srv",
+    -- "/opt",
+    -- "/var/log",
+    -- "/etc",
+    -- "/tmp",
+    -- "/usr/local",
+    -- "/data",
+    -- "/var/lib",
+  },
   host_paths = {
     -- Optionally define default mount paths for specific hosts
+    -- These are shown in addition to global_paths
     -- Single path (string):
     -- ["my-server"] = "/var/www/html"
     --
@@ -291,7 +307,7 @@ If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `
 
 ## 🚀 Usage
 
-1. `:SSHConnect` — pick a host and mount path (home/root/custom/host_paths).
+1. `:SSHConnect` — pick a host and mount path (home/root/custom/global_paths/host_paths).
 2. Work from the mount:
    - `:SSHFiles`, `:SSHGrep`, or `:SSHChangeDir`
    - Live remote search: `:SSHLiveFind` / `:SSHLiveGrep` (streams over SSH, still mounted)
@@ -303,5 +319,6 @@ Auth flow: keys first, then floating terminal for passphrases/passwords/2FA; Con
 ## 💡 Tips
 
 - **Use SSH keys** for faster connections (no password prompts)
+- **Configure `global_paths`** with common directories (`/var/www`, `/var/log`, `~/.config`) to have them available across all hosts
 - **Configure `host_paths`** for frequently-used hosts to skip path selection
 - **Set `preferred_picker` for local/remote pickers** to force specific file picker(s) instead of auto-detection
