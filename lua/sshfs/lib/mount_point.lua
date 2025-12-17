@@ -112,25 +112,30 @@ function MountPoint.unmount(mount_path)
 	local commands = {
 		{ "fusermount", { "-u", mount_path } },
 		{ "fusermount3", { "-u", mount_path } },
-		{ "umount", { "-l", mount_path } },
+		{ "umount", { "-l", mount_path } }, -- Linux: lazy unmount
+		{ "umount", { mount_path } }, -- macOS/BSD: standard unmount
+		{ "diskutil", { "unmount", mount_path } }, -- macOS: fallback
 	}
 
 	for _, cmd in ipairs(commands) do
 		local command, args = cmd[1], cmd[2]
-		-- Use jobstart for safer command execution
-		local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
-			stdout_buffered = true,
-			stderr_buffered = true,
-		})
-		local exit_code = -1
-		if job_id > 0 then
-			local result = vim.fn.jobwait({ job_id }, 5000)[1] -- 5 second timeout
-			exit_code = result or -1
-		end
 
-		if exit_code == 0 then
-			vim.fn.delete(mount_path, "d")
-			return true
+		-- Try command if executable with jobstart
+		if vim.fn.executable(command) == 1 then
+			local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
+				stdout_buffered = true,
+				stderr_buffered = true,
+			})
+			local exit_code = -1
+			if job_id > 0 then
+				local result = vim.fn.jobwait({ job_id }, 5000)[1] -- 5 second timeout
+				exit_code = result or -1
+			end
+
+			if exit_code == 0 then
+				vim.fn.delete(mount_path, "d")
+				return true
+			end
 		end
 	end
 
