@@ -21,14 +21,9 @@ local function normalize_remote_path(path, host)
 		return "/"
 	end
 
-	-- Handle ~ or ~/... -> $HOME or $HOME/...
+	-- Pass through ~ paths as-is to resolve during mount
 	if path == "~" or path:match("^~/") then
-		local home_dir = "$HOME"
-		if host.user then
-			home_dir = "/home/" .. host.user
-		end
-
-		return (path:gsub("^~", home_dir))
+		return path
 	end
 
 	-- Handle paths without leading slash -> prepend /

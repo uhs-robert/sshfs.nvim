@@ -114,6 +114,43 @@ function Ssh.open_terminal(host, remote_path)
 	vim.cmd("startinsert")
 end
 
+--- Get remote home directory by executing 'echo $HOME' on the remote server (async)
+--- This handles non-standard home directory structures (e.g., /home/<team>/<user>)
+--- Uses existing ControlMaster socket if available for zero authentication overhead
+---@param host string SSH host name
+---@param callback function Callback(home_path: string|nil, error: string|nil)
+function Ssh.get_remote_home(host, callback)
+	local cmd = { "ssh" }
+
+	-- Add ControlPath option to reuse existing socket
+	local options = get_ssh_options("socket")
+	for _, opt in ipairs(options) do
+		table.insert(cmd, "-o")
+		table.insert(cmd, opt)
+	end
+
+	table.insert(cmd, host)
+	-- Use readlink -f to resolve symlinks and get the canonical path with fallback if no readlink
+	table.insert(cmd, "readlink -f $HOME 2>/dev/null || echo $HOME")
+
+	-- Execute asynchronously
+	vim.system(cmd, { text = true }, function(obj)
+		vim.schedule(function()
+			if obj.code == 0 then
+				local home_path = vim.trim(obj.stdout or "")
+				if home_path ~= "" and home_path:sub(1, 1) == "/" then
+					callback(home_path, nil)
+				else
+					callback(nil, "Remote $HOME output invalid: '" .. home_path .. "'")
+				end
+			else
+				local error_msg = vim.trim(obj.stderr or obj.stdout or "Unknown error")
+				callback(nil, error_msg)
+			end
+		end)
+	end)
+end
+
 --- Close ControlMaster connection and clean up socket
 --- Sends "exit" command to ControlMaster to gracefully close connection and remove socket
 ---@param host string SSH host name

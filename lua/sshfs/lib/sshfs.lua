@@ -49,14 +49,12 @@ local function get_sshfs_options(auth_type)
 	return options
 end
 
---- Mount via established ControlMaster socket (async, private helper)
---- Assumes SSH connection is already authenticated and socket exists
+--- Execute the actual mount command (private helper)
 --- @param host table Host object with name, user, port, and path fields
 --- @param mount_point string Local mount point directory
---- @param remote_path_suffix string|nil Remote path to mount
+--- @param remote_path_suffix string Remote path to mount (already resolved)
 --- @param callback function Callback function(success: boolean, result: string)
-local function mount_via_socket(host, mount_point, remote_path_suffix, callback)
-	remote_path_suffix = remote_path_suffix or (host.path or "")
+local function mount_with_path(host, mount_point, remote_path_suffix, callback)
 	local options = get_sshfs_options("socket")
 
 	-- Use host.name (the alias) to let SSH config resolution work properly
@@ -84,6 +82,39 @@ local function mount_via_socket(host, mount_point, remote_path_suffix, callback)
 			end
 		end)
 	end)
+end
+
+--- Mount via established ControlMaster socket (async, private helper)
+--- Assumes SSH connection is already authenticated and socket exists
+--- @param host table Host object with name, user, port, and path fields
+--- @param mount_point string Local mount point directory
+--- @param remote_path_suffix string|nil Remote path to mount
+--- @param callback function Callback function(success: boolean, result: string)
+local function mount_via_socket(host, mount_point, remote_path_suffix, callback)
+	remote_path_suffix = remote_path_suffix or (host.path or "")
+
+	-- If path starts with ~, resolve it to the actual home directory
+	-- This handles symlinked home directories and non-standard structures
+	if remote_path_suffix:match("^~") then
+		local Ssh = require("sshfs.lib.ssh")
+		Ssh.get_remote_home(host.name, function(actual_home, error)
+			if actual_home then
+				-- Replace ~ with the actual home path and mount
+				local resolved_path = remote_path_suffix:gsub("^~", actual_home)
+				mount_with_path(host, mount_point, resolved_path, callback)
+			else
+				-- Fall back to letting SSHFS try to handle it (may fail for symlinks)
+				vim.notify(
+					"Could not resolve home directory, attempting mount anyway: " .. (error or "unknown error"),
+					vim.log.levels.WARN
+				)
+				mount_with_path(host, mount_point, remote_path_suffix, callback)
+			end
+		end)
+		return
+	end
+
+	mount_with_path(host, mount_point, remote_path_suffix, callback)
 end
 
 --- Authenticate and mount using SSH-first (async)
