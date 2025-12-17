@@ -248,6 +248,7 @@ require("sshfs").setup({
   keymaps = {
     mount = "<leader>mm",         -- creates an ssh connection and mounts via sshfs
     unmount = "<leader>mu",       -- disconnects an ssh connection and unmounts via sshfs
+    unmount_all = "<leader>mU",   -- disconnects all ssh connections and unmounts via sshfs
     explore = "<leader>me",       -- explore an sshfs mount using your native editor
     change_dir = "<leader>md",    -- change dir to mount
     command = "<leader>mo",       -- run command on mount
@@ -273,6 +274,7 @@ require("sshfs").setup({
 - `:checkhealth sshfs` - Verify dependencies and configuration
 - `:SSHConnect [host]` - Mount a remote host
 - `:SSHDisconnect` - Unmount current host
+- `:SSHDisconnectAll` - Unmount all hosts
 - `:SSHConfig` - Edit SSH config files
 - `:SSHReload` - Reload SSH configuration
 - `:SSHFiles` - Browse files with auto-detected picker
@@ -292,6 +294,7 @@ Default keybindings under `<leader>m` (fully customizable):
 | ------------ | --------------------------------- |
 | `<leader>mm` | Mount an SSH host                 |
 | `<leader>mu` | Unmount an active session         |
+| `<leader>mU` | Unmount all active sessions       |
 | `<leader>me` | Explore SSH mount via native edit |
 | `<leader>md` | Change dir to mount               |
 | `<leader>mo` | Run command on mount              |

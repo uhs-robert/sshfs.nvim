@@ -72,8 +72,9 @@ end
 
 --- Disconnect from a specific SSH connection
 ---@param connection table Connection object with host and mount_path fields
+---@param silent boolean|nil If true, suppress notifications (optional, defaults to false)
 ---@return boolean Success status
-function Session.disconnect_from(connection)
+function Session.disconnect_from(connection, silent)
 	local MountPoint = require("sshfs.lib.mount_point")
 	if not connection or not connection.mount_path then
 		vim.notify("Invalid connection to disconnect", vim.log.levels.WARN)
@@ -96,7 +97,9 @@ function Session.disconnect_from(connection)
 
 	-- Cleanup
 	if success then
-		vim.notify("Disconnected from " .. connection.host, vim.log.levels.INFO)
+		if not silent then
+			vim.notify("Disconnected from " .. connection.host, vim.log.levels.INFO)
+		end
 
 		-- Clean up ControlMaster socket
 		local Ssh = require("sshfs.lib.ssh")
@@ -115,7 +118,9 @@ function Session.disconnect_from(connection)
 
 		return true
 	else
-		vim.notify("Failed to disconnect from " .. connection.host, vim.log.levels.ERROR)
+		if not silent then
+			vim.notify("Failed to disconnect from " .. connection.host, vim.log.levels.ERROR)
+		end
 		return false
 	end
 end

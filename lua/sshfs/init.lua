@@ -30,6 +30,10 @@ App.setup_api_commands = function()
 		Api.unmount()
 	end, { desc = "Disconnect from current SSH host" })
 
+	vim.api.nvim_create_user_command("SSHDisconnectAll", function()
+		Api.unmount_all()
+	end, { desc = "Disconnect from all SSH hosts" })
+
 	vim.api.nvim_create_user_command("SSHTerminal", function()
 		Api.ssh_terminal()
 	end, { desc = "Open SSH terminal session to remote host" })

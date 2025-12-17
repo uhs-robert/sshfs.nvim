@@ -17,6 +17,7 @@ local DEFAULT_KEYMAPS = {
 	reload = "r",
 	terminal = "t",
 	unmount = "u",
+	unmount_all = "U",
 }
 
 --- Setup keymaps for SSH commands
@@ -38,6 +39,7 @@ function Keymaps.setup(opts)
 	local Api = require("sshfs.api")
 	vim.keymap.set("n", keymaps.mount, Api.mount, { desc = "Mount a SSH Server" })
 	vim.keymap.set("n", keymaps.unmount, Api.unmount, { desc = "Unmount a SSH Server" })
+	vim.keymap.set("n", keymaps.unmount_all, Api.unmount_all, { desc = "Unmount all SSH Servers" })
 	vim.keymap.set("n", keymaps.explore, Api.explore, { desc = "Explore SSH mount" })
 	vim.keymap.set("n", keymaps.change_dir, Api.change_dir, { desc = "Change dir to mount" })
 	vim.keymap.set("n", keymaps.command, Api.command, { desc = "Run command on mount" })

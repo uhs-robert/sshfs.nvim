@@ -52,6 +52,32 @@ Api.unmount = function()
 	end
 end
 
+--- Unmount all active SSH connections
+Api.unmount_all = function()
+	local Session = require("sshfs.session")
+	local Connections = require("sshfs.lib.connections")
+	local active_connections = Connections.get_all()
+
+	if #active_connections == 0 then
+		vim.notify("No active mounts to disconnect", vim.log.levels.WARN)
+		return
+	end
+
+	-- Make a copy to avoid modifying table during iteration
+	local all_connections = vim.list_extend({}, active_connections)
+	local disconnected_count = 0
+	for _, connection in ipairs(all_connections) do
+		if Session.disconnect_from(connection, true) then
+			disconnected_count = disconnected_count + 1
+		end
+	end
+
+	vim.notify(
+		string.format("Disconnected from %d mount%s", disconnected_count, disconnected_count == 1 and "" or "s"),
+		vim.log.levels.INFO
+	)
+end
+
 --- Check connection status
 --- @return boolean True if any active connections exist
 Api.has_active = function()
