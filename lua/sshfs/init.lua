@@ -103,7 +103,6 @@ function App.setup(user_opts)
 		vim.api.nvim_create_autocmd("VimLeave", {
 			callback = function()
 				local Session = require("sshfs.session")
-				local MountPoint = require("sshfs.lib.mount_point")
 				-- Make a copy to avoid modifying table during iteration
 				local all_connections = vim.list_extend({}, MountPoint.list_active())
 
