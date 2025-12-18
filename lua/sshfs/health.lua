@@ -172,8 +172,9 @@ local function check_ssh_config()
 				health.ok("Created SSH socket directory with proper permissions (0700): " .. socket_dir)
 			else
 				health.info(
-					"Socket directory does not exist: " .. socket_dir,
-					"It will be created automatically during connection (or create manually: mkdir -p "
+					"Socket directory does not exist: "
+						.. socket_dir
+						.. ". It will be created automatically during connection (or create manually: mkdir -p "
 						.. socket_dir
 						.. " && chmod 700 "
 						.. socket_dir
