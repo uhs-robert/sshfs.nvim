@@ -5,9 +5,8 @@ local Ask = {}
 
 --- Normalize remote mount path to handle edge cases
 --- @param path string|nil User-provided path
---- @param host table Host object with user field
 --- @return string Normalized path suitable for remote mounting
-local function normalize_remote_path(path, host)
+local function normalize_remote_path(path)
 	-- Handle empty/nil -> root directory
 	if not path or path == "" then
 		return "/"
@@ -83,11 +82,11 @@ function Ask.for_mount_path(host, config, callback)
 					callback(nil)
 					return
 				end
-				local normalized_path = normalize_remote_path(path, host)
+				local normalized_path = normalize_remote_path(path)
 				callback(normalized_path)
 			end)
 		else
-			local normalized_path = normalize_remote_path(selected.path, host)
+			local normalized_path = normalize_remote_path(selected.path)
 			callback(normalized_path)
 		end
 	end)
