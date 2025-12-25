@@ -27,7 +27,7 @@ function App.setup(user_opts)
 				local all_connections = vim.list_extend({}, MountPoint.list_active())
 
 				for _, connection in ipairs(all_connections) do
-					Session.disconnect_from(connection)
+					Session.disconnect_from(connection, true)
 				end
 			end,
 			desc = "Cleanup SSH mounts on exit",
