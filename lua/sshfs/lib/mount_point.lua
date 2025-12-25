@@ -42,7 +42,7 @@ local function get_system_mounts()
 
 	-- Only process lines that contain 'sshfs' to avoid false positives
 	for line in result:gmatch("[^\r\n]+") do
-		if line:match("sshfs") then
+		if line:match("sshfs") or line:match("macfuse") then
 			for _, pattern in ipairs(pattern_templates) do
 				local remote_spec, mount_path = line:match(pattern)
 				if remote_spec and mount_path then
@@ -133,6 +133,93 @@ function MountPoint.get_or_create(mount_dir)
 
 	local success = vim.fn.mkdir(mount_dir, "p")
 	return success == 1
+end
+
+--- Release buffers associated with sshfs mount
+--- @param mount_path string Path to unmount
+--- @param is_q_exit boolean|nil Indicator if signal comes from command or :q
+--- @return boolean True if all buffers are cleaned up
+function MountPoint.release_mount(mount_path, is_q_exit)
+	-- Normalize mount path to remove trailing slash for consistent comparison
+	local safe_mount_path = mount_path:gsub("/$", "")
+	local safe_mount_path_slash = safe_mount_path .. "/"
+
+	local buffers_to_clean = {}
+
+	-- Find valid buffers to release
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(buf) then
+			local buf_name = vim.api.nvim_buf_get_name(buf)
+
+			-- Check if buffer is the mount root OR a file inside it
+			local is_inside = buf_name == safe_mount_path or
+				buf_name:sub(1, #safe_mount_path_slash) == safe_mount_path_slash
+
+			if is_inside then
+				-- If no write since last change, throw error for disconnect commands similar as in :q
+				if vim.bo[buf].modified and not is_q_exit then
+					local name = vim.fn.fnamemodify(buf_name, ":t")
+					vim.notify("No write since last change for buffer \"" .. name .. "\"", vim.log.levels.ERROR)
+					return false
+				end
+
+				table.insert(buffers_to_clean, buf)
+			end
+		end
+	end
+
+	-- Release LSP clients and buffers after verifying safe to do so
+	for _, buf in ipairs(buffers_to_clean) do
+		-- Stop terminal buffers
+		if vim.bo[buf].buftype == "terminal" then
+			local job_id = vim.b[buf].terminal_job_id
+			if job_id then
+				vim.fn.jobstop(job_id)
+			end
+		else -- Stop LSPs
+			local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+			local clients = get_clients({ bufnr = buf })
+			for _, client in ipairs(clients) do
+				if client.stop then client.stop(true) end
+			end
+		end
+
+		-- Wipe buffer
+		pcall(vim.api.nvim_buf_delete, buf, { force = true })
+	end
+
+	-- Final check for process with open handle, gracefully terminate them
+	if vim.fn.executable("lsof") == 1 then
+		local function get_pids()
+			-- -t: terse (PIDs only)
+			local output = vim.fn.system({ "lsof", "-t", safe_mount_path })
+			if vim.v.shell_error ~= 0 or output == "" then
+				return {}
+			end
+			local pids = {}
+			for pid in output:gmatch("%d+") do
+				table.insert(pids, pid)
+			end
+			return pids
+		end
+
+		local pids = get_pids()
+		if #pids > 0 then
+			-- Kill pids with SIGTERM
+			local kill_cmd = { "kill", "-15" }
+			vim.list_extend(kill_cmd, pids)
+			vim.fn.system(kill_cmd)
+
+			-- Poll until empty (max 3 seconds)
+			vim.wait(3000, function()
+				return #get_pids() == 0
+			end, 200)
+		end
+	end
+
+
+	collectgarbage("collect")
+	return true
 end
 
 --- Unmount an sshfs mount using fusermount/umount
