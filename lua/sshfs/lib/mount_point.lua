@@ -40,9 +40,9 @@ local function get_system_mounts()
 		"^(%S+)%s+on%s+([^%s]+)%s+%(fuse", -- Generic FUSE: "user@host:/path on /mount/path (fuse"
 	}
 
-	-- Only process lines that contain 'sshfs' to avoid false positives
+	-- Only process lines that contain SSHFS indicators to avoid false positives
 	for line in result:gmatch("[^\r\n]+") do
-		if line:match("sshfs") then
+		if line:match("sshfs") or line:match("fuse") then
 			for _, pattern in ipairs(pattern_templates) do
 				local remote_spec, mount_path = line:match(pattern)
 				if remote_spec and mount_path then
