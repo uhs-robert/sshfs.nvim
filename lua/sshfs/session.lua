@@ -92,6 +92,12 @@ function Session.disconnect_from(connection, silent)
 		end
 	end
 
+	-- Release buffers and LSPs associated with mount point
+	local safe_to_unmount = MountPoint.release_mount(connection.mount_path, silent)
+	if not safe_to_unmount then
+		return false
+	end
+
 	-- Unmount the filesystem
 	local success = MountPoint.unmount(connection.mount_path)
 
