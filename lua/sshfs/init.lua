@@ -6,36 +6,36 @@ local App = {}
 --- Main entry point for plugin initialization.
 ---@param user_opts table|nil User configuration options to merge with defaults
 function App.setup(user_opts)
-	local Config = require("sshfs.config")
-	Config.setup(user_opts)
-	local opts = Config.get()
+  local Config = require("sshfs.config")
+  Config.setup(user_opts)
+  local opts = Config.get()
 
-	-- Initialize other modules
-	local MountPoint = require("sshfs.lib.mount_point")
-	MountPoint.get_or_create()
-	MountPoint.cleanup_stale()
-	require("sshfs.ui.keymaps").setup(opts)
+  -- Initialize other modules
+  local MountPoint = require("sshfs.lib.mount_point")
+  MountPoint.get_or_create()
+  MountPoint.cleanup_stale()
+  require("sshfs.ui.keymaps").setup(opts)
 
-	-- Setup exit handler if enabled
-	local hooks = opts.hooks or {}
-	local on_exit = hooks.on_exit or {}
-	if on_exit.auto_unmount then
-		vim.api.nvim_create_autocmd("VimLeave", {
-			callback = function()
-				local Session = require("sshfs.session")
-				-- Make a copy to avoid modifying table during iteration
-				local all_connections = vim.list_extend({}, MountPoint.list_active())
+  -- Setup exit handler if enabled
+  local hooks = opts.hooks or {}
+  local on_exit = hooks.on_exit or {}
+  if on_exit.auto_unmount then
+    vim.api.nvim_create_autocmd("VimLeave", {
+      callback = function()
+        local Session = require("sshfs.session")
+        -- Make a copy to avoid modifying table during iteration
+        local all_connections = vim.list_extend({}, MountPoint.list_active())
 
-				for _, connection in ipairs(all_connections) do
-					Session.disconnect_from(connection, true)
-				end
-			end,
-			desc = "Cleanup SSH mounts on exit",
-		})
-	end
+        for _, connection in ipairs(all_connections) do
+          Session.disconnect_from(connection, true)
+        end
+      end,
+      desc = "Cleanup SSH mounts on exit",
+    })
+  end
 
-	local Api = require("sshfs.api")
-	Api.setup()
+  local Api = require("sshfs.api")
+  Api.setup()
 end
 
 -- Expose public API methods on App object for require("sshfs").method() usage

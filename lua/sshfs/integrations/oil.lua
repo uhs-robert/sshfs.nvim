@@ -7,12 +7,12 @@ local Oil = {}
 ---@param cwd string Current working directory to open oil in
 ---@return boolean success True if oil was successfully opened
 function Oil.explore_files(cwd)
-	local ok, oil = pcall(require, "oil")
-	if ok and oil.open then
-		oil.open(cwd)
-		return true
-	end
-	return false
+  local ok, oil = pcall(require, "oil")
+  if ok and oil.open then
+    oil.open(cwd)
+    return true
+  end
+  return false
 end
 
 return Oil

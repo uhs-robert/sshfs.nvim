@@ -7,46 +7,44 @@ local Sshfs = {}
 --- @param options_table table Table of options (e.g., {reconnect = true, ConnectTimeout = 5})
 --- @return table Array of option strings (e.g., {"reconnect", "ConnectTimeout=5"})
 local function build_sshfs_args(options_table)
-	local result = {}
+  local result = {}
 
-	for key, value in pairs(options_table) do
-		if value == true then
-			-- Boolean true: just add the key
-			table.insert(result, key)
-		elseif value ~= false and value ~= nil then
-			-- String or number: add as key=value
-			table.insert(result, string.format("%s=%s", key, tostring(value)))
-		end
-		-- false or nil: skip this option
-	end
+  for key, value in pairs(options_table) do
+    if value == true then
+      -- Boolean true: just add the key
+      table.insert(result, key)
+    elseif value ~= false and value ~= nil then
+      -- String or number: add as key=value
+      table.insert(result, string.format("%s=%s", key, tostring(value)))
+    end
+    -- false or nil: skip this option
+  end
 
-	return result
+  return result
 end
 
 --- Build sshfs options array for mounting via established ControlMaster socket
 --- @param auth_type string Authentication type (only "socket" is used in SSH-first flow)
 --- @return table Array of sshfs options
 local function get_sshfs_options(auth_type)
-	local Config = require("sshfs.config")
-	local Ssh = require("sshfs.lib.ssh")
-	local opts = Config.get()
-	local options = {}
+  local Config = require("sshfs.config")
+  local Ssh = require("sshfs.lib.ssh")
+  local opts = Config.get()
+  local options = {}
 
-	-- Add user-configured sshfs options from config (convert table to array)
-	if opts.connections and opts.connections.sshfs_options then
-		local sshfs_opts = build_sshfs_args(opts.connections.sshfs_options)
-		vim.list_extend(options, sshfs_opts)
-	end
+  -- Add user-configured sshfs options from config (convert table to array)
+  if opts.connections and opts.connections.sshfs_options then
+    local sshfs_opts = build_sshfs_args(opts.connections.sshfs_options)
+    vim.list_extend(options, sshfs_opts)
+  end
 
-	-- Add SSH command to reuse existing ControlMaster socket
-	if auth_type == "socket" then
-		local ssh_cmd = Ssh.build_command_string("socket")
-		if ssh_cmd ~= "ssh" then
-			table.insert(options, "ssh_command=" .. ssh_cmd)
-		end
-	end
+  -- Add SSH command to reuse existing ControlMaster socket
+  if auth_type == "socket" then
+    local ssh_cmd = Ssh.build_command_string("socket")
+    if ssh_cmd ~= "ssh" then table.insert(options, "ssh_command=" .. ssh_cmd) end
+  end
 
-	return options
+  return options
 end
 
 --- Execute the actual mount command (private helper)
@@ -55,40 +53,38 @@ end
 --- @param remote_path_suffix string Remote path to mount (already resolved)
 --- @param callback function Callback function(result: table) - result has fields: success, message, resolved_path
 local function mount_with_path(host, mount_point, remote_path_suffix, callback)
-	local options = get_sshfs_options("socket")
+  local options = get_sshfs_options("socket")
 
-	-- Use host.name (the alias) to let SSH config resolution work properly
-	local remote_path = host.name
-	if host.user then
-		remote_path = host.user .. "@" .. remote_path
-	end
-	remote_path = remote_path .. ":" .. remote_path_suffix
+  -- Use host.name (the alias) to let SSH config resolution work properly
+  local remote_path = host.name
+  if host.user then remote_path = host.user .. "@" .. remote_path end
+  remote_path = remote_path .. ":" .. remote_path_suffix
 
-	-- Add options/port
-	local cmd = { "sshfs", remote_path, mount_point, "-o", table.concat(options, ",") }
-	if host.port then
-		table.insert(cmd, "-p")
-		table.insert(cmd, host.port)
-	end
+  -- Add options/port
+  local cmd = { "sshfs", remote_path, mount_point, "-o", table.concat(options, ",") }
+  if host.port then
+    table.insert(cmd, "-p")
+    table.insert(cmd, host.port)
+  end
 
-	-- Execute mount command asynchronously
-	vim.system(cmd, { text = true }, function(obj)
-		vim.schedule(function()
-			if obj.code == 0 then
-				callback({
-					success = true,
-					message = "Mount successful",
-					resolved_path = remote_path_suffix,
-				})
-			else
-				local error_msg = obj.stderr or obj.stdout or "Unknown error"
-				callback({
-					success = false,
-					message = "Mount failed: " .. error_msg,
-				})
-			end
-		end)
-	end)
+  -- Execute mount command asynchronously
+  vim.system(cmd, { text = true }, function(obj)
+    vim.schedule(function()
+      if obj.code == 0 then
+        callback({
+          success = true,
+          message = "Mount successful",
+          resolved_path = remote_path_suffix,
+        })
+      else
+        local error_msg = obj.stderr or obj.stdout or "Unknown error"
+        callback({
+          success = false,
+          message = "Mount failed: " .. error_msg,
+        })
+      end
+    end)
+  end)
 end
 
 --- Mount via established ControlMaster socket (async, private helper)
@@ -98,30 +94,30 @@ end
 --- @param remote_path_suffix string|nil Remote path to mount
 --- @param callback function Callback function(result: table) - result has fields: success, message, resolved_path
 local function mount_via_socket(host, mount_point, remote_path_suffix, callback)
-	remote_path_suffix = remote_path_suffix or (host.path or "")
+  remote_path_suffix = remote_path_suffix or (host.path or "")
 
-	-- If path starts with ~, resolve it to the actual home directory
-	-- This handles symlinked home directories and non-standard structures
-	if remote_path_suffix:match("^~") then
-		local Ssh = require("sshfs.lib.ssh")
-		Ssh.get_remote_home(host.name, function(actual_home, error)
-			if actual_home then
-				-- Replace ~ with the actual home path and mount
-				local resolved_path = remote_path_suffix:gsub("^~", actual_home)
-				mount_with_path(host, mount_point, resolved_path, callback)
-			else
-				-- Fall back to letting SSHFS try to handle it (may fail for symlinks)
-				vim.notify(
-					"Could not resolve home directory, attempting mount anyway: " .. (error or "unknown error"),
-					vim.log.levels.WARN
-				)
-				mount_with_path(host, mount_point, remote_path_suffix, callback)
-			end
-		end)
-		return
-	end
+  -- If path starts with ~, resolve it to the actual home directory
+  -- This handles symlinked home directories and non-standard structures
+  if remote_path_suffix:match("^~") then
+    local Ssh = require("sshfs.lib.ssh")
+    Ssh.get_remote_home(host.name, function(actual_home, error)
+      if actual_home then
+        -- Replace ~ with the actual home path and mount
+        local resolved_path = remote_path_suffix:gsub("^~", actual_home)
+        mount_with_path(host, mount_point, resolved_path, callback)
+      else
+        -- Fall back to letting SSHFS try to handle it (may fail for symlinks)
+        vim.notify(
+          "Could not resolve home directory, attempting mount anyway: " .. (error or "unknown error"),
+          vim.log.levels.WARN
+        )
+        mount_with_path(host, mount_point, remote_path_suffix, callback)
+      end
+    end)
+    return
+  end
 
-	mount_with_path(host, mount_point, remote_path_suffix, callback)
+  mount_with_path(host, mount_point, remote_path_suffix, callback)
 end
 
 --- Authenticate and mount using SSH-first (async)
@@ -130,32 +126,28 @@ end
 --- @param remote_path_suffix string|nil Remote path to mount
 --- @param callback function Callback function(result: table) - result has fields: success, message, resolved_path
 function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, callback)
-	local Ssh = require("sshfs.lib.ssh")
-	vim.notify("Connecting to " .. host.name .. "...", vim.log.levels.INFO)
+  local Ssh = require("sshfs.lib.ssh")
+  vim.notify("Connecting to " .. host.name .. "...", vim.log.levels.INFO)
 
-	-- Try batch connection (non-interactive)
-	Ssh.try_batch_connect(host.name, function(success, exit_code, error)
-		if success then
-			mount_via_socket(host, mount_point, remote_path_suffix, callback)
-			return
-		end
+  -- Try batch connection (non-interactive)
+  Ssh.try_batch_connect(host.name, function(success, exit_code, error)
+    if success then
+      mount_via_socket(host, mount_point, remote_path_suffix, callback)
+      return
+    end
 
-		-- Batch failed, try interactive terminal
-		Ssh.open_auth_terminal(host.name, function(term_success, term_exit_code)
-			if term_success then
-				mount_via_socket(host, mount_point, remote_path_suffix, callback)
-			else
-				callback({
-					success = false,
-					message = string.format(
-						"SSH authentication failed for %s (exit code: %d)",
-						host.name,
-						term_exit_code
-					),
-				})
-			end
-		end)
-	end)
+    -- Batch failed, try interactive terminal
+    Ssh.open_auth_terminal(host.name, function(term_success, term_exit_code)
+      if term_success then
+        mount_via_socket(host, mount_point, remote_path_suffix, callback)
+      else
+        callback({
+          success = false,
+          message = string.format("SSH authentication failed for %s (exit code: %d)", host.name, term_exit_code),
+        })
+      end
+    end)
+  end)
 end
 
 return Sshfs

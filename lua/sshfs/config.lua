@@ -93,85 +93,85 @@ Config.options = vim.deepcopy(DEFAULT_CONFIG)
 --- Setup configuration
 ---@param user_config table|nil User configuration to merge with defaults
 function Config.setup(user_config)
-	user_config = user_config or {}
+  user_config = user_config or {}
 
-	-- TODO: Delete after January 15th from here...
-	-- Backward compatibility shims for renamed config keys (remove after next release)
-	local function apply_deprecations(cfg)
-		cfg = cfg or {}
+  -- TODO: Delete after January 15th from here...
+  -- Backward compatibility shims for renamed config keys (remove after next release)
+  local function apply_deprecations(cfg)
+    cfg = cfg or {}
 
-		-- ui.file_picker -> ui.local_picker
-		if cfg.ui and cfg.ui.file_picker then
-			cfg.ui.local_picker = vim.tbl_deep_extend("force", cfg.ui.local_picker or {}, cfg.ui.file_picker)
-			vim.notify(
-				"sshfs.nvim: `ui.file_picker` is deprecated; use `ui.local_picker` (will be removed in next release)",
-				vim.log.levels.WARN
-			)
-		end
+    -- ui.file_picker -> ui.local_picker
+    if cfg.ui and cfg.ui.file_picker then
+      cfg.ui.local_picker = vim.tbl_deep_extend("force", cfg.ui.local_picker or {}, cfg.ui.file_picker)
+      vim.notify(
+        "sshfs.nvim: `ui.file_picker` is deprecated; use `ui.local_picker` (will be removed in next release)",
+        vim.log.levels.WARN
+      )
+    end
 
-		-- mounts.unmount_on_exit -> hooks.on_exit.auto_unmount
-		if cfg.mounts and cfg.mounts.unmount_on_exit ~= nil then
-			cfg.hooks = cfg.hooks or {}
-			cfg.hooks.on_exit = cfg.hooks.on_exit or {}
-			cfg.hooks.on_exit.auto_unmount = cfg.mounts.unmount_on_exit
-			vim.notify(
-				"sshfs.nvim: `mounts.unmount_on_exit` is deprecated; use `hooks.on_exit.auto_unmount` (will be removed in next release)",
-				vim.log.levels.WARN
-			)
-		end
+    -- mounts.unmount_on_exit -> hooks.on_exit.auto_unmount
+    if cfg.mounts and cfg.mounts.unmount_on_exit ~= nil then
+      cfg.hooks = cfg.hooks or {}
+      cfg.hooks.on_exit = cfg.hooks.on_exit or {}
+      cfg.hooks.on_exit.auto_unmount = cfg.mounts.unmount_on_exit
+      vim.notify(
+        "sshfs.nvim: `mounts.unmount_on_exit` is deprecated; use `hooks.on_exit.auto_unmount` (will be removed in next release)",
+        vim.log.levels.WARN
+      )
+    end
 
-		-- mounts.auto_change_dir_on_mount -> hooks.on_mount.auto_change_to_dir
-		if cfg.mounts and cfg.mounts.auto_change_dir_on_mount ~= nil then
-			cfg.hooks = cfg.hooks or {}
-			cfg.hooks.on_mount = cfg.hooks.on_mount or {}
-			cfg.hooks.on_mount.auto_change_to_dir = cfg.mounts.auto_change_dir_on_mount
-			vim.notify(
-				"sshfs.nvim: `mounts.auto_change_dir_on_mount` is deprecated; use `hooks.on_mount.auto_change_to_dir` (will be removed in next release)",
-				vim.log.levels.WARN
-			)
-		end
+    -- mounts.auto_change_dir_on_mount -> hooks.on_mount.auto_change_to_dir
+    if cfg.mounts and cfg.mounts.auto_change_dir_on_mount ~= nil then
+      cfg.hooks = cfg.hooks or {}
+      cfg.hooks.on_mount = cfg.hooks.on_mount or {}
+      cfg.hooks.on_mount.auto_change_to_dir = cfg.mounts.auto_change_dir_on_mount
+      vim.notify(
+        "sshfs.nvim: `mounts.auto_change_dir_on_mount` is deprecated; use `hooks.on_mount.auto_change_to_dir` (will be removed in next release)",
+        vim.log.levels.WARN
+      )
+    end
 
-		return cfg
-	end
+    return cfg
+  end
 
-	user_config = apply_deprecations(user_config)
-	-- TODO: To here...
-	Config.options = vim.tbl_deep_extend("force", DEFAULT_CONFIG, user_config)
+  user_config = apply_deprecations(user_config)
+  -- TODO: To here...
+  Config.options = vim.tbl_deep_extend("force", DEFAULT_CONFIG, user_config)
 end
 
 --- Get current configuration
 ---@return table config The current configuration
 function Config.get()
-	return Config.options
+  return Config.options
 end
 
 --- Get the configured base directory for mounts
 ---@return string base_dir The base directory path for mounts
 function Config.get_base_dir()
-	local opts = Config.options
-	return opts.mounts and opts.mounts.base_dir
+  local opts = Config.options
+  return opts.mounts and opts.mounts.base_dir
 end
 
 --- Get ControlMaster options for SSH/SSHFS
 ---@return table Array of ControlMaster options
 function Config.get_control_master_options()
-	local opts = Config.options
-	local socket_dir = Config.get_socket_dir()
-	local control_path = socket_dir .. "/%C"
-	local control_persist = (opts.connections and opts.connections.control_persist) or "10m"
+  local opts = Config.options
+  local socket_dir = Config.get_socket_dir()
+  local control_path = socket_dir .. "/%C"
+  local control_persist = (opts.connections and opts.connections.control_persist) or "10m"
 
-	return {
-		"ControlMaster=auto",
-		"ControlPath=" .. control_path,
-		"ControlPersist=" .. control_persist,
-	}
+  return {
+    "ControlMaster=auto",
+    "ControlPath=" .. control_path,
+    "ControlPersist=" .. control_persist,
+  }
 end
 
 --- Get SSH socket directory path
 ---@return string socket_dir The socket directory path
 function Config.get_socket_dir()
-	local opts = Config.options
-	return (opts.connections and opts.connections.socket_dir) or vim.fn.expand("$HOME/.ssh/sockets")
+  local opts = Config.options
+  return (opts.connections and opts.connections.socket_dir) or vim.fn.expand("$HOME/.ssh/sockets")
 end
 
 return Config

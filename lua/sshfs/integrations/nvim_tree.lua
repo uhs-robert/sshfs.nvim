@@ -7,11 +7,11 @@ local NvimTree = {}
 ---@param cwd string Current working directory to open nvim-tree in
 ---@return boolean success True if nvim-tree was successfully opened
 function NvimTree.explore_files(cwd)
-	local ok = pcall(function()
-		vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
-		vim.cmd("NvimTreeOpen")
-	end)
-	return ok
+  local ok = pcall(function()
+    vim.cmd("tcd " .. vim.fn.fnameescape(cwd))
+    vim.cmd("NvimTreeOpen")
+  end)
+  return ok
 end
 
 return NvimTree
