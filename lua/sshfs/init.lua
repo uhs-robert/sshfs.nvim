@@ -16,6 +16,33 @@ function App.setup(user_opts)
   MountPoint.cleanup_stale()
   require("sshfs.ui.keymaps").setup(opts)
 
+  -- Register in lockfile when opening files from a mount (for instances that didn't create the mount)
+  local base_dir = opts.mounts.base_dir
+  vim.api.nvim_create_autocmd("BufEnter", {
+    callback = function(ev)
+      local buf_path = vim.api.nvim_buf_get_name(ev.buf)
+      if buf_path == "" then return end
+
+      -- Check if buffer path is inside the mount base directory
+      local base_dir_slash = base_dir .. "/"
+      if buf_path:sub(1, #base_dir_slash) ~= base_dir_slash then return end
+
+      -- Extract mount path (base_dir/hostname)
+      local rest = buf_path:sub(#base_dir_slash + 1)
+      local hostname = rest:match("^([^/]+)")
+      if not hostname then return end
+
+      local mount_path = base_dir .. "/" .. hostname
+
+      -- Only register if this is an active mount
+      if MountPoint.is_active(mount_path) then
+        local Lockfile = require("sshfs.lib.lockfile")
+        Lockfile.register(mount_path)
+      end
+    end,
+    desc = "Register in lockfile when accessing SSHFS mount",
+  })
+
   -- Setup exit handler if enabled
   local hooks = opts.hooks or {}
   local on_exit = hooks.on_exit or {}
@@ -23,11 +50,7 @@ function App.setup(user_opts)
     vim.api.nvim_create_autocmd("VimLeave", {
       callback = function()
         local Session = require("sshfs.session")
-        local instance_connections = Session.get_instance_connections()
-
-        for _, connection in ipairs(instance_connections) do
-          Session.disconnect_from(connection, true)
-        end
+        Session.cleanup_unused_mounts()
       end,
       desc = "Cleanup SSH mounts on exit",
     })

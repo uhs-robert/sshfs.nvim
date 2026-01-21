@@ -175,33 +175,6 @@ function MountPoint.release_mount(mount_path, is_q_exit)
     pcall(vim.api.nvim_buf_delete, buf, { force = true })
   end
 
-  -- Final check for process with open handle, gracefully terminate them
-  if vim.fn.executable("lsof") == 1 then
-    local function get_pids()
-      -- -t: terse (PIDs only)
-      local output = vim.fn.system({ "lsof", "-t", safe_mount_path })
-      if vim.v.shell_error ~= 0 or output == "" then return {} end
-      local pids = {}
-      for pid in output:gmatch("%d+") do
-        table.insert(pids, pid)
-      end
-      return pids
-    end
-
-    local pids = get_pids()
-    if #pids > 0 then
-      -- Kill pids with SIGTERM
-      local kill_cmd = { "kill", "-15" }
-      vim.list_extend(kill_cmd, pids)
-      vim.fn.system(kill_cmd)
-
-      -- Poll until empty (max 3 seconds)
-      vim.wait(3000, function()
-        return #get_pids() == 0
-      end, 200)
-    end
-  end
-
   collectgarbage("collect")
   return true
 end

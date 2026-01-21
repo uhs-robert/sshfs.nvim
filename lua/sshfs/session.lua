@@ -4,24 +4,13 @@
 local Session = {}
 local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
-local INSTANCE_CONNECTIONS = {} -- Track connections created by this Neovim instance
-
---- Get connections created by this Neovim instance
---- Used by VimLeave handler to only disconnect this instance's connections
----@return table Array of connection objects with host, mount_path, and remote_path fields
-function Session.get_instance_connections()
-  local connections = {}
-  for _, conn in pairs(INSTANCE_CONNECTIONS) do
-    table.insert(connections, conn)
-  end
-  return connections
-end
 
 --- Connect to a remote SSH host via SSHFS
 ---@param host table Host object with name, user, port, and path fields
 ---@return boolean|nil Success status (or nil if async callback)
 function Session.connect(host)
   local MountPoint = require("sshfs.lib.mount_point")
+  local Lockfile = require("sshfs.lib.lockfile")
   local config = Config.get()
   local mount_dir = config.mounts.base_dir .. "/" .. host.name
 
@@ -59,15 +48,10 @@ function Session.connect(host)
         return
       end
 
-      -- Register this instance's connections
-      INSTANCE_CONNECTIONS[mount_dir] = {
-        host = host.name,
-        mount_path = mount_dir,
-        remote_path = result.resolved_path or remote_path_suffix,
-      }
+      -- Register in lockfile so other instances know we're using this mount
+      Lockfile.register(mount_dir)
 
       -- Navigate to remote directory with picker
-      -- Use resolved_path (tilde-expanded) for accurate path mapping in live actions
       vim.notify("Connected to " .. host.name, vim.log.levels.INFO)
       local Hooks = require("sshfs.ui.hooks")
       local final_path = result.resolved_path or remote_path_suffix
@@ -95,6 +79,7 @@ end
 ---@return boolean Success status
 function Session.disconnect_from(connection, silent)
   local MountPoint = require("sshfs.lib.mount_point")
+  local Lockfile = require("sshfs.lib.lockfile")
   if not connection or not connection.mount_path then
     vim.notify("Invalid connection to disconnect", vim.log.levels.WARN)
     return false
@@ -115,6 +100,21 @@ function Session.disconnect_from(connection, silent)
   local safe_to_unmount = MountPoint.release_mount(connection.mount_path, silent)
   if not safe_to_unmount then return false end
 
+  -- Unregister from lockfile
+  Lockfile.unregister(connection.mount_path)
+
+  -- Early exit: If other Neovim instances are using the mount then do not unmount
+  if Lockfile.is_in_use_by_others(connection.mount_path) then
+    PRE_MOUNT_DIRS[connection.mount_path] = nil
+    if not silent then
+      vim.notify(
+        "Mount " .. connection.host .. " still in use by other instances, keeping mounted",
+        vim.log.levels.INFO
+      )
+    end
+    return true
+  end
+
   -- Unmount the filesystem
   local success = MountPoint.unmount(connection.mount_path)
 
@@ -122,8 +122,6 @@ function Session.disconnect_from(connection, silent)
   if success then
     if not silent then vim.notify("Disconnected from " .. connection.host, vim.log.levels.INFO) end
 
-    -- Remove from instance registry and pre-mount cache
-    INSTANCE_CONNECTIONS[connection.mount_path] = nil
     PRE_MOUNT_DIRS[connection.mount_path] = nil
     local config = Config.get()
     if config.hooks and config.hooks.on_exit and config.hooks.on_exit.clean_mount_folders then MountPoint.cleanup() end
@@ -132,6 +130,17 @@ function Session.disconnect_from(connection, silent)
   else
     if not silent then vim.notify("Failed to disconnect from " .. connection.host, vim.log.levels.ERROR) end
     return false
+  end
+end
+
+--- Cleanup all unused mounts on VimLeave
+--- Iterates through all active SSHFS mounts and unmounts any not being used by other instances
+function Session.cleanup_unused_mounts()
+  local MountPoint = require("sshfs.lib.mount_point")
+  local all_mounts = MountPoint.list_active()
+
+  for _, connection in ipairs(all_mounts) do
+    Session.disconnect_from(connection, true)
   end
 end
 
