@@ -23,10 +23,9 @@ function App.setup(user_opts)
     vim.api.nvim_create_autocmd("VimLeave", {
       callback = function()
         local Session = require("sshfs.session")
-        -- Make a copy to avoid modifying table during iteration
-        local all_connections = vim.list_extend({}, MountPoint.list_active())
+        local instance_connections = Session.get_instance_connections()
 
-        for _, connection in ipairs(all_connections) do
+        for _, connection in ipairs(instance_connections) do
           Session.disconnect_from(connection, true)
         end
       end,

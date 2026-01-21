@@ -4,6 +4,18 @@
 local Session = {}
 local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
+local INSTANCE_CONNECTIONS = {} -- Track connections created by this Neovim instance
+
+--- Get connections created by this Neovim instance
+--- Used by VimLeave handler to only disconnect this instance's connections
+---@return table Array of connection objects with host, mount_path, and remote_path fields
+function Session.get_instance_connections()
+  local connections = {}
+  for _, conn in pairs(INSTANCE_CONNECTIONS) do
+    table.insert(connections, conn)
+  end
+  return connections
+end
 
 --- Connect to a remote SSH host via SSHFS
 ---@param host table Host object with name, user, port, and path fields
@@ -46,6 +58,13 @@ function Session.connect(host)
         MountPoint.cleanup()
         return
       end
+
+      -- Register this instance's connections
+      INSTANCE_CONNECTIONS[mount_dir] = {
+        host = host.name,
+        mount_path = mount_dir,
+        remote_path = result.resolved_path or remote_path_suffix,
+      }
 
       -- Navigate to remote directory with picker
       -- Use resolved_path (tilde-expanded) for accurate path mapping in live actions
@@ -103,11 +122,8 @@ function Session.disconnect_from(connection, silent)
   if success then
     if not silent then vim.notify("Disconnected from " .. connection.host, vim.log.levels.INFO) end
 
-    -- Clean up ControlMaster socket
-    local Ssh = require("sshfs.lib.ssh")
-    Ssh.cleanup_control_master(connection.host)
-
-    -- Remove pre-mount cache and mount point
+    -- Remove from instance registry and pre-mount cache
+    INSTANCE_CONNECTIONS[connection.mount_path] = nil
     PRE_MOUNT_DIRS[connection.mount_path] = nil
     local config = Config.get()
     if config.hooks and config.hooks.on_exit and config.hooks.on_exit.clean_mount_folders then MountPoint.cleanup() end
