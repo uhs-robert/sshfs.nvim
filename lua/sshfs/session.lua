@@ -6,17 +6,19 @@ local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
 
 -- Helper to create a unique local folder name based on host and remote path
------ Connect to a remote SSH host via SSHFS
 ---@param host_name string Host name
----@param remote_path_suffix string Remote path suffix concatenated to the host name
----@return string Success A sanitized concatenation of the host name and the suffix
+---@param remote_path_suffix string Remote path suffix to be concatenated to the host name
+---@return string Success A unique concatenation of the host name and the suffix
 local function get_unique_mount_dir(host_name, remote_path_suffix)
   local config = Config.get()
-  -- Sanitize path: remove leading/trailing slashes and replace internal slashes with underscores
-  local sanitized_path = remote_path_suffix:gsub("^/", ""):gsub("/$", ""):gsub("/", "_"):gsub("^~", "_")
 
-  -- If root or empty, just use the host name; otherwise, append the path
-  local suffix = (sanitized_path ~= "") and sanitized_path or ""
+  local sanitized_path = remote_path_suffix
+    :gsub("^/", "") -- trim leading slash
+    :gsub("/$", "") -- trim trailing slash
+    :gsub("/", "_") -- internal slashes to underscores
+
+  -- If root or empty then use the host name; otherwise append the path
+  local suffix = (sanitized_path ~= "") and ("_" .. sanitized_path) or ""
   return config.mounts.base_dir .. "/" .. host_name .. suffix
 end
 
@@ -28,7 +30,7 @@ function Session.connect(host)
   local Lockfile = require("sshfs.lib.lockfile")
   local config = Config.get()
 
-  -- Ask the user for the mount path FIRST
+  -- Ask the user for the mount path
   local Ask = require("sshfs.ui.ask")
   Ask.for_mount_path(host, config, function(remote_path_suffix)
     if not remote_path_suffix then
@@ -39,7 +41,7 @@ function Session.connect(host)
     -- Generate unique mount directory based on host + path
     local mount_dir = get_unique_mount_dir(host.name, remote_path_suffix)
 
-    -- Check if THIS specific path is already mounted
+    -- Check if unique path is already mounted
     if MountPoint.is_active(mount_dir) then
       vim.notify("Path " .. remote_path_suffix .. " on " .. host.name .. " is already mounted.", vim.log.levels.WARN)
       return
@@ -59,7 +61,6 @@ function Session.connect(host)
     Sshfs.authenticate_and_mount(host, mount_dir, remote_path_suffix, function(result)
       -- Handle connection failure
       if not result.success then
-        -- Cleanup the specific folder we just tried to use
         vim.notify("Connection failed: " .. (result.message or "Unknown error"), vim.log.levels.ERROR)
         MountPoint.cleanup()
         return
