@@ -5,6 +5,23 @@ local Session = {}
 local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
 
+-- Helper to create a unique local folder name based on host and remote path
+---@param host_name string Host name
+---@param remote_path_suffix string Remote path suffix to be concatenated to the host name
+---@return string Success A unique concatenation of the host name and the suffix
+local function get_unique_mount_dir(host_name, remote_path_suffix)
+  local config = Config.get()
+
+  local sanitized_path = remote_path_suffix
+    :gsub("^/", "") -- trim leading slash
+    :gsub("/$", "") -- trim trailing slash
+    :gsub("/", "_") -- internal slashes to underscores
+
+  -- If root or empty then use the host name; otherwise append the path
+  local suffix = (sanitized_path ~= "") and ("_" .. sanitized_path) or ""
+  return config.mounts.base_dir .. "/" .. host_name .. suffix
+end
+
 --- Connect to a remote SSH host via SSHFS
 ---@param host table Host object with name, user, port, and path fields
 ---@return boolean|nil Success status (or nil if async callback)
@@ -12,29 +29,30 @@ function Session.connect(host)
   local MountPoint = require("sshfs.lib.mount_point")
   local Lockfile = require("sshfs.lib.lockfile")
   local config = Config.get()
-  local mount_dir = config.mounts.base_dir .. "/" .. host.name
-
-  -- Check if already mounted
-  if MountPoint.is_active(mount_dir) then
-    vim.notify("Host " .. host.name .. " is already mounted at " .. mount_dir, vim.log.levels.WARN)
-    return true
-  end
-
-  -- Capture current directory before mounting for restoration on disconnect
-  PRE_MOUNT_DIRS[mount_dir] = vim.uv.cwd()
-
-  -- Ensure mount directory exists
-  if not MountPoint.get_or_create(mount_dir) then
-    vim.notify("Failed to create mount directory: " .. mount_dir, vim.log.levels.ERROR)
-    return false
-  end
 
   -- Ask the user for the mount path
   local Ask = require("sshfs.ui.ask")
   Ask.for_mount_path(host, config, function(remote_path_suffix)
     if not remote_path_suffix then
       vim.notify("Connection cancelled.", vim.log.levels.WARN)
-      MountPoint.cleanup()
+      return
+    end
+
+    -- Generate unique mount directory based on host + path
+    local mount_dir = get_unique_mount_dir(host.name, remote_path_suffix)
+
+    -- Check if unique path is already mounted
+    if MountPoint.is_active(mount_dir) then
+      vim.notify("Path " .. remote_path_suffix .. " on " .. host.name .. " is already mounted.", vim.log.levels.WARN)
+      return
+    end
+
+    -- Capture current directory before mounting
+    PRE_MOUNT_DIRS[mount_dir] = vim.uv.cwd()
+
+    -- Ensure the unique mount directory exists
+    if not MountPoint.get_or_create(mount_dir) then
+      vim.notify("Failed to create mount directory: " .. mount_dir, vim.log.levels.ERROR)
       return
     end
 
@@ -52,7 +70,7 @@ function Session.connect(host)
       Lockfile.register(mount_dir)
 
       -- Navigate to remote directory with picker
-      vim.notify("Connected to " .. host.name, vim.log.levels.INFO)
+      vim.notify("Connected to " .. host.name .. " (" .. remote_path_suffix .. ")", vim.log.levels.INFO)
       local Hooks = require("sshfs.ui.hooks")
       local final_path = result.resolved_path or remote_path_suffix
       Hooks.on_mount(mount_dir, host.name, final_path, config)
