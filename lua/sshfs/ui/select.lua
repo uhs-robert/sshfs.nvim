@@ -49,12 +49,11 @@ function Select.mount(callback)
   if not active_mounts then return end
 
   local mount_list = {}
-  local mount_map = {}
 
+  local MountPoint = require("sshfs.lib.mount_point")
   for _, mount in ipairs(active_mounts) do
-    local display = mount.host .. " (" .. mount.mount_path .. ")"
+    local display = MountPoint.format_label(mount)
     table.insert(mount_list, display)
-    mount_map[display] = mount
   end
 
   vim.ui.select(mount_list, {
@@ -62,8 +61,8 @@ function Select.mount(callback)
     format_item = function(item)
       return item
     end,
-  }, function(choice)
-    if choice and mount_map[choice] then callback(mount_map[choice]) end
+  }, function(_, idx)
+    if idx and active_mounts[idx] then callback(active_mounts[idx]) end
   end)
 end
 
@@ -74,12 +73,11 @@ function Select.unmount(callback)
   if not active_mounts then return end
 
   local mount_list = {}
-  local mount_map = {}
 
+  local MountPoint = require("sshfs.lib.mount_point")
   for _, mount in ipairs(active_mounts) do
-    local display = mount.host .. " (" .. mount.mount_path .. ")"
+    local display = MountPoint.format_label(mount)
     table.insert(mount_list, display)
-    mount_map[display] = mount
   end
 
   vim.ui.select(mount_list, {
@@ -87,8 +85,8 @@ function Select.unmount(callback)
     format_item = function(item)
       return item
     end,
-  }, function(choice)
-    if choice and mount_map[choice] then callback(mount_map[choice]) end
+  }, function(_, idx)
+    if idx and active_mounts[idx] then callback(active_mounts[idx]) end
   end)
 end
 

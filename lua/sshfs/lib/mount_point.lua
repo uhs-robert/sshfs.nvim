@@ -81,14 +81,15 @@ function MountPoint.list_active()
   local prefix_pattern = "^" .. mount_dir_escaped .. "/(.+)$"
 
   for _, mount_info in ipairs(system_mounts) do
-    local host = mount_info.mount_path:match(prefix_pattern)
-    if host and host ~= "" then
-      -- Parse remote_spec to extract remote path
+    local mount_name = mount_info.mount_path:match(prefix_pattern)
+    if mount_name and mount_name ~= "" then
+      -- Parse remote_spec to extract actual SSH hostname and remote path
       -- Format: "user@host:/remote/path" or "host:/remote/path"
       local remote_path = mount_info.remote_spec:match(":(.*)$")
+      local host = mount_info.remote_spec:match("@([^:]+):") or mount_info.remote_spec:match("^([^:]+):")
 
       table.insert(mounts, {
-        host = host,
+        host = host or mount_name, -- Fall back to mount dir name if parsing fails
         mount_path = mount_info.mount_path,
         remote_path = remote_path or "/", -- Default to root if parsing fails
       })
@@ -96,6 +97,16 @@ function MountPoint.list_active()
   end
 
   return mounts
+end
+
+--- Format a display label for a mount connection
+--- @param mount table Mount object with host and remote_path fields
+--- @return string Display label (e.g. "myserver: /home/user" or "myserver" for root mounts)
+function MountPoint.format_label(mount)
+  if mount.remote_path and mount.remote_path ~= "" and mount.remote_path ~= "/" then
+    return mount.host .. ": " .. mount.remote_path
+  end
+  return mount.host
 end
 
 --- Check if any active mounts exist
@@ -282,7 +293,7 @@ function MountPoint.run_command(command)
 
   local items = {}
   for _, conn in ipairs(active_connections) do
-    table.insert(items, conn.host)
+    table.insert(items, MountPoint.format_label(conn))
   end
 
   vim.ui.select(items, {

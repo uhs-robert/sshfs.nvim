@@ -22,7 +22,7 @@ function Terminal.open_ssh()
 
   local items = {}
   for _, conn in ipairs(active_connections) do
-    table.insert(items, conn.host)
+    table.insert(items, MountPoint.format_label(conn))
   end
 
   vim.ui.select(items, {
