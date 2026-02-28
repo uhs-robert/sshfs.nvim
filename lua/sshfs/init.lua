@@ -18,6 +18,7 @@ function App.setup(user_opts)
 
   -- Register in lockfile when opening files from a mount (for instances that didn't create the mount)
   local base_dir = opts.mounts.base_dir
+  local registered_mounts = {}
   vim.api.nvim_create_autocmd("BufEnter", {
     callback = function(ev)
       local buf_path = vim.api.nvim_buf_get_name(ev.buf)
@@ -34,10 +35,14 @@ function App.setup(user_opts)
 
       local mount_path = base_dir .. "/" .. hostname
 
+      -- Skip the expensive is_active check if already registered for this mount
+      if registered_mounts[mount_path] then return end
+
       -- Only register if this is an active mount
       if MountPoint.is_active(mount_path) then
         local Lockfile = require("sshfs.lib.lockfile")
         Lockfile.register(mount_path)
+        registered_mounts[mount_path] = true
       end
     end,
     desc = "Register in lockfile when accessing SSHFS mount",
