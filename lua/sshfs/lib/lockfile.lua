@@ -58,8 +58,13 @@ end
 ---@param pid string
 ---@return boolean
 local function is_pid_alive(pid)
-  local ok = pcall(vim.uv.kill, tonumber(pid), 0) -- checks if process existing without actually sending a signal
-  return ok
+  local n = tonumber(pid)
+  if not n then return false end
+
+  -- checks if process existing without actually sending a signal
+  local ok, err = vim.uv.kill(n, 0)
+  if ok then return true end
+  return tostring(err or ""):match("EPERM") ~= nil
 end
 
 --- Register current Neovim instance as using a mount
