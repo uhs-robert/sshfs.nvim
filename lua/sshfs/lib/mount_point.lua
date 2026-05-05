@@ -195,11 +195,18 @@ end
 --- @return boolean True if unmount succeeded
 function MountPoint.unmount(mount_path)
   local commands = {
+    -- 1. clean
     { "fusermount", { "-u", mount_path } },
     { "fusermount3", { "-u", mount_path } },
-    { "umount", { "-l", mount_path } }, -- Linux: lazy unmount
-    { "umount", { mount_path } }, -- macOS/BSD: standard unmount
-    { "diskutil", { "unmount", mount_path } }, -- macOS: fallback
+    { "umount", { mount_path } },
+    { "diskutil", { "unmount", mount_path } },
+    -- 2. lazy
+    { "fusermount", { "-uz", mount_path } },
+    { "fusermount3", { "-uz", mount_path } },
+    { "umount", { "-l", mount_path } },
+    -- 3. force (macos/universal)
+    { "diskutil", { "unmount", "force", mount_path } },
+    { "umount", { "-f", mount_path } },
   }
 
   for _, cmd in ipairs(commands) do
