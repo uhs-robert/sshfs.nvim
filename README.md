@@ -165,13 +165,13 @@ require("sshfs").setup({
 
 ### Manual Installation
 
-1. Clone the repository:
+#### 1. Clone the repository
 
 ```bash
 git clone https://github.com/uhs-robert/sshfs.nvim ~/.local/share/nvim/site/pack/plugins/start/sshfs.nvim
 ```
 
-2. Add to your `init.lua`:
+#### 2. Add to your `init.lua`
 
 ```lua
 require("sshfs").setup({
