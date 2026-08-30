@@ -290,6 +290,7 @@ require("sshfs").setup({
 
 - `:checkhealth sshfs` - Verify dependencies and configuration
 - `:SSHConnect [host]` - Mount a remote host
+- `:SSHTest [host]` - Test SSH resolution and authentication without mounting
 - `:SSHDisconnect` - Unmount current host
 - `:SSHDisconnectAll` - Unmount all hosts
 - `:SSHConfig` - Edit SSH config files

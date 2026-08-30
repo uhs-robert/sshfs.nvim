@@ -60,6 +60,34 @@ local function get_ssh_options(auth_type)
   return options
 end
 
+local function normalize_host(host)
+  if type(host) == "table" then return host end
+  return { name = host }
+end
+
+local function append_host_options(cmd, host)
+  host = normalize_host(host)
+  if host.port then vim.list_extend(cmd, { "-p", tostring(host.port) }) end
+  if host.user then vim.list_extend(cmd, { "-l", host.user }) end
+  table.insert(cmd, host.name)
+end
+
+local function build_with_options(host, auth_type)
+  local cmd = { "ssh" }
+  for _, opt in ipairs(get_ssh_options(auth_type)) do
+    vim.list_extend(cmd, { "-o", opt })
+  end
+  append_host_options(cmd, host)
+  return cmd
+end
+
+--- Ensure the configured SSH ControlMaster socket directory exists.
+--- @return string|nil socket_dir
+--- @return string|nil error_msg
+function Ssh.prepare_socket_dir()
+  return get_or_create_socket_dir()
+end
+
 --- Build SSH command string with options for use with sshfs ssh_command option
 --- @param auth_type string|nil Authentication type ("batch", "socket", or nil)
 --- @return string SSH command string (e.g., "ssh -o ControlMaster=auto -o ControlPath=... -o BatchMode=yes")
@@ -73,6 +101,60 @@ function Ssh.build_command_string(auth_type)
   end
 
   return table.concat(cmd_parts, " ")
+end
+
+--- Build the same non-interactive authentication command used by SSHConnect.
+---@param host table|string Host object or SSH host name
+---@return table SSH command array
+function Ssh.build_batch_command(host)
+  local cmd = build_with_options(host, "batch")
+  table.insert(cmd, "exit")
+  return cmd
+end
+
+--- Build the command used to resolve the remote home through an established socket.
+---@param host table|string Host object or SSH host name
+---@return table SSH command array
+function Ssh.build_home_command(host)
+  local cmd = build_with_options(host, "socket")
+  table.insert(cmd, "readlink -f $HOME 2>/dev/null || echo $HOME")
+  return cmd
+end
+
+--- Build the interactive authentication command used after batch auth fails.
+---@param host table|string Host object or SSH host name
+---@return table SSH command array
+function Ssh.build_auth_command(host)
+  local cmd = { "ssh" }
+  for _, opt in ipairs(get_ssh_options(nil)) do
+    if opt:match("^ControlMaster=") then opt = "ControlMaster=yes" end
+    vim.list_extend(cmd, { "-o", opt })
+  end
+  append_host_options(cmd, host)
+  table.insert(cmd, "exit")
+  return cmd
+end
+
+--- Build a ControlMaster management command.
+---@param host table|string SSH host object or name
+---@param operation string Control operation such as "check" or "exit"
+---@return table SSH command array
+function Ssh.build_control_command(host, operation)
+  local cmd = { "ssh" }
+  for _, opt in ipairs(get_ssh_options("socket")) do
+    vim.list_extend(cmd, { "-o", opt })
+  end
+  vim.list_extend(cmd, { "-O", operation })
+  append_host_options(cmd, host)
+  return cmd
+end
+
+--- Return whether a matching ControlMaster socket is already active.
+---@param host table|string SSH host object or name
+---@return boolean
+function Ssh.has_control_master(host)
+  vim.fn.system(Ssh.build_control_command(host, "check"))
+  return vim.v.shell_error == 0
 end
 
 --- Build a safe cd command that handles tilde expansion and path escaping
@@ -96,20 +178,11 @@ local function build_cd_command(remote_path)
 end
 
 --- Build SSH command with optional remote path and ControlMaster options
----@param host string SSH host name
+---@param host table|string SSH host object or name
 ---@param remote_path string|nil Optional remote path to cd into
 ---@return table SSH command as array (safer than string to avoid shell injection)
 function Ssh.build_command(host, remote_path)
-  local cmd = { "ssh" }
-
-  -- Add SSH options (ControlMaster, etc.)
-  local options = get_ssh_options(nil) -- No auth type for interactive terminal
-  for _, opt in ipairs(options) do
-    table.insert(cmd, "-o")
-    table.insert(cmd, opt)
-  end
-
-  table.insert(cmd, host)
+  local cmd = build_with_options(host, nil)
 
   -- If remote_path specified, cd into it and start a login shell
   if remote_path and remote_path ~= "" then
@@ -122,7 +195,7 @@ function Ssh.build_command(host, remote_path)
 end
 
 --- Open SSH terminal session
----@param host string SSH host name
+---@param host table|string SSH host object or name
 ---@param remote_path string|nil Optional remote path to cd into
 function Ssh.open_terminal(host, remote_path)
   local ssh_cmd = Ssh.build_command(host, remote_path)
@@ -134,21 +207,10 @@ end
 --- Get remote home directory by executing 'echo $HOME' on the remote server (async)
 --- This handles non-standard home directory structures (e.g., /home/<team>/<user>)
 --- Uses existing ControlMaster socket if available for zero authentication overhead
----@param host string SSH host name
+---@param host table|string SSH host object or name
 ---@param callback function Callback(home_path: string|nil, error: string|nil)
 function Ssh.get_remote_home(host, callback)
-  local cmd = { "ssh" }
-
-  -- Add ControlPath option to reuse existing socket
-  local options = get_ssh_options("socket")
-  for _, opt in ipairs(options) do
-    table.insert(cmd, "-o")
-    table.insert(cmd, opt)
-  end
-
-  table.insert(cmd, host)
-  -- Use readlink -f to resolve symlinks and get the canonical path with fallback if no readlink
-  table.insert(cmd, "readlink -f $HOME 2>/dev/null || echo $HOME")
+  local cmd = Ssh.build_home_command(host)
 
   -- Execute asynchronously
   vim.system(cmd, { text = true }, function(obj)
@@ -170,31 +232,18 @@ end
 
 --- Close ControlMaster connection and clean up socket
 --- Sends "exit" command to ControlMaster to gracefully close connection and remove socket
----@param host string SSH host name
+---@param host table|string SSH host object or name
 ---@return boolean True if cleanup command was sent successfully
 function Ssh.cleanup_control_master(host)
-  local Config = require("sshfs.config")
-  local control_opts = Config.get_control_master_options()
-
-  -- Build ssh -O exit command for ControlPath
-  local cmd = { "ssh" }
-  for _, opt in ipairs(control_opts) do
-    table.insert(cmd, "-o")
-    table.insert(cmd, opt)
-  end
-  table.insert(cmd, "-O")
-  table.insert(cmd, "exit")
-  table.insert(cmd, host)
-
   -- Execute synchronously (must complete before nvim exit)
-  vim.fn.system(cmd)
+  vim.fn.system(Ssh.build_control_command(host, "exit"))
   -- Ignore exit code - socket may already be closed/expired
   return true
 end
 
 --- Try batch SSH connection to establish ControlMaster socket (async, non-interactive)
 --- Attempts to connect using existing keys without prompting for passwords or passphrases
----@param host string SSH host name
+---@param host table|string SSH host object or name
 ---@param callback function Callback(success: boolean, exit_code: number, error: string|nil)
 function Ssh.try_batch_connect(host, callback)
   -- Ensure socket directory exists before attempting connection
@@ -206,20 +255,8 @@ function Ssh.try_batch_connect(host, callback)
     return
   end
 
-  local cmd = { "ssh" }
-
-  -- Add SSH options for batch connection (ControlMaster=yes + BatchMode=yes)
-  local options = get_ssh_options("batch")
-  for _, opt in ipairs(options) do
-    table.insert(cmd, "-o")
-    table.insert(cmd, opt)
-  end
-
-  -- Add host and exit command (just test connection, don't start shell)
-  table.insert(cmd, host)
-  table.insert(cmd, "exit")
-
-  -- Execute asynchronously
+  -- Build and execute the batch command asynchronously
+  local cmd = Ssh.build_batch_command(host)
   vim.system(cmd, { text = true }, function(obj)
     vim.schedule(function()
       local success = obj.code == 0
@@ -232,7 +269,7 @@ end
 --- Open interactive SSH terminal for authentication in floating window (async)
 --- Allows user to complete any SSH authentication method (password, 2FA, host verification, etc.)
 --- Creates floating terminal window and tracks exit code for success/failure
----@param host string SSH host name
+---@param host table|string SSH host object or name
 ---@param callback function Callback(success: boolean, exit_code: number)
 function Ssh.open_auth_terminal(host, callback)
   -- Ensure socket directory exists before attempting connection
@@ -246,28 +283,12 @@ function Ssh.open_auth_terminal(host, callback)
   end
 
   -- Build SSH command for authentication (ControlMaster=yes to create socket)
-  local cmd = { "ssh" }
-  local options = get_ssh_options(nil) -- Get ControlMaster options
-  local modified_opts = {}
-  for _, opt in ipairs(options) do
-    if opt:match("^ControlMaster=") then
-      table.insert(modified_opts, "ControlMaster=yes")
-    else
-      table.insert(modified_opts, opt)
-    end
-  end
-
-  -- Finalize command options, end with exit to close shell after authentication flow
-  for _, opt in ipairs(modified_opts) do
-    table.insert(cmd, "-o")
-    table.insert(cmd, opt)
-  end
-  table.insert(cmd, host)
-  table.insert(cmd, "exit")
+  local host_obj = normalize_host(host)
+  local cmd = Ssh.build_auth_command(host_obj)
 
   -- Open authentication terminal window
   local Terminal = require("sshfs.ui.terminal")
-  Terminal.open_auth_floating(cmd, host, callback)
+  Terminal.open_auth_floating(cmd, host_obj.name, callback)
 end
 
 return Ssh
