@@ -5,7 +5,7 @@ local Ssh = {}
 
 --- Return the first non-empty process output after trimming whitespace.
 --- @param ... string|nil Process output values in priority order
---- @return string|nil error_output First non-empty output, or nil
+--- @return string|nil output First non-empty output, or nil
 local function first_nonempty_output(...)
   for i = 1, select("#", ...) do
     local trimmed = vim.trim(select(i, ...) or "")
