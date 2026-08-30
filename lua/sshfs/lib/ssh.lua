@@ -3,6 +3,17 @@
 
 local Ssh = {}
 
+--- Return the first non-empty process output after trimming whitespace.
+--- @param ... string|nil Process output values in priority order
+--- @return string|nil error_output First non-empty output, or nil
+local function first_nonempty_output(...)
+  for i = 1, select("#", ...) do
+    local trimmed = vim.trim(select(i, ...) or "")
+    if trimmed ~= "" then return trimmed end
+  end
+  return nil
+end
+
 --- Get SSH socket directory, creating it if it doesn't exist
 --- @return string|nil socket_dir The socket directory path, or nil if creation failed
 --- @return string|nil error_msg Error message if creation failed
@@ -161,7 +172,7 @@ function Ssh.get_remote_home(host, callback)
           callback(nil, "Remote $HOME output invalid: '" .. home_path .. "'")
         end
       else
-        local error_msg = vim.trim(obj.stderr or obj.stdout or "Unknown error")
+        local error_msg = first_nonempty_output(obj.stderr, obj.stdout) or "Unknown error"
         callback(nil, error_msg)
       end
     end)
@@ -223,7 +234,7 @@ function Ssh.try_batch_connect(host, callback)
   vim.system(cmd, { text = true }, function(obj)
     vim.schedule(function()
       local success = obj.code == 0
-      local error_msg = success and nil or (obj.stderr or obj.stdout or "Unknown error")
+      local error_msg = success and nil or (first_nonempty_output(obj.stderr, obj.stdout) or "Unknown error")
       callback(success, obj.code, error_msg)
     end)
   end)

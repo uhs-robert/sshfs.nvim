@@ -126,14 +126,26 @@ end
 
 --- Get or create mount directory
 --- @param mount_dir string|nil Directory path (defaults to base mount dir from config)
---- @return boolean True if directory exists or was created successfully
+--- @return boolean success True if directory exists or was created successfully
+--- @return boolean created True only when this call created the directory
 function MountPoint.get_or_create(mount_dir)
   mount_dir = mount_dir or Config.get_base_dir()
   local stat = vim.uv.fs_stat(mount_dir)
-  if stat and stat.type == "directory" then return true end
+  if stat and stat.type == "directory" then return true, false end
 
-  local success = vim.fn.mkdir(mount_dir, "p")
-  return success == 1
+  -- Ensure parent directories exist, then create the leaf without "p" so
+  -- ownership is only claimed when this call actually creates mount_dir.
+  local parent_dir = vim.fn.fnamemodify(mount_dir, ":h")
+  if parent_dir ~= mount_dir and vim.fn.mkdir(parent_dir, "p") == 0 and vim.fn.isdirectory(parent_dir) ~= 1 then
+    return false, false
+  end
+
+  if vim.fn.mkdir(mount_dir) == 1 then return true, true end
+
+  -- Another process may have won the creation race. Treat an existing
+  -- directory as usable, but do not claim ownership of it.
+  stat = vim.uv.fs_stat(mount_dir)
+  return stat ~= nil and stat.type == "directory", false
 end
 
 --- Release buffers associated with sshfs mount

@@ -3,6 +3,16 @@
 
 local Sshfs = {}
 
+--- Determine whether an SSH batch failure is an unresolved-host error.
+--- @param error_message string|nil SSH error output
+--- @return boolean True when the host could not be resolved
+local function is_unresolved_host_error(error_message)
+  local error_lower = (error_message or ""):lower()
+  return error_lower:find("could not resolve hostname", 1, true) ~= nil
+    or error_lower:find("name or service not known", 1, true) ~= nil
+    or error_lower:find("nodename nor servname provided", 1, true) ~= nil
+end
+
 --- Convert sshfs_options table to array format for sshfs -o
 --- @param options_table table Table of options (e.g., {reconnect = true, ConnectTimeout = 5})
 --- @return table Array of option strings (e.g., {"reconnect", "ConnectTimeout=5"})
@@ -77,10 +87,19 @@ local function mount_with_path(host, mount_point, remote_path_suffix, callback)
           resolved_path = remote_path_suffix,
         })
       else
-        local error_msg = obj.stderr or obj.stdout or "Unknown error"
+        local stderr = vim.trim(obj.stderr or "")
+        local stdout = vim.trim(obj.stdout or "")
+        local error_output = stderr ~= "" and stderr or stdout
+        local message = string.format("Mount failed (exit code: %d)", obj.code)
+        if error_output ~= "" then message = message .. ": " .. error_output end
+
         callback({
           success = false,
-          message = "Mount failed: " .. error_msg,
+          stage = "mount",
+          exit_code = obj.code,
+          stdout = stdout ~= "" and stdout or nil,
+          stderr = stderr ~= "" and stderr or nil,
+          message = message,
         })
       end
     end)
@@ -136,16 +155,44 @@ function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, cal
       return
     end
 
+    -- An unresolved host cannot be fixed by interactive authentication.
+    if is_unresolved_host_error(error) then
+      local message = string.format("SSH connection failed for %s (exit code: %d)", host.name, exit_code)
+      if error and error ~= "" then message = message .. ": " .. vim.trim(error) end
+
+      callback({
+        success = false,
+        stage = "connection",
+        exit_code = exit_code,
+        output = error,
+        message = message,
+      })
+      return
+    end
+
     -- Batch failed, try interactive terminal
     Ssh.open_auth_terminal(host.name, function(term_success, term_exit_code)
       if term_success then
         mount_via_socket(host, mount_point, remote_path_suffix, callback)
-      else
-        callback({
-          success = false,
-          message = string.format("SSH authentication failed for %s (exit code: %d)", host.name, term_exit_code),
-        })
+        return
       end
+
+      local message = string.format(
+        "SSH authentication failed for %s (batch exit code: %d, interactive exit code: %d)",
+        host.name,
+        exit_code,
+        term_exit_code
+      )
+      if error and error ~= "" then message = message .. ": " .. vim.trim(error) end
+
+      callback({
+        success = false,
+        stage = "authentication",
+        exit_code = term_exit_code,
+        batch_exit_code = exit_code,
+        output = error,
+        message = message,
+      })
     end)
   end)
 end
