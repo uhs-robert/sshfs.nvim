@@ -3,10 +3,22 @@
 
 local Terminal = {}
 
+local function open_connection_terminal(connection)
+  if connection.remote_metadata_available == false then
+    vim.notify(
+      "Remote host metadata is unavailable for this mount; cannot open an SSH terminal.",
+      vim.log.levels.WARN
+    )
+    return
+  end
+
+  local Ssh = require("sshfs.lib.ssh")
+  Ssh.open_terminal(connection.host, connection.remote_path)
+end
+
 --- Open SSH terminal session to remote host
 function Terminal.open_ssh()
   local MountPoint = require("sshfs.lib.mount_point")
-  local Ssh = require("sshfs.lib.ssh")
   local active_connections = MountPoint.list_active()
 
   if #active_connections == 0 then
@@ -15,8 +27,7 @@ function Terminal.open_ssh()
   end
 
   if #active_connections == 1 then
-    local conn = active_connections[1]
-    Ssh.open_terminal(conn.host, conn.remote_path)
+    open_connection_terminal(active_connections[1])
     return
   end
 
@@ -28,10 +39,7 @@ function Terminal.open_ssh()
   vim.ui.select(items, {
     prompt = "Select host for SSH terminal:",
   }, function(_, idx)
-    if idx then
-      local conn = active_connections[idx]
-      Ssh.open_terminal(conn.host, conn.remote_path)
-    end
+    if idx then open_connection_terminal(active_connections[idx]) end
   end)
 end
 
