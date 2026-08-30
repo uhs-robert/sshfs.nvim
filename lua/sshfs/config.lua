@@ -82,6 +82,10 @@ local DEFAULT_CONFIG = {
 			preferred_picker = "auto",      -- "auto", "telescope", "fzf-lua", "snacks", "mini"
 		},
 	},
+	debug = {
+		enabled = false,                   -- Enable debug logging
+		log_file = vim.fn.stdpath("log") .. "/sshfs.nvim.log", -- Debug log destination
+	},
 	keymaps = nil,                      -- Override individual keymaps (e.g., {mount = "<leader>mm", unmount = "<leader>mu"})
 	lead_prefix = "<leader>m",          -- Prefix for default keymaps
 }
