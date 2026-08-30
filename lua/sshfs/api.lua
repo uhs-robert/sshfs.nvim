@@ -218,6 +218,14 @@ Api.live_grep = function(path)
   end
 
   local function execute_live_grep(connection)
+    if connection.remote_metadata_available == false then
+      vim.notify(
+        "Remote host/path metadata is unavailable for this mount. Falling back to local grep on the mounted path.",
+        vim.log.levels.WARN
+      )
+      return fallback_to_local_grep(connection)
+    end
+
     local Picker = require("sshfs.ui.picker")
     local config = Config.get()
     local search_path = connection.remote_path or path or "."
@@ -275,6 +283,14 @@ Api.live_find = function(path)
   end
 
   local function execute_live_find(connection)
+    if connection.remote_metadata_available == false then
+      vim.notify(
+        "Remote host/path metadata is unavailable for this mount. Falling back to the mounted path.",
+        vim.log.levels.WARN
+      )
+      return fallback_to_local_find(connection)
+    end
+
     local Picker = require("sshfs.ui.picker")
     local config = Config.get()
     local search_path = connection.remote_path or path or "."
