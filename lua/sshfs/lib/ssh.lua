@@ -2,6 +2,7 @@
 -- SSH operations: terminal sessions, command execution, and connection utilities
 
 local Ssh = {}
+local Logger = require("sshfs.lib.logger")
 
 --- Get SSH socket directory, creating it if it doesn't exist
 --- @return string|nil socket_dir The socket directory path, or nil if creation failed
@@ -10,13 +11,19 @@ local function get_or_create_socket_dir()
   local Config = require("sshfs.config")
   local socket_dir = Config.get_socket_dir()
 
-  if vim.fn.isdirectory(socket_dir) == 1 then return socket_dir, nil end
+  if vim.fn.isdirectory(socket_dir) == 1 then
+    Logger.debug("SSH socket directory available", { socket_dir = socket_dir })
+    return socket_dir, nil
+  end
 
   local ok, err = pcall(vim.fn.mkdir, socket_dir, "p", "0700")
   if ok then
+    Logger.debug("Created SSH socket directory", { socket_dir = socket_dir })
     return socket_dir, nil
   else
-    return nil, "Failed to create socket directory: " .. socket_dir .. " (" .. tostring(err) .. ")"
+    local error_msg = "Failed to create socket directory: " .. socket_dir .. " (" .. tostring(err) .. ")"
+    Logger.error(error_msg)
+    return nil, error_msg
   end
 end
 
@@ -126,6 +133,7 @@ end
 ---@param remote_path string|nil Optional remote path to cd into
 function Ssh.open_terminal(host, remote_path)
   local ssh_cmd = Ssh.build_command(host, remote_path)
+  Logger.debug("Opening SSH terminal", { host = host, remote_path = remote_path })
   vim.cmd("enew")
   vim.fn.jobstart(ssh_cmd, { term = true })
   vim.cmd("startinsert")
@@ -149,10 +157,18 @@ function Ssh.get_remote_home(host, callback)
   table.insert(cmd, host)
   -- Use readlink -f to resolve symlinks and get the canonical path with fallback if no readlink
   table.insert(cmd, "readlink -f $HOME 2>/dev/null || echo $HOME")
+  Logger.debug("Resolving remote home", { host = host, command = table.concat(cmd, " ") })
 
   -- Execute asynchronously
   vim.system(cmd, { text = true }, function(obj)
     vim.schedule(function()
+      Logger.debug("Remote home command completed", {
+        host = host,
+        exit_code = obj.code,
+        stdout = vim.trim(obj.stdout or ""),
+        stderr = vim.trim(obj.stderr or ""),
+      })
+
       if obj.code == 0 then
         local home_path = vim.trim(obj.stdout or "")
         if home_path ~= "" and home_path:sub(1, 1) == "/" then
@@ -187,7 +203,13 @@ function Ssh.cleanup_control_master(host)
   table.insert(cmd, host)
 
   -- Execute synchronously (must complete before nvim exit)
-  vim.fn.system(cmd)
+  Logger.debug("Closing SSH ControlMaster", { host = host, command = table.concat(cmd, " ") })
+  local output = vim.fn.system(cmd)
+  Logger.debug("SSH ControlMaster cleanup completed", {
+    host = host,
+    exit_code = vim.v.shell_error,
+    output = vim.trim(output or ""),
+  })
   -- Ignore exit code - socket may already be closed/expired
   return true
 end
@@ -218,12 +240,20 @@ function Ssh.try_batch_connect(host, callback)
   -- Add host and exit command (just test connection, don't start shell)
   table.insert(cmd, host)
   table.insert(cmd, "exit")
+  Logger.debug("Starting batch SSH authentication", { host = host, command = table.concat(cmd, " ") })
 
   -- Execute asynchronously
   vim.system(cmd, { text = true }, function(obj)
     vim.schedule(function()
       local success = obj.code == 0
       local error_msg = success and nil or (obj.stderr or obj.stdout or "Unknown error")
+      Logger.debug("Batch SSH authentication completed", {
+        host = host,
+        success = success,
+        exit_code = obj.code,
+        stdout = vim.trim(obj.stdout or ""),
+        stderr = vim.trim(obj.stderr or ""),
+      })
       callback(success, obj.code, error_msg)
     end)
   end)
@@ -238,6 +268,7 @@ function Ssh.open_auth_terminal(host, callback)
   -- Ensure socket directory exists before attempting connection
   local socket_dir, err = get_or_create_socket_dir()
   if not socket_dir then
+    Logger.error("Unable to start interactive SSH authentication", { host = host, error = err })
     vim.notify("sshfs.nvim: " .. err, vim.log.levels.ERROR)
     vim.schedule(function()
       callback(false, 1)
@@ -266,8 +297,16 @@ function Ssh.open_auth_terminal(host, callback)
   table.insert(cmd, "exit")
 
   -- Open authentication terminal window
+  Logger.debug("Opening interactive SSH authentication", { host = host, command = table.concat(cmd, " ") })
   local Terminal = require("sshfs.ui.terminal")
-  Terminal.open_auth_floating(cmd, host, callback)
+  Terminal.open_auth_floating(cmd, host, function(success, exit_code)
+    Logger.debug("Interactive SSH authentication completed", {
+      host = host,
+      success = success,
+      exit_code = exit_code,
+    })
+    callback(success, exit_code)
+  end)
 end
 
 return Ssh

@@ -261,6 +261,10 @@ require("sshfs").setup({
       preferred_picker = "auto",  -- one of: "auto", "snacks", "fzf-lua", "telescope", "mini"
     },
   },
+  debug = {
+    enabled = false,              -- write SSH/SSHFS diagnostics to a log file
+    log_file = vim.fn.stdpath("log") .. "/sshfs.nvim.log",
+  },
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
     mount = "<leader>mm",         -- creates an ssh connection and mounts via sshfs
@@ -294,6 +298,7 @@ require("sshfs").setup({
 - `:SSHDisconnectAll` - Unmount all hosts
 - `:SSHConfig` - Edit SSH config files
 - `:SSHReload` - Reload SSH configuration
+- `:SSHDebug [on|off]` - Toggle debug logging for the current Neovim session
 - `:SSHFiles` - Find files with auto-detected picker
 - `:SSHGrep [pattern]` - Search files with auto-detected tool
 - `:SSHLiveFind [pattern]` - Stream remote `find`/`fd` results over SSH (snacks/fzf-lua/telescope/mini)
@@ -302,6 +307,8 @@ require("sshfs").setup({
 - `:SSHChangeDir` - Change directory to mount (`tcd`)
 - `:SSHCommand [cmd]` - Run custom command (e.g. `Oil`, `Telescope`)
 - `:SSHTerminal` - Open terminal session (reuses auth)
+
+Debug logging records SSH authentication, ControlMaster, remote-home resolution, and SSHFS subprocess diagnostics. See [`docs/debug-logging.md`](docs/debug-logging.md) for details.
 
 ## 🎹 Key Mapping
 
@@ -342,3 +349,13 @@ Auth flow: keys first, then floating terminal for passphrases/passwords/2FA; Con
 - **Configure `global_paths`** with common directories (`/var/www`, `/var/log`, `~/.config`) to have them available across all hosts
 - **Configure `host_paths`** for frequently-used hosts to skip path selection
 - **Set `preferred_picker` for local/remote pickers** to force specific file picker(s) instead of auto-detection
+
+## 🧪 Development
+
+Run the unit test suite with:
+
+```sh
+make test
+```
+
+Tests run in headless Neovim with no external dependencies and never contact a real SSH server or mount table. See [`tests/README.md`](tests/README.md) for the harness, the available stubs, and how to add coverage. CI runs the suite and `stylua --check` on every pull request.

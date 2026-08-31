@@ -2,6 +2,7 @@
 -- SSHFS wrapper with authentication workflows
 
 local Sshfs = {}
+local Logger = require("sshfs.lib.logger")
 
 --- Convert sshfs_options table to array format for sshfs -o
 --- @param options_table table Table of options (e.g., {reconnect = true, ConnectTimeout = 5})
@@ -67,9 +68,27 @@ local function mount_with_path(host, mount_point, remote_path_suffix, callback)
     table.insert(cmd, host.port)
   end
 
+  Logger.debug("Starting SSHFS mount", {
+    host = host.name,
+    user = host.user,
+    remote_path = remote_path_suffix,
+    mount_point = mount_point,
+    command = table.concat(cmd, " "),
+  })
+
   -- Execute mount command asynchronously
   vim.system(cmd, { text = true }, function(obj)
     vim.schedule(function()
+      local stdout = vim.trim(obj.stdout or "")
+      local stderr = vim.trim(obj.stderr or "")
+      Logger.debug("SSHFS mount completed", {
+        host = host.name,
+        mount_point = mount_point,
+        exit_code = obj.code,
+        stdout = stdout,
+        stderr = stderr,
+      })
+
       if obj.code == 0 then
         callback({
           success = true,
@@ -77,7 +96,13 @@ local function mount_with_path(host, mount_point, remote_path_suffix, callback)
           resolved_path = remote_path_suffix,
         })
       else
-        local error_msg = obj.stderr or obj.stdout or "Unknown error"
+        local error_msg = stderr ~= "" and stderr or (stdout ~= "" and stdout or "Unknown error")
+        Logger.error("SSHFS mount failed", {
+          host = host.name,
+          mount_point = mount_point,
+          exit_code = obj.code,
+          error = error_msg,
+        })
         callback({
           success = false,
           message = "Mount failed: " .. error_msg,
@@ -104,9 +129,19 @@ local function mount_via_socket(host, mount_point, remote_path_suffix, callback)
       if actual_home then
         -- Replace ~ with the actual home path and mount
         local resolved_path = remote_path_suffix:gsub("^~", actual_home)
+        Logger.debug("Resolved remote home path", {
+          host = host.name,
+          requested_path = remote_path_suffix,
+          resolved_path = resolved_path,
+        })
         mount_with_path(host, mount_point, resolved_path, callback)
       else
         -- Fall back to letting SSHFS try to handle it (may fail for symlinks)
+        Logger.warn("Could not resolve remote home path", {
+          host = host.name,
+          requested_path = remote_path_suffix,
+          error = error or "unknown error",
+        })
         vim.notify(
           "Could not resolve home directory, attempting mount anyway: " .. (error or "unknown error"),
           vim.log.levels.WARN
@@ -127,20 +162,36 @@ end
 --- @param callback function Callback function(result: table) - result has fields: success, message, resolved_path
 function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, callback)
   local Ssh = require("sshfs.lib.ssh")
+  Logger.debug("Starting SSH authentication and mount", {
+    host = host.name,
+    user = host.user,
+    port = host.port,
+    remote_path = remote_path_suffix,
+    mount_point = mount_point,
+  })
   vim.notify("Connecting to " .. host.name .. "...", vim.log.levels.INFO)
 
   -- Try batch connection (non-interactive)
   Ssh.try_batch_connect(host.name, function(success, exit_code, error)
     if success then
+      Logger.debug("Batch authentication succeeded; mounting via socket", { host = host.name })
       mount_via_socket(host, mount_point, remote_path_suffix, callback)
       return
     end
 
     -- Batch failed, try interactive terminal
+    Logger.debug("Batch authentication failed; falling back to interactive authentication", {
+      host = host.name,
+      exit_code = exit_code,
+      error = error,
+    })
+
     Ssh.open_auth_terminal(host.name, function(term_success, term_exit_code)
       if term_success then
+        Logger.debug("Interactive authentication succeeded; mounting via socket", { host = host.name })
         mount_via_socket(host, mount_point, remote_path_suffix, callback)
       else
+        Logger.error("SSH authentication failed", { host = host.name, exit_code = term_exit_code })
         callback({
           success = false,
           message = string.format("SSH authentication failed for %s (exit code: %d)", host.name, term_exit_code),

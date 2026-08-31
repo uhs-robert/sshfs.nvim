@@ -100,6 +100,31 @@ Api.reload = function()
   Session.reload()
 end
 
+--- Toggle debug logging for the current Neovim session
+--- @param mode string|nil Optional explicit mode: "on" or "off"
+Api.debug = function(mode)
+  local Logger = require("sshfs.lib.logger")
+  local enabled
+
+  if mode == nil or mode == "" then
+    enabled = Logger.toggle()
+  elseif mode == "on" then
+    Logger.enable()
+    enabled = true
+  elseif mode == "off" then
+    Logger.disable()
+    enabled = false
+  else
+    vim.notify("Usage: :SSHDebug [on|off]", vim.log.levels.ERROR)
+    return
+  end
+
+  vim.notify(
+    string.format("sshfs.nvim debug logging %s: %s", enabled and "enabled" or "disabled", Logger.path()),
+    vim.log.levels.INFO
+  )
+end
+
 --- Browse remote files using native file browser
 --- @param opts table|nil Picker options
 Api.find_files = function(opts)
@@ -332,6 +357,16 @@ Api.setup = function()
   vim.api.nvim_create_user_command("SSHReload", function()
     Api.reload()
   end, { desc = "Reload SSH configuration" })
+
+  vim.api.nvim_create_user_command("SSHDebug", function(opts)
+    Api.debug(opts.args)
+  end, {
+    nargs = "?",
+    complete = function()
+      return { "on", "off" }
+    end,
+    desc = "Toggle sshfs.nvim debug logging",
+  })
 
   vim.api.nvim_create_user_command("SSHDisconnect", function()
     Api.unmount()

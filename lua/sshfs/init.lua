@@ -10,6 +10,9 @@ function App.setup(user_opts)
   Config.setup(user_opts)
   local opts = Config.get()
 
+  local Logger = require("sshfs.lib.logger")
+  Logger.debug("sshfs.nvim initialized", { log_file = Logger.path() })
+
   -- Initialize other modules
   local MountPoint = require("sshfs.lib.mount_point")
   MountPoint.get_or_create()
@@ -84,5 +87,6 @@ App.explore = Api.explore
 App.change_dir = Api.change_dir
 App.ssh_terminal = Api.ssh_terminal
 App.command = Api.command
+App.debug = Api.debug
 
 return App
