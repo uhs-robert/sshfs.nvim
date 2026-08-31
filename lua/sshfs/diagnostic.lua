@@ -43,11 +43,12 @@ local function append_output(lines, label, output)
   end
 end
 
-local function append_result(lines, name, result)
+--- @param include_stdout boolean|nil Set to false to omit stdout (already summarized elsewhere)
+local function append_result(lines, name, result, include_stdout)
   table.insert(lines, string.format("[%s] %s", result.code == 0 and "PASS" or "FAIL", name))
   table.insert(lines, "Command: " .. shell_join(result.command))
   table.insert(lines, "Exit code: " .. tostring(result.code))
-  append_output(lines, "stdout", result.stdout)
+  if include_stdout ~= false then append_output(lines, "stdout", result.stdout) end
   append_output(lines, "stderr", result.stderr)
   table.insert(lines, "")
 end
@@ -75,7 +76,9 @@ local function show_report(host, resolved, config_result, auth_result, home_resu
     "",
   }
 
-  append_result(lines, "SSH configuration", config_result)
+  -- `ssh -G` prints the whole resolved config; the summary above already covers
+  -- the fields that matter, so the raw dump is omitted to keep the report readable.
+  append_result(lines, "SSH configuration", config_result, false)
   append_result(lines, "SSH authentication", auth_result)
   if home_result then append_result(lines, "Remote home", home_result) end
 
