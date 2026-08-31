@@ -113,6 +113,53 @@ local function check_system_dependencies()
   end
 end
 
+--- Check that ControlMaster sockets fit inside the Unix socket path limit
+--- ControlMaster sockets are Unix domain sockets, and the kernel caps their
+--- path at sun_path: 108 bytes on Linux, 104 on macOS and the BSDs. SSH builds
+--- one by appending "/%C" (a 40 character hash) plus a temporary suffix while
+--- creating it, so a socket directory that is merely long makes every
+--- connection fail with a cryptic "unix_listener: path ... too long for Unix
+--- domain socket" instead of anything that points at the real cause.
+local function check_socket_path_length()
+  local Config = require("sshfs.config")
+  local socket_dir = Config.get_socket_dir()
+
+  local is_bsd = vim.fn.has("mac") == 1 or vim.fn.has("bsd") == 1
+  local sun_path_max = is_bsd and 104 or 108
+  -- "/" + 40 character %C hash + "." + 16 character temporary suffix.
+  local reserved = 58
+  local budget = sun_path_max - 1 - reserved
+  local length = #socket_dir
+
+  if length > budget then
+    health.error(
+      string.format(
+        "SSH socket directory path is too long: %d characters, but only %d fit (%s)",
+        length,
+        budget,
+        socket_dir
+      ),
+      "Every connection will fail with 'unix_listener: path ... too long for Unix domain socket'. "
+        .. "Set connections.socket_dir to a shorter path, for example ~/.ssh/sockets."
+    )
+  elseif length > budget - 10 then
+    health.warn(
+      string.format(
+        "SSH socket directory path is close to the limit: %d of %d characters (%s)",
+        length,
+        budget,
+        socket_dir
+      ),
+      "Connections still work, but a longer hostname or a deeper path will break them. "
+        .. "Consider a shorter connections.socket_dir."
+    )
+  else
+    health.ok(
+      string.format("SSH socket directory path fits the Unix socket limit (%d of %d characters)", length, budget)
+    )
+  end
+end
+
 --- Check SSH configuration
 local function check_ssh_config()
   health.start("SSH Configuration")
@@ -178,6 +225,10 @@ local function check_ssh_config()
       "Create SSH directory with: mkdir -p ~/.ssh && chmod 700 ~/.ssh"
     )
   end
+
+  -- Checked outside the ~/.ssh branch above: a custom socket_dir can live
+  -- anywhere, so this must run even when ~/.ssh is missing.
+  check_socket_path_length()
 end
 
 --- Check mount configuration
