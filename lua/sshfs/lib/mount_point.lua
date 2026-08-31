@@ -10,15 +10,23 @@ local Config = require("sshfs.config")
 local function get_system_mounts()
   local mounts = {}
 
-  -- Try findmnt first (Linux only) if available - it can show both SOURCE and TARGET
+  -- Try findmnt first (Linux only) if available - it can show both SOURCE and TARGET.
+  -- fuse-t presents SSHFS mounts as NFS, so both filesystem types are queried and
+  -- FSTYPE is requested before TARGET to keep the target as the greedy trailing field.
   if vim.fn.executable("findmnt") == 1 then
-    local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs", "-n", "-o", "SOURCE,TARGET" })
+    local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs,nfs", "-n", "-o", "SOURCE,FSTYPE,TARGET" })
     if vim.v.shell_error == 0 then
       for line in findmnt_result:gmatch("[^\r\n]+") do
-        -- findmnt output: "user@host:/remote/path /local/mount"
-        local remote_spec, mount_path = line:match("^(%S+)%s+(.+)$")
-        if remote_spec and mount_path then
-          table.insert(mounts, { mount_path = mount_path, remote_spec = remote_spec })
+        -- findmnt output: "user@host:/remote/path fuse.sshfs /local/mount"
+        local source, fstype, mount_path = line:match("^(%S+)%s+(%S+)%s+(.+)$")
+        if source and fstype and mount_path then
+          if source:match("^fuse%-t:") then
+            -- fuse-t does not expose the original remote spec.
+            table.insert(mounts, { mount_path = mount_path, remote_spec = nil })
+          elseif fstype == "fuse.sshfs" then
+            table.insert(mounts, { mount_path = mount_path, remote_spec = source })
+          end
+          -- Any other NFS mount is unrelated to SSHFS and is skipped.
         end
       end
       return mounts
