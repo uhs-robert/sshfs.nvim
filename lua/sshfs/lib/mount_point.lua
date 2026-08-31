@@ -135,12 +135,15 @@ function MountPoint.get_or_create(mount_dir)
 
   -- Ensure parent directories exist, then create the leaf without "p" so
   -- ownership is only claimed when this call actually creates mount_dir.
+  -- vim.fn.mkdir raises E739 instead of returning 0, so every call is wrapped.
   local parent_dir = vim.fn.fnamemodify(mount_dir, ":h")
-  if parent_dir ~= mount_dir and vim.fn.mkdir(parent_dir, "p") == 0 and vim.fn.isdirectory(parent_dir) ~= 1 then
-    return false, false
+  if parent_dir ~= mount_dir then
+    local parent_ok, parent_created = pcall(vim.fn.mkdir, parent_dir, "p")
+    if (not parent_ok or parent_created == 0) and vim.fn.isdirectory(parent_dir) ~= 1 then return false, false end
   end
 
-  if vim.fn.mkdir(mount_dir) == 1 then return true, true end
+  local created_ok, created = pcall(vim.fn.mkdir, mount_dir)
+  if created_ok and created == 1 then return true, true end
 
   -- Another process may have won the creation race. Treat an existing
   -- directory as usable, but do not claim ownership of it.
