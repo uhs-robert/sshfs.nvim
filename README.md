@@ -349,3 +349,13 @@ Auth flow: keys first, then floating terminal for passphrases/passwords/2FA; Con
 - **Configure `global_paths`** with common directories (`/var/www`, `/var/log`, `~/.config`) to have them available across all hosts
 - **Configure `host_paths`** for frequently-used hosts to skip path selection
 - **Set `preferred_picker` for local/remote pickers** to force specific file picker(s) instead of auto-detection
+
+## 🧪 Development
+
+Run the unit test suite with:
+
+```sh
+make test
+```
+
+Tests run in headless Neovim with no external dependencies and never contact a real SSH server or mount table. See [`tests/README.md`](tests/README.md) for the harness, the available stubs, and how to add coverage. CI runs the suite and `stylua --check` on every pull request.
