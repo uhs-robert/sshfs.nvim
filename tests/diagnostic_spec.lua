@@ -138,7 +138,10 @@ describe("SSHTest report", function()
     expect.contains(text(report), "sshfs")
     expect.contains(text(report), "<mount-point>")
     for _, cmd in ipairs(commands) do
-      expect.falsy(cmd[1] == "sshfs", "the preflight must never execute a mount")
+      -- Probing `sshfs --version` is fine, and once #20 lands the preflight does
+      -- exactly that to decide which cache option names to render. Actually
+      -- invoking sshfs to mount something is what must never happen.
+      expect.falsy(cmd[1] == "sshfs" and cmd[2] ~= "--version", "the preflight must never execute a mount")
     end
   end)
 
