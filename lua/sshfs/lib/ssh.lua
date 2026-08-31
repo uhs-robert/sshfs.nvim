@@ -149,12 +149,15 @@ function Ssh.build_control_command(host, operation)
   return cmd
 end
 
---- Return whether a matching ControlMaster socket is already active.
+--- Return the pid of the active ControlMaster for a host, if one is running.
+--- The pid identifies a specific master process, so a caller that created a
+--- master can prove the socket still belongs to it before closing it.
 ---@param host table|string SSH host object or name
----@return boolean
-function Ssh.has_control_master(host)
-  vim.fn.system(Ssh.build_control_command(host, "check"))
-  return vim.v.shell_error == 0
+---@return number|nil pid Master pid, or nil when no master is running
+function Ssh.control_master_pid(host)
+  local output = vim.fn.system(Ssh.build_control_command(host, "check"))
+  if vim.v.shell_error ~= 0 then return nil end
+  return tonumber((output or ""):match("pid=(%d+)"))
 end
 
 --- Build a safe cd command that handles tilde expansion and path escaping

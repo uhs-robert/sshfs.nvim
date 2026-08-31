@@ -121,7 +121,7 @@ function Diagnostic.test(host)
 
   run(config_cmd, function(config_result)
     local resolved = parse_ssh_config(config_result.stdout)
-    local had_control_master = Ssh.has_control_master(host)
+    local pid_before = Ssh.control_master_pid(host)
     local socket_dir, socket_error = Ssh.prepare_socket_dir()
 
     if not socket_dir then
@@ -134,13 +134,23 @@ function Diagnostic.test(host)
       return
     end
 
+    -- Only a master this preflight started may be closed. Closing on "no master
+    -- existed beforehand" alone would race with a concurrent :SSHConnect that
+    -- creates the socket in the meantime, tearing down that connection instead.
+    local owned_pid = nil
+
     local function finish(auth_result, home_result)
-      if not had_control_master then Ssh.cleanup_control_master(host) end
+      if owned_pid and Ssh.control_master_pid(host) == owned_pid then Ssh.cleanup_control_master(host) end
       show_report(host, resolved, config_result, auth_result, home_result)
     end
 
     local auth_cmd = Ssh.build_batch_command(host)
     run(auth_cmd, function(auth_result)
+      -- ControlMaster=yes refuses to take over an existing socket, so a master
+      -- is this command's own only when none existed beforehand and the command
+      -- itself connected successfully.
+      if pid_before == nil and auth_result.code == 0 then owned_pid = Ssh.control_master_pid(host) end
+
       local needs_home = host.path and host.path:match("^~")
       if not needs_home or auth_result.code ~= 0 then
         finish(auth_result, nil)
