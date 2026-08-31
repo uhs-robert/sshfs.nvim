@@ -104,13 +104,13 @@ function Harness.expect.errors(fn, needle, context)
   if needle then Harness.expect.contains(tostring(err), needle, context) end
 end
 
---- Assert a function does not raise, returning its first result
+--- Assert a function does not raise, returning every result it produced
 function Harness.expect.no_error(fn, context)
-  local ok, result = pcall(fn)
-  if not ok then
-    fail(string.format("%sexpected no error, got %s", context and (context .. ": ") or "", tostring(result)))
+  local results = { pcall(fn) }
+  if not results[1] then
+    fail(string.format("%sexpected no error, got %s", context and (context .. ": ") or "", tostring(results[2])))
   end
-  return result
+  return unpack(results, 2, #results)
 end
 
 --- Run every registered suite and report results
