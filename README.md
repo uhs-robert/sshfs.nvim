@@ -112,15 +112,16 @@ Built for Neovim 0.10+ using the best of both `sshfs` and `ssh` in tandem with y
 
 ### 🍏 macOS Setup
 
-To use **sshfs.nvim** on macOS, follow these steps:
+sshfs.nvim supports both **macFUSE** and the kextless **fuse-t** implementation.
 
-1. **Install macFUSE**
-   Download and install macFUSE from the official site:
-   [https://macfuse.github.io/](https://macfuse.github.io/)
+#### macFUSE
 
-2. **Install SSHFS for macFUSE**
-   Use the official SSHFS releases compatible with macFUSE:
-   [https://github.com/macfuse/macfuse/wiki/File-Systems-%E2%80%90-SSHFS](https://github.com/macfuse/macfuse/wiki/File-Systems-%E2%80%90-SSHFS)
+1. Install macFUSE from [macfuse.github.io](https://macfuse.github.io/).
+2. Install an SSHFS release compatible with macFUSE from the [macFUSE SSHFS documentation](https://github.com/macfuse/macfuse/wiki/File-Systems-%E2%80%90-SSHFS).
+
+#### fuse-t
+
+Install `fuse-t` and `fuse-t-sshfs` from the [`macos-fuse-t/homebrew-cask`](https://github.com/macos-fuse-t/homebrew-cask) tap. fuse-t exposes SSHFS mounts through its NFS backend and currently ships an SSHFS 2.9-compatible implementation; sshfs.nvim detects these mounts and translates its directory-cache option names automatically.
 
 ## 📦 Installation
 
@@ -342,3 +343,13 @@ Auth flow: keys first, then floating terminal for passphrases/passwords/2FA; Con
 - **Configure `global_paths`** with common directories (`/var/www`, `/var/log`, `~/.config`) to have them available across all hosts
 - **Configure `host_paths`** for frequently-used hosts to skip path selection
 - **Set `preferred_picker` for local/remote pickers** to force specific file picker(s) instead of auto-detection
+
+## 🧪 Development
+
+Run the unit test suite with:
+
+```sh
+make test
+```
+
+Tests run in headless Neovim with no external dependencies and never contact a real SSH server or mount table. See [`tests/README.md`](tests/README.md) for the harness, the available stubs, and how to add coverage. CI runs the suite and `stylua --check` on every pull request.

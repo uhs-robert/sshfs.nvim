@@ -6,19 +6,27 @@ local Directory = require("sshfs.lib.directory")
 local Config = require("sshfs.config")
 
 --- Get all active SSHFS mount paths and remote info from the system
---- @return table Array of mount info tables with {mount_path, remote_spec} where remote_spec is "user@host:/path" or "host:/path"
+--- @return table Array of mount info tables with {mount_path, remote_spec} where remote_spec may be nil when unavailable
 local function get_system_mounts()
   local mounts = {}
 
-  -- Try findmnt first (Linux only) if available - it can show both SOURCE and TARGET
+  -- Try findmnt first (Linux only) if available - it can show both SOURCE and TARGET.
+  -- fuse-t presents SSHFS mounts as NFS, so both filesystem types are queried and
+  -- FSTYPE is requested before TARGET to keep the target as the greedy trailing field.
   if vim.fn.executable("findmnt") == 1 then
-    local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs", "-n", "-o", "SOURCE,TARGET" })
+    local findmnt_result = vim.fn.system({ "findmnt", "-t", "fuse.sshfs,nfs", "-n", "-o", "SOURCE,FSTYPE,TARGET" })
     if vim.v.shell_error == 0 then
       for line in findmnt_result:gmatch("[^\r\n]+") do
-        -- findmnt output: "user@host:/remote/path /local/mount"
-        local remote_spec, mount_path = line:match("^(%S+)%s+(.+)$")
-        if remote_spec and mount_path then
-          table.insert(mounts, { mount_path = mount_path, remote_spec = remote_spec })
+        -- findmnt output: "user@host:/remote/path fuse.sshfs /local/mount"
+        local source, fstype, mount_path = line:match("^(%S+)%s+(%S+)%s+(.+)$")
+        if source and fstype and mount_path then
+          if source:match("^fuse%-t:") then
+            -- fuse-t does not expose the original remote spec.
+            table.insert(mounts, { mount_path = mount_path, remote_spec = nil })
+          elseif fstype == "fuse.sshfs" then
+            table.insert(mounts, { mount_path = mount_path, remote_spec = source })
+          end
+          -- Any other NFS mount is unrelated to SSHFS and is skipped.
         end
       end
       return mounts
@@ -38,9 +46,13 @@ local function get_system_mounts()
     "^(%S+)%s+on%s+([^%s]+)%s+%(fuse", -- Generic FUSE: "user@host:/path on /mount/path (fuse"
   }
 
-  -- Only process lines that contain 'sshfs' to avoid false positives
+  -- Only process SSHFS-compatible mount lines to avoid false positives
   for line in result:gmatch("[^\r\n]+") do
-    if line:match("sshfs") or line:match("macfuse") then
+    -- fuse-t presents SSHFS mounts as NFS and does not expose the original remote spec.
+    local fuse_t_mount = line:match("^fuse%-t:%S+%s+on%s+([^%s]+)%s+%(nfs")
+    if fuse_t_mount then
+      table.insert(mounts, { mount_path = fuse_t_mount, remote_spec = nil })
+    elseif line:match("sshfs") or line:match("macfuse") then
       for _, pattern in ipairs(pattern_templates) do
         local remote_spec, mount_path = line:match(pattern)
         if remote_spec and mount_path then
@@ -70,7 +82,7 @@ function MountPoint.is_active(mount_path)
 end
 
 --- List all active sshfs mounts
---- @return table Array of mount objects with host, mount_path, and remote_path fields
+--- @return table Array of mount objects with host, mount_path, remote_path, and remote_metadata_available fields
 function MountPoint.list_active()
   local mounts = {}
   local base_mount_dir = Config.get_base_dir()
@@ -83,15 +95,18 @@ function MountPoint.list_active()
   for _, mount_info in ipairs(system_mounts) do
     local mount_name = mount_info.mount_path:match(prefix_pattern)
     if mount_name and mount_name ~= "" then
-      -- Parse remote_spec to extract actual SSH hostname and remote path
-      -- Format: "user@host:/remote/path" or "host:/remote/path"
-      local remote_path = mount_info.remote_spec:match(":(.*)$")
-      local host = mount_info.remote_spec:match("@([^:]+):") or mount_info.remote_spec:match("^([^:]+):")
+      -- Parse remote_spec to extract actual SSH hostname and remote path when available.
+      -- fuse-t mount output does not expose this metadata; mount_name remains display-only fallback metadata.
+      local remote_spec = mount_info.remote_spec
+      local remote_path = remote_spec and remote_spec:match(":(.*)$") or nil
+      local host = remote_spec and (remote_spec:match("@([^:]+):") or remote_spec:match("^([^:]+):")) or nil
+      local remote_metadata_available = host ~= nil and remote_path ~= nil
 
       table.insert(mounts, {
-        host = host or mount_name, -- Fall back to mount dir name if parsing fails
+        host = host or mount_name,
         mount_path = mount_info.mount_path,
-        remote_path = remote_path or "/", -- Default to root if parsing fails
+        remote_path = remote_path,
+        remote_metadata_available = remote_metadata_available,
       })
     end
   end
@@ -117,7 +132,7 @@ function MountPoint.has_active()
 end
 
 --- Get first active mount (for backward compatibility with single-mount workflows)
---- @return table|nil Mount object with host, mount_path, and remote_path fields, or nil if none
+--- @return table|nil Mount object with host, mount_path, remote_path, and remote_metadata_available fields, or nil if none
 function MountPoint.get_active()
   local mounts = MountPoint.list_active()
   if #mounts > 0 then return mounts[1] end
@@ -190,7 +205,7 @@ function MountPoint.release_mount(mount_path, is_q_exit)
   return true
 end
 
---- Unmount an sshfs mount using fusermount/umount
+--- Unmount an sshfs mount synchronously using fusermount/umount/diskutil
 --- @param mount_path string Path to unmount
 --- @return boolean True if unmount succeeded
 function MountPoint.unmount(mount_path)
@@ -212,19 +227,9 @@ function MountPoint.unmount(mount_path)
   for _, cmd in ipairs(commands) do
     local command, args = cmd[1], cmd[2]
 
-    -- Try command if executable with jobstart
     if vim.fn.executable(command) == 1 then
-      local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
-        stdout_buffered = true,
-        stderr_buffered = true,
-      })
-      local exit_code = -1
-      if job_id > 0 then
-        local result = vim.fn.jobwait({ job_id }, 5000)[1] -- 5 second timeout
-        exit_code = result or -1
-      end
-
-      if exit_code == 0 then
+      local result = vim.system(vim.list_extend({ command }, args), { text = true }):wait(5000)
+      if result.code == 0 then
         vim.fn.delete(mount_path, "d")
         return true
       end
