@@ -18,6 +18,20 @@ Api.connect = function(host)
   end
 end
 
+--- Test an SSH host without mounting - use picker if no host provided.
+--- @param host table|nil SSH host object (optional)
+Api.test = function(host)
+  local Diagnostic = require("sshfs.diagnostic")
+  if host then
+    Diagnostic.test(host)
+  else
+    local Select = require("sshfs.ui.select")
+    Select.host(function(selected_host)
+      if selected_host then Diagnostic.test(selected_host) end
+    end)
+  end
+end
+
 --- Mount SSH host (alias for connect)
 Api.mount = function()
   Api.connect()
@@ -324,6 +338,16 @@ Api.setup = function()
       Api.connect()
     end
   end, { nargs = "?", desc = "Remotely connect to host via picker or command as argument." })
+
+  vim.api.nvim_create_user_command("SSHTest", function(opts)
+    if opts.args and opts.args ~= "" then
+      local SSHConfig = require("sshfs.lib.ssh_config")
+      local host = SSHConfig.parse_host(opts.args)
+      Api.test(host)
+    else
+      Api.test()
+    end
+  end, { nargs = "?", desc = "Test SSH connection and show resolved parameters and exit codes" })
 
   vim.api.nvim_create_user_command("SSHConfig", function()
     Api.config()

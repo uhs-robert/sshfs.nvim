@@ -84,5 +84,6 @@ App.explore = Api.explore
 App.change_dir = Api.change_dir
 App.ssh_terminal = Api.ssh_terminal
 App.command = Api.command
+App.test = Api.test
 
 return App
