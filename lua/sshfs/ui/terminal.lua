@@ -5,10 +5,7 @@ local Terminal = {}
 
 local function open_connection_terminal(connection)
   if connection.remote_metadata_available == false then
-    vim.notify(
-      "Remote host metadata is unavailable for this mount; cannot open an SSH terminal.",
-      vim.log.levels.WARN
-    )
+    vim.notify("Remote host metadata is unavailable for this mount; cannot open an SSH terminal.", vim.log.levels.WARN)
     return
   end
 

@@ -91,9 +91,7 @@ function MountPoint.list_active()
       -- fuse-t mount output does not expose this metadata; mount_name remains display-only fallback metadata.
       local remote_spec = mount_info.remote_spec
       local remote_path = remote_spec and remote_spec:match(":(.*)$") or nil
-      local host = remote_spec
-          and (remote_spec:match("@([^:]+):") or remote_spec:match("^([^:]+):"))
-        or nil
+      local host = remote_spec and (remote_spec:match("@([^:]+):") or remote_spec:match("^([^:]+):")) or nil
       local remote_metadata_available = host ~= nil and remote_path ~= nil
 
       table.insert(mounts, {

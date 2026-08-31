@@ -10,18 +10,18 @@ local sshfs_version_warning_shown = false
 local function get_sshfs_major_version()
   if sshfs_major_version ~= nil then return sshfs_major_version or nil end
 
+  sshfs_major_version = false
+
+  -- Bounded wait: a hung `sshfs --version` must not block Neovim indefinitely.
   local ok, process = pcall(vim.system, { "sshfs", "--version" }, { text = true })
   if ok then
-    local result = process:wait()
-    if result.code == 0 then
+    local wait_ok, result = pcall(process.wait, process, 2000)
+    if wait_ok and result then
+      -- Some builds report the version on stderr and/or exit non-zero, so parse
+      -- whatever output is available rather than gating on the exit code.
       local output = (result.stdout or "") .. "\n" .. (result.stderr or "")
-      sshfs_major_version =
-        tonumber(output:match("SSHFS version%s+(%d+)") or output:match("SSHFS%s+(%d+)")) or false
-    else
-      sshfs_major_version = false
+      sshfs_major_version = tonumber(output:match("SSHFS version%s+(%d+)") or output:match("SSHFS%s+(%d+)")) or false
     end
-  else
-    sshfs_major_version = false
   end
 
   if not sshfs_major_version and not sshfs_version_warning_shown then
