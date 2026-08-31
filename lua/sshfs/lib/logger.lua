@@ -6,12 +6,17 @@ local runtime_enabled = nil
 local last_write_error = nil
 
 local function get_config()
-  local config = require("sshfs.config").get()
+  -- Logging can be reached before Config.setup() has run, so tolerate no config.
+  local ok, config = pcall(function()
+    return require("sshfs.config").get()
+  end)
+  if not ok or type(config) ~= "table" then return {} end
   return config.debug or {}
 end
 
 local function escape_log_value(value)
-  return tostring(value):gsub("\r", "\\r"):gsub("\n", "\\n"):gsub("\t", "\\t")
+  -- Parenthesized so the gsub match count is not returned to callers.
+  return (tostring(value):gsub("\r", "\\r"):gsub("\n", "\\n"):gsub("\t", "\\t"))
 end
 
 local function ensure_parent_dir(path)
