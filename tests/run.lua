@@ -36,8 +36,6 @@ if loaded == 0 then
   os.exit(1)
 end
 
--- Every case restores its own stubs, but a case that fails mid-test may not, so
--- the runner clears anything left behind before reporting.
 local exit_code = Harness.run()
 Stub.restore_all()
 os.exit(exit_code)
