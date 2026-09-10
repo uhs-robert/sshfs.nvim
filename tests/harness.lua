@@ -128,6 +128,8 @@ function Harness.run()
     say(suite.name)
     for _, case in ipairs(suite.cases) do
       local ok, err = pcall(case.fn)
+      -- A case that fails before its own restore would leak stubs into later cases.
+      require("tests.stub").restore_all()
       if ok then
         passed = passed + 1
         say("  ok   " .. case.name)
