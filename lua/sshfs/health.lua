@@ -126,8 +126,10 @@ local function check_socket_path_length()
 
   local is_bsd = vim.fn.has("mac") == 1 or vim.fn.has("bsd") == 1
   local sun_path_max = is_bsd and 104 or 108
-  -- "/" + 40 character %C hash + "." + 16 character temporary suffix.
-  local reserved = 58
+  local control_hash_length = 40
+  -- Upper bound: ssh renames a temporary socket into place, so budget errs short rather than long.
+  local temp_suffix_max = 16
+  local reserved = 1 + control_hash_length + 1 + temp_suffix_max
   local budget = sun_path_max - 1 - reserved
   local length = #socket_dir
 

@@ -52,7 +52,7 @@ local function dir_of_length(length)
 end
 
 -- Linux: 108 byte sun_path, minus the trailing NUL and the 58 characters ssh
--- appends ("/" + 40 character %C hash + "." + 16 character suffix) = 49.
+-- appends ("/" + 40 character %C hash + "." + 16 character suffix upper bound) = 49.
 local LINUX_BUDGET = 49
 local MAC_BUDGET = 45
 
@@ -146,5 +146,18 @@ describe("checkhealth socket path length", function()
     local report = socket_path_report(reports)
     expect.truthy(report, "a missing ~/.ssh must not hide a broken socket path")
     expect.eq(report.level, "error")
+  end)
+end)
+
+describe("ssh ControlPath hash", function()
+  it("expands %C to the length the budget reserves", function()
+    if vim.fn.executable("ssh") == 0 then return end
+
+    local prefix = "/tmp/s/"
+    local output = vim.fn.system({ "ssh", "-G", "-o", "ControlPath=" .. prefix .. "%C", "sshfs-nvim-probe.invalid" })
+    local path = output:match("controlpath (%S+)")
+
+    expect.truthy(path, "ssh -G must report a resolved controlpath")
+    expect.eq(#path - #prefix, 40, "the %C hash length LINUX_BUDGET and MAC_BUDGET assume")
   end)
 end)
