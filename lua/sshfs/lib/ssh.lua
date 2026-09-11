@@ -226,7 +226,9 @@ end
 ---@param callback function Callback(home_path: string|nil, error: string|nil)
 function Ssh.get_remote_home(host, callback)
   local cmd = Ssh.build_home_command(host)
-  Logger.debug("Resolving remote home", { host = host_label(host), command = table.concat(cmd, " ") })
+  Logger.debug("Resolving remote home", function()
+    return { host = host_label(host), command = table.concat(cmd, " ") }
+  end)
 
   -- Execute asynchronously
   vim.system(cmd, { text = true }, function(obj)
@@ -260,7 +262,9 @@ end
 function Ssh.cleanup_control_master(host)
   -- Execute synchronously (must complete before nvim exit)
   local cmd = Ssh.build_control_command(host, "exit")
-  Logger.debug("Closing SSH ControlMaster", { host = host_label(host), command = table.concat(cmd, " ") })
+  Logger.debug("Closing SSH ControlMaster", function()
+    return { host = host_label(host), command = table.concat(cmd, " ") }
+  end)
   local output = vim.fn.system(cmd)
   Logger.debug("SSH ControlMaster cleanup completed", {
     host = host_label(host),
@@ -287,7 +291,9 @@ function Ssh.try_batch_connect(host, callback)
 
   -- Build and execute the batch command asynchronously
   local cmd = Ssh.build_batch_command(host)
-  Logger.debug("Starting batch SSH authentication", { host = host_label(host), command = table.concat(cmd, " ") })
+  Logger.debug("Starting batch SSH authentication", function()
+    return { host = host_label(host), command = table.concat(cmd, " ") }
+  end)
   vim.system(cmd, { text = true }, function(obj)
     vim.schedule(function()
       local success = obj.code == 0
@@ -326,7 +332,9 @@ function Ssh.open_auth_terminal(host, callback)
   local cmd = Ssh.build_auth_command(host_obj)
 
   -- Open authentication terminal window
-  Logger.debug("Opening interactive SSH authentication", { host = host_label(host), command = table.concat(cmd, " ") })
+  Logger.debug("Opening interactive SSH authentication", function()
+    return { host = host_label(host), command = table.concat(cmd, " ") }
+  end)
   local Terminal = require("sshfs.ui.terminal")
   Terminal.open_auth_floating(cmd, host_obj.name, function(success, exit_code)
     Logger.debug("Interactive SSH authentication completed", {

@@ -14,9 +14,15 @@ local function get_config()
   return config.debug or {}
 end
 
+local NAMED_ESCAPES = { ["\r"] = "\\r", ["\n"] = "\\n", ["\t"] = "\\t" }
+
 local function escape_log_value(value)
-  -- Parenthesized so the gsub match count is not returned to callers.
-  return (tostring(value):gsub("\r", "\\r"):gsub("\n", "\\n"):gsub("\t", "\\t"))
+  -- Remote output reaches this file, so no control byte may survive to a terminal.
+  return (
+    tostring(value):gsub("%c", function(char)
+      return NAMED_ESCAPES[char] or string.format("\\x%02x", char:byte())
+    end)
+  )
 end
 
 local function ensure_parent_dir(path)
@@ -25,6 +31,15 @@ local function ensure_parent_dir(path)
     local result = vim.fn.mkdir(parent, "p", "0700")
     if result == 0 and vim.fn.isdirectory(parent) == 0 then error("could not create log directory: " .. parent) end
   end
+end
+
+--- Move the log aside once it passes max_size, keeping a single previous generation
+local function rotate_if_needed(path, max_size)
+  if not max_size or max_size <= 0 then return end
+
+  local uv = vim.uv or vim.loop
+  local stat = uv.fs_stat(path)
+  if stat and stat.size >= max_size then uv.fs_rename(path, path .. ".1") end
 end
 
 local function write_log_line(path, line)
@@ -99,6 +114,9 @@ end
 function Logger.log(level, message, context)
   if not Logger.is_enabled() then return end
 
+  -- Callers pass a builder when the context costs something to assemble.
+  if type(context) == "function" then context = context() end
+
   local path = Logger.path()
   local line = string.format(
     "%s [%s] %s%s",
@@ -110,6 +128,7 @@ function Logger.log(level, message, context)
 
   local ok, result = pcall(function()
     ensure_parent_dir(path)
+    rotate_if_needed(path, get_config().max_size)
     write_log_line(path, line)
   end)
 

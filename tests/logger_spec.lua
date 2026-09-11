@@ -247,3 +247,90 @@ describe(":SSHDebug", function()
     expect.eq(notifications[1].level, vim.log.levels.ERROR)
   end)
 end)
+
+describe("control byte escaping", function()
+  it("escapes an ANSI escape sequence from remote output", function()
+    local Logger, log_path = load_logger({ enabled = true })
+
+    Logger.debug("remote said", { stderr = "\27[2Jcleared\7" })
+    local line = read_log(log_path)[1]
+    cleanup(log_path)
+
+    expect.truthy(line, "the line must be written")
+    expect.is_nil(line:find("\27", 1, true), "no raw escape byte may reach the log")
+    expect.is_nil(line:find("\7", 1, true), "no raw bell byte may reach the log")
+    expect.contains(line, "\\x1b[2Jcleared\\x07")
+  end)
+
+  it("keeps the readable names for the common whitespace bytes", function()
+    local Logger, log_path = load_logger({ enabled = true })
+
+    Logger.debug("whitespace", { value = "a\r\nb\tc" })
+    local line = read_log(log_path)[1]
+    cleanup(log_path)
+
+    expect.contains(line, "a\\r\\nb\\tc")
+  end)
+end)
+
+describe("log rotation", function()
+  it("moves the log aside once it passes max_size", function()
+    local Logger, log_path = load_logger({ enabled = true, max_size = 200 })
+
+    for index = 1, 40 do
+      Logger.debug("filling the log", { index = index })
+    end
+    local rotated = log_path .. ".1"
+    local current_lines = #read_log(log_path)
+    local rotated_lines = #read_log(rotated)
+    cleanup(log_path)
+
+    expect.truthy(rotated_lines > 0, "the previous generation must be kept")
+    expect.truthy(current_lines > 0, "logging must continue after a rotation")
+    expect.truthy(current_lines < 40, "the current log must not still hold every line")
+  end)
+
+  it("never rotates when max_size is unset", function()
+    local Logger, log_path = load_logger({ enabled = true })
+
+    for index = 1, 20 do
+      Logger.debug("filling the log", { index = index })
+    end
+    local current_lines = #read_log(log_path)
+    local rotated_exists = vim.fn.filereadable(log_path .. ".1")
+    cleanup(log_path)
+
+    expect.eq(current_lines, 20)
+    expect.eq(rotated_exists, 0)
+  end)
+end)
+
+describe("lazy context", function()
+  it("skips the builder entirely while disabled", function()
+    local Logger, log_path = load_logger({ enabled = false })
+
+    local built = 0
+    Logger.debug("expensive", function()
+      built = built + 1
+      return { value = "assembled" }
+    end)
+    cleanup(log_path)
+
+    expect.eq(built, 0, "a disabled logger must not pay for its context")
+  end)
+
+  it("calls the builder and logs its table while enabled", function()
+    local Logger, log_path = load_logger({ enabled = true })
+
+    local built = 0
+    Logger.debug("expensive", function()
+      built = built + 1
+      return { value = "assembled" }
+    end)
+    local line = read_log(log_path)[1]
+    cleanup(log_path)
+
+    expect.eq(built, 1)
+    expect.contains(line, "value=assembled")
+  end)
+end)

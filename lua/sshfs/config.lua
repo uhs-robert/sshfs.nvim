@@ -85,6 +85,7 @@ local DEFAULT_CONFIG = {
 	debug = {
 		enabled = false,                   -- Enable debug logging
 		log_file = vim.fn.stdpath("log") .. "/sshfs.nvim.log", -- Debug log destination
+		max_size = 1048576,                 -- Rotate the log to .1 once it passes this many bytes
 	},
 	keymaps = nil,                      -- Override individual keymaps (e.g., {mount = "<leader>mm", unmount = "<leader>mu"})
 	lead_prefix = "<leader>m",          -- Prefix for default keymaps

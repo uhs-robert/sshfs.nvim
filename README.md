@@ -264,6 +264,7 @@ require("sshfs").setup({
   debug = {
     enabled = false,              -- write SSH/SSHFS diagnostics to a log file
     log_file = vim.fn.stdpath("log") .. "/sshfs.nvim.log",
+    max_size = 1048576,           -- rotate to <log_file>.1 past this size (0 disables)
   },
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
