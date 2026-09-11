@@ -373,7 +373,11 @@ Api.setup = function()
   vim.api.nvim_create_user_command("SSHConnect", function(opts)
     if opts.args and opts.args ~= "" then
       local SSHConfig = require("sshfs.lib.ssh_config")
-      local host = SSHConfig.parse_host(opts.args)
+      local host = SSHConfig.resolve_input(opts.args)
+      if not host then
+        vim.notify("Could not read a host from: " .. opts.args, vim.log.levels.ERROR)
+        return
+      end
       Api.connect(host)
     else
       Api.connect()
@@ -383,7 +387,11 @@ Api.setup = function()
   vim.api.nvim_create_user_command("SSHTest", function(opts)
     if opts.args and opts.args ~= "" then
       local SSHConfig = require("sshfs.lib.ssh_config")
-      local host = SSHConfig.parse_host(opts.args)
+      local host = SSHConfig.resolve_input(opts.args)
+      if not host then
+        vim.notify("Could not read a host from: " .. opts.args, vim.log.levels.ERROR)
+        return
+      end
       Api.test(host)
     else
       Api.test()

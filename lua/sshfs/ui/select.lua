@@ -3,6 +3,8 @@
 
 local Select = {}
 
+local MANUAL_ENTRY = "Enter host manually..."
+
 --- Get active mounts or display warning.
 ---@return table|nil Active mounts array or nil if none found
 local function get_active_mounts_or_warn()
@@ -90,20 +92,37 @@ function Select.unmount(callback)
   end)
 end
 
+--- Prompt for a host that is not in ssh_config, e.g. "user@example.com"
+---@param callback function Callback invoked with the resolved host object
+function Select.host_input(callback)
+  vim.ui.input({ prompt = "Connect to (user@host): " }, function(input)
+    if not input or vim.trim(input) == "" then return end
+
+    local host = require("sshfs.lib.ssh_config").resolve_input(input)
+    if not host then
+      vim.notify("Could not read a host from: " .. input, vim.log.levels.ERROR)
+      return
+    end
+    callback(host)
+  end)
+end
+
 --- Host selection for choosing an SSH Host to connect to.
 ---@param callback function Callback invoked with selected host object
 function Select.host(callback)
   local SSHConfig = require("sshfs.lib.ssh_config")
   local hosts = SSHConfig.get_hosts()
 
+  -- Nothing to pick from means the manual prompt is the only way through.
   if not hosts or #hosts == 0 then
-    vim.notify("No SSH hosts found in configuration", vim.log.levels.WARN)
+    Select.host_input(callback)
     return
   end
 
   -- Sort hosts alphabetically
   local host_list = vim.deepcopy(hosts)
   table.sort(host_list)
+  table.insert(host_list, MANUAL_ENTRY)
 
   vim.ui.select(host_list, {
     prompt = "Select SSH host to connect:",
@@ -111,14 +130,19 @@ function Select.host(callback)
       return item
     end,
   }, function(choice)
-    if choice then
-      local host, err = SSHConfig.get_host_config(choice)
-      if not host then
-        vim.notify("Failed to resolve SSH config: " .. (err or "Unknown error"), vim.log.levels.ERROR)
-        return
-      end
-      callback(host)
+    if not choice then return end
+
+    if choice == MANUAL_ENTRY then
+      Select.host_input(callback)
+      return
     end
+
+    local host, err = SSHConfig.get_host_config(choice)
+    if not host then
+      vim.notify("Failed to resolve SSH config: " .. (err or "Unknown error"), vim.log.levels.ERROR)
+      return
+    end
+    callback(host)
   end)
 end
 

@@ -295,7 +295,7 @@ require("sshfs").setup({
 ## 🔧 Commands
 
 - `:checkhealth sshfs` - Verify dependencies and configuration
-- `:SSHConnect [host]` - Mount a remote host
+- `:SSHConnect [host]` - Mount a remote host. Accepts an ssh_config alias or a host that is in no config at all, e.g. `:SSHConnect user@example.com:/srv -p 2222`. Without an argument the picker offers "Enter host manually..." for the same thing.
 - `:SSHTest [host]` - Test SSH resolution and authentication without mounting
 - `:SSHDisconnect` - Unmount current host
 - `:SSHDisconnectAll` - Unmount all hosts
@@ -337,7 +337,7 @@ If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `
 
 ## 🚀 Usage
 
-1. `:SSHConnect` — pick a host and mount path (home/root/custom/global_paths/host_paths).
+1. `:SSHConnect` — pick a host (or enter one manually) and mount path (home/root/custom/global_paths/host_paths).
 2. Work from the mount:
    - `:SSHFiles`, `:SSHGrep`, or `:SSHChangeDir`
    - Live remote search: `:SSHLiveFind` / `:SSHLiveGrep` (streams over SSH, still mounted)
