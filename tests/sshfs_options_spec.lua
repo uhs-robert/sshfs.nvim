@@ -180,3 +180,61 @@ describe("SSHFS version detection failures", function()
     expect.eq(options.cache, "yes", "a version reported on a non-zero exit is still usable")
   end)
 end)
+
+describe("SSHFS version probe retries", function()
+  it("translates on a later mount after the first probe fails", function()
+    stub.reload()
+    require("sshfs.config").setup({
+      connections = {
+        sshfs_options = { dir_cache = "yes", dcache_timeout = 300 },
+        socket_dir = "/home/tester/.ssh/sockets",
+      },
+    })
+
+    package.loaded["sshfs.lib.ssh"] = {
+      try_batch_connect = function(_, callback)
+        callback(true, 0, nil)
+      end,
+      build_command_string = function()
+        return "ssh"
+      end,
+    }
+
+    stub.notifications()
+    stub.set("schedule", function(fn)
+      fn()
+    end)
+
+    local probes = 0
+    local sshfs_command = nil
+    stub.set("system", function(cmd, _, callback)
+      if cmd[1] == "sshfs" and cmd[2] == "--version" then
+        probes = probes + 1
+        if probes == 1 then error("sshfs is not executable") end
+        return {
+          wait = function()
+            return { code = 0, stdout = "SSHFS version 2.10", stderr = "" }
+          end,
+        }
+      end
+
+      sshfs_command = cmd
+      if callback then callback({ code = 0, stdout = "", stderr = "" }) end
+      return {
+        wait = function()
+          return { code = 0, stdout = "", stderr = "" }
+        end,
+      }
+    end)
+
+    local Sshfs = require("sshfs.lib.sshfs")
+    local host = { name = "example.com" }
+    Sshfs.authenticate_and_mount(host, "/Users/tester/mnt/example", "/srv/app", function() end)
+    Sshfs.authenticate_and_mount(host, "/Users/tester/mnt/example", "/srv/app", function() end)
+    stub.restore_all()
+
+    expect.eq(probes, 2, "a failed probe must not be cached for the session")
+    expect.truthy(sshfs_command, "the second mount must run an sshfs command")
+    expect.contains(table.concat(sshfs_command, " "), "cache_timeout=300")
+  end)
+end)

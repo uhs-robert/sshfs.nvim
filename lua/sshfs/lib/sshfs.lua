@@ -5,12 +5,10 @@ local Sshfs = {}
 local sshfs_major_version
 local sshfs_version_warning_shown = false
 
---- Detect the installed SSHFS major version once per Neovim instance.
+--- Detect the installed SSHFS major version, caching only a successful probe.
 --- @return number|nil Major version, or nil if it cannot be determined
 local function get_sshfs_major_version()
-  if sshfs_major_version ~= nil then return sshfs_major_version or nil end
-
-  sshfs_major_version = false
+  if sshfs_major_version then return sshfs_major_version end
 
   -- Bounded wait: a hung `sshfs --version` must not block Neovim indefinitely.
   local ok, process = pcall(vim.system, { "sshfs", "--version" }, { text = true })
@@ -20,7 +18,7 @@ local function get_sshfs_major_version()
       -- Some builds report the version on stderr and/or exit non-zero, so parse
       -- whatever output is available rather than gating on the exit code.
       local output = (result.stdout or "") .. "\n" .. (result.stderr or "")
-      sshfs_major_version = tonumber(output:match("SSHFS version%s+(%d+)") or output:match("SSHFS%s+(%d+)")) or false
+      sshfs_major_version = tonumber(output:match("SSHFS version%s+(%d+)") or output:match("SSHFS%s+(%d+)"))
     end
   end
 
@@ -32,7 +30,7 @@ local function get_sshfs_major_version()
     )
   end
 
-  return sshfs_major_version or nil
+  return sshfs_major_version
 end
 
 --- Translate sshfs 3.x directory-cache option names for sshfs 2.x implementations.

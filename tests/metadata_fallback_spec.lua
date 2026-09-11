@@ -183,3 +183,22 @@ describe("SSH terminal without remote metadata", function()
     expect.eq(opened[1].remote_path, "/srv/app")
   end)
 end)
+
+describe("home directory mounts", function()
+  it("reports the remote home as . when the spec carries no path", function()
+    stub.reload()
+    require("sshfs.config").setup({ mounts = { base_dir = "/home/tester/mnt" } })
+
+    stub.executable({ findmnt = false })
+    stub.system(function()
+      return "tester@example.com: on /home/tester/mnt/host type fuse.sshfs (rw,nosuid,nodev)", 0
+    end)
+
+    local mount = require("sshfs.lib.mount_point").list_active()[1]
+    stub.restore_all()
+
+    expect.truthy(mount, "the mount table entry must be parsed")
+    expect.eq(mount.remote_path, ".", "host: mounts the remote home")
+    expect.truthy(mount.remote_metadata_available, "a host without a path still has usable metadata")
+  end)
+end)
