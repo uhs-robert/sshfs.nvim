@@ -118,9 +118,17 @@ describe("automatic unmount on exit", function()
     stub.set("fn.executable", function()
       return 1
     end)
+    -- setup() sweeps the mount base dir, so keep it off the developer's real one.
+    stub.set("system", function()
+      return {
+        wait = function()
+          return { code = 0, stdout = "", stderr = "" }
+        end,
+      }
+    end)
     stub.notifications()
 
-    require("sshfs").setup({ hooks = hooks })
+    require("sshfs").setup({ hooks = hooks, mounts = { base_dir = vim.fn.tempname() } })
     stub.restore_all()
 
     return events
