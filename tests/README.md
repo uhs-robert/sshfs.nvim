@@ -43,7 +43,7 @@ end)
 
 ### Assertions
 
-`expect.eq` (deep equality), `expect.truthy`, `expect.falsy`, `expect.is_nil`, `expect.contains` (plain substring), `expect.errors`, `expect.no_error`. Each takes an optional trailing context string that is shown on failure.
+`expect.eq` (deep equality), `expect.truthy`, `expect.falsy`, `expect.is_nil`, `expect.contains` (plain substring), `expect.errors`, `expect.no_error` (which forwards every value the call returned). Each takes an optional trailing context string that is shown on failure.
 
 ### Stubs
 
