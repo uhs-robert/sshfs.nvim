@@ -285,9 +285,14 @@ function MountPoint.cleanup_stale()
     if vim.fn.isdirectory(file) == 1 then
       -- Only remove if directory is empty AND not actively mounted
       if Directory.is_empty(file) and not MountPoint.is_active(file) then
-        MountPoint.unmount(file)
-        local success = pcall(vim.fn.delete, file, "d")
-        if success then removed_count = removed_count + 1 end
+        -- Plain rmdir first; only a mount the table did not report needs unmounting.
+        local ok, result = pcall(vim.fn.delete, file, "d")
+        if not (ok and result == 0) then
+          MountPoint.unmount(file)
+          pcall(vim.fn.delete, file, "d")
+        end
+        -- unmount() removes the directory itself, so count what is gone, not what returned 0.
+        if vim.fn.isdirectory(file) == 0 then removed_count = removed_count + 1 end
       end
     end
   end
