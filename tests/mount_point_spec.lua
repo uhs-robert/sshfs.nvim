@@ -32,6 +32,7 @@ describe("MountPoint.list_active", function()
         host = "example.com",
         mount_path = BASE_DIR .. "/example",
         remote_path = "/srv/app",
+        remote_metadata_available = true,
       },
     })
     stub.restore_all()
@@ -63,7 +64,7 @@ describe("MountPoint.list_active", function()
   it("prefers findmnt output when findmnt is available", function()
     local MountPoint = with_mounts({
       findmnt_available = true,
-      findmnt_output = "deploy@example.com:/srv/app " .. BASE_DIR .. "/example\n",
+      findmnt_output = "deploy@example.com:/srv/app fuse.sshfs " .. BASE_DIR .. "/example\n",
       mount_output = "should-not-be-read on /elsewhere type fuse.sshfs (rw)",
     })
 
