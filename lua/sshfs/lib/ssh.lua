@@ -50,7 +50,11 @@ local function get_ssh_options(auth_type)
 
   -- A config RemoteCommand cannot coexist with the command these paths append,
   -- and sftp needs a plain session, so it is cleared for everything but a shell.
-  if auth_type == "batch" or auth_type == "socket" then table.insert(options, "RemoteCommand=none") end
+  if auth_type == "batch" or auth_type == "socket" then
+    table.insert(options, "RemoteCommand=none")
+    -- A forced tty closes the sftp channel and puts carriage returns in captured output.
+    table.insert(options, "RequestTTY=no")
+  end
 
   -- Add ControlMaster options
   local control_opts = Config.get_control_master_options()
