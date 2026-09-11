@@ -51,7 +51,9 @@ function Session.connect(host)
     PRE_MOUNT_DIRS[mount_dir] = vim.uv.cwd()
 
     -- Ensure the unique mount directory exists
-    if not MountPoint.get_or_create(mount_dir) then
+    local mount_ready, mount_created = MountPoint.get_or_create(mount_dir)
+    if not mount_ready then
+      PRE_MOUNT_DIRS[mount_dir] = nil
       vim.notify("Failed to create mount directory: " .. mount_dir, vim.log.levels.ERROR)
       return
     end
@@ -61,8 +63,15 @@ function Session.connect(host)
     Sshfs.authenticate_and_mount(host, mount_dir, remote_path_suffix, function(result)
       -- Handle connection failure
       if not result.success then
+        PRE_MOUNT_DIRS[mount_dir] = nil
+
+        -- Only remove an empty mount directory created by this connection attempt.
+        if mount_created and not MountPoint.is_active(mount_dir) then
+          local Directory = require("sshfs.lib.directory")
+          if Directory.is_empty(mount_dir) then pcall(vim.fn.delete, mount_dir, "d") end
+        end
+
         vim.notify("Connection failed: " .. (result.message or "Unknown error"), vim.log.levels.ERROR)
-        MountPoint.cleanup()
         return
       end
 
