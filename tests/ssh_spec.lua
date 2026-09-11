@@ -13,7 +13,7 @@ end
 describe("Ssh.build_command_string", function()
   it("passes the control path and clears any RemoteCommand when reusing a socket", function()
     local Ssh = load_ssh()
-    expect.eq(Ssh.build_command_string("socket"), "ssh -o RemoteCommand=none -o " .. CONTROL_PATH)
+    expect.eq(Ssh.build_command_string("socket"), "ssh -o RemoteCommand=none -o RequestTTY=no -o " .. CONTROL_PATH)
   end)
 
   it("forces a master and disables prompts for batch connections", function()

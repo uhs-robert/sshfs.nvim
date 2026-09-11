@@ -23,6 +23,26 @@ local function clears_remote_command(cmd)
   return option_index(cmd, "RemoteCommand=none") ~= nil
 end
 
+describe("RequestTTY handling", function()
+  it("refuses a forced tty on the paths that carry sftp or captured output", function()
+    local Ssh = load_ssh()
+
+    expect.truthy(option_index(Ssh.build_batch_command("example.com"), "RequestTTY=no"))
+    expect.truthy(option_index(Ssh.build_home_command("example.com"), "RequestTTY=no"), "readlink output must be clean")
+    expect.contains(Ssh.build_command_string("socket"), "-o RequestTTY=no")
+  end)
+
+  it("leaves the interactive authentication terminal a tty", function()
+    local Ssh = load_ssh()
+    expect.is_nil(option_index(Ssh.build_auth_command("example.com"), "RequestTTY=no"), "a password prompt needs one")
+  end)
+
+  it("leaves a terminal session a tty", function()
+    local Ssh = load_ssh()
+    expect.is_nil(option_index(Ssh.build_command("example.com", "/srv/app"), "RequestTTY=no"))
+  end)
+end)
+
 describe("RemoteCommand handling", function()
   it("clears it on every command that appends a remote command", function()
     local Ssh = load_ssh()
