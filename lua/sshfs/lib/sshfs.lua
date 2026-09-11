@@ -2,6 +2,63 @@
 -- SSHFS wrapper with authentication workflows
 
 local Sshfs = {}
+local sshfs_major_version
+local sshfs_version_warning_shown = false
+
+--- Detect the installed SSHFS major version, caching only a successful probe.
+--- @return number|nil Major version, or nil if it cannot be determined
+local function get_sshfs_major_version()
+  if sshfs_major_version then return sshfs_major_version end
+
+  -- Bounded wait: a hung `sshfs --version` must not block Neovim indefinitely.
+  local ok, process = pcall(vim.system, { "sshfs", "--version" }, { text = true })
+  if ok then
+    local wait_ok, result = pcall(process.wait, process, 2000)
+    if wait_ok and result then
+      -- Some builds report the version on stderr and/or exit non-zero, so parse
+      -- whatever output is available rather than gating on the exit code.
+      local output = (result.stdout or "") .. "\n" .. (result.stderr or "")
+      sshfs_major_version = tonumber(output:match("SSHFS version%s+(%d+)") or output:match("SSHFS%s+(%d+)"))
+    end
+  end
+
+  if not sshfs_major_version and not sshfs_version_warning_shown then
+    sshfs_version_warning_shown = true
+    vim.notify(
+      "Unable to detect SSHFS version; using configured option names unchanged. SSHFS 2.x/fuse-t may require cache, cache_timeout, and cache_max_size.",
+      vim.log.levels.WARN
+    )
+  end
+
+  return sshfs_major_version
+end
+
+--- Translate sshfs 3.x directory-cache option names for sshfs 2.x implementations.
+--- Explicit 2.x options take precedence over translated defaults/user values.
+--- @param options_table table
+--- @return table
+local function normalize_sshfs_options(options_table)
+  local options = vim.deepcopy(options_table)
+  local major = get_sshfs_major_version()
+  if not major or major >= 3 then return options end
+
+  if options.dir_cache ~= nil then
+    if options.cache == nil then options.cache = options.dir_cache end
+    options.dir_cache = nil
+  end
+
+  if options.dcache_timeout ~= nil then
+    if options.cache_timeout == nil then options.cache_timeout = options.dcache_timeout end
+    options.dcache_timeout = nil
+  end
+
+  if options.dcache_max_size ~= nil then
+    if options.cache_max_size == nil then options.cache_max_size = options.dcache_max_size end
+    options.dcache_max_size = nil
+  end
+
+  return options
+end
 
 --- Determine whether an SSH batch failure is an unresolved-host error.
 --- @param error_message string|nil SSH error output
@@ -45,7 +102,8 @@ local function get_sshfs_options(auth_type)
 
   -- Add user-configured sshfs options from config (convert table to array)
   if opts.connections and opts.connections.sshfs_options then
-    vim.list_extend(options, build_sshfs_args(opts.connections.sshfs_options))
+    local sshfs_opts = build_sshfs_args(normalize_sshfs_options(opts.connections.sshfs_options))
+    vim.list_extend(options, sshfs_opts)
   end
 
   -- Add SSH command to reuse existing ControlMaster socket

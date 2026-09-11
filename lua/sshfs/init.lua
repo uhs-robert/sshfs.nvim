@@ -48,11 +48,11 @@ function App.setup(user_opts)
     desc = "Register in lockfile when accessing SSHFS mount",
   })
 
-  -- Setup exit handler if enabled
+  -- Setup exit handler if enabled. VimLeavePre keeps the event loop available while mounts are unmounted.
   local hooks = opts.hooks or {}
   local on_exit = hooks.on_exit or {}
   if on_exit.auto_unmount then
-    vim.api.nvim_create_autocmd("VimLeave", {
+    vim.api.nvim_create_autocmd("VimLeavePre", {
       callback = function()
         local Session = require("sshfs.session")
         Session.cleanup_unused_mounts()

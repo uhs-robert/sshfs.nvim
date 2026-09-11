@@ -74,6 +74,14 @@ local function run_preset_action(preset, mount_dir, config)
       )
       return run_preset_action(preset == "live_grep" and "grep" or "find", mount_dir, config)
     end
+    if conn.remote_metadata_available == false then
+      vim.notify(
+        "Remote host/path metadata is unavailable for this mount – falling back to local "
+          .. (preset == "live_grep" and "grep" or "find"),
+        vim.log.levels.WARN
+      )
+      return run_preset_action(preset == "live_grep" and "grep" or "find", mount_dir, config)
+    end
     local Picker = require("sshfs.ui.picker")
     local fn = preset == "live_grep" and Picker.open_live_remote_grep or Picker.open_live_remote_find
     local ok, picker_name = fn(conn.host, conn.mount_path, conn.remote_path or ".", config)
