@@ -262,6 +262,11 @@ require("sshfs").setup({
       preferred_picker = "auto",  -- one of: "auto", "snacks", "fzf-lua", "telescope", "mini"
     },
   },
+  debug = {
+    enabled = false,              -- write SSH/SSHFS diagnostics to a log file
+    log_file = vim.fn.stdpath("log") .. "/sshfs.nvim.log",
+    max_size = 1048576,           -- rotate to <log_file>.1 past this size (0 disables)
+  },
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
     mount = "<leader>mm",         -- creates an ssh connection and mounts via sshfs
@@ -296,6 +301,7 @@ require("sshfs").setup({
 - `:SSHDisconnectAll` - Unmount all hosts
 - `:SSHConfig` - Edit SSH config files
 - `:SSHReload` - Reload SSH configuration
+- `:SSHDebug [on|off]` - Toggle debug logging for the current Neovim session
 - `:SSHFiles` - Find files with auto-detected picker
 - `:SSHGrep [pattern]` - Search files with auto-detected tool
 - `:SSHLiveFind [pattern]` - Stream remote `find`/`fd` results over SSH (snacks/fzf-lua/telescope/mini)
@@ -304,6 +310,8 @@ require("sshfs").setup({
 - `:SSHChangeDir` - Change directory to mount (`tcd`)
 - `:SSHCommand [cmd]` - Run custom command (e.g. `Oil`, `Telescope`)
 - `:SSHTerminal` - Open terminal session (reuses auth)
+
+Debug logging records SSH authentication, ControlMaster, remote-home resolution, and SSHFS subprocess diagnostics. See [`docs/debug-logging.md`](docs/debug-logging.md) for details.
 
 ## 🎹 Key Mapping
 
