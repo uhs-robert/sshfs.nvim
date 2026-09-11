@@ -48,6 +48,10 @@ local function get_ssh_options(auth_type)
   local Config = require("sshfs.config")
   local options = {}
 
+  -- A config RemoteCommand cannot coexist with the command these paths append,
+  -- and sftp needs a plain session, so it is cleared for everything but a shell.
+  if auth_type == "batch" or auth_type == "socket" then table.insert(options, "RemoteCommand=none") end
+
   -- Add ControlMaster options
   local control_opts = Config.get_control_master_options()
   if auth_type == "batch" then
@@ -94,8 +98,11 @@ local function append_host_options(cmd, host)
   table.insert(cmd, host.name)
 end
 
-local function build_with_options(host, auth_type)
+local function build_with_options(host, auth_type, extra_options)
   local cmd = { "ssh" }
+  for _, opt in ipairs(extra_options or {}) do
+    vim.list_extend(cmd, { "-o", opt })
+  end
   for _, opt in ipairs(get_ssh_options(auth_type)) do
     vim.list_extend(cmd, { "-o", opt })
   end
@@ -147,7 +154,7 @@ end
 ---@param host table|string Host object or SSH host name
 ---@return table SSH command array
 function Ssh.build_auth_command(host)
-  local cmd = { "ssh" }
+  local cmd = { "ssh", "-o", "RemoteCommand=none" }
   for _, opt in ipairs(get_ssh_options(nil)) do
     if opt:match("^ControlMaster=") then opt = "ControlMaster=yes" end
     vim.list_extend(cmd, { "-o", opt })
@@ -207,10 +214,12 @@ end
 ---@param remote_path string|nil Optional remote path to cd into
 ---@return table SSH command as array (safer than string to avoid shell injection)
 function Ssh.build_command(host, remote_path)
-  local cmd = build_with_options(host, nil)
+  local has_remote_path = remote_path ~= nil and remote_path ~= ""
+  -- Only a bare session keeps a config RemoteCommand; a cd would collide with it.
+  local cmd = build_with_options(host, nil, has_remote_path and { "RemoteCommand=none" } or nil)
 
   -- If remote_path specified, cd into it and start a login shell
-  if remote_path and remote_path ~= "" then
+  if has_remote_path then
     table.insert(cmd, "-t")
     local cd_command = build_cd_command(remote_path)
     table.insert(cmd, cd_command .. " && exec $SHELL -l")
