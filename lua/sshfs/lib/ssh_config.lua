@@ -177,6 +177,24 @@ function SSHConfig.parse_host(command)
   return host
 end
 
+--- Resolve a typed host string through ssh -G, keeping anything typed explicitly
+--- @param input string e.g. "user@example.com:/srv -p 2222" or a config alias
+--- @return table|nil host Host object, or nil when no host name was given
+function SSHConfig.resolve_input(input)
+  local parsed = SSHConfig.parse_host(vim.trim(input or ""))
+  if not parsed.name or parsed.name == "" then return nil end
+
+  local resolved = SSHConfig.get_host_config(parsed.name)
+  if not resolved then return parsed end
+
+  -- A typed user or port is not in ssh_config, so it outranks the resolved value.
+  return vim.tbl_extend("force", resolved, {
+    user = parsed.user or resolved.user,
+    port = parsed.port or resolved.port,
+    path = parsed.path,
+  })
+end
+
 --- Clear the hosts and resolved_configs caches to force re-parsing on next get_hosts() call
 function SSHConfig.refresh()
   CACHE.hosts = nil
