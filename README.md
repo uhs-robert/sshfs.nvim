@@ -35,6 +35,18 @@ Built for Neovim 0.10+ using the best of both `sshfs` and `ssh` in tandem with y
 <!-- whats-new:start -->
 
   <details>
+    <summary>✨ v2.1 New Features</summary>
+    <ul>
+      <li><code>:SSHConnect user@host:/path -p 2222</code> mounts hosts that are not in ssh_config; the picker also offers "Enter host manually..."</li>
+      <li><code>:SSHTest [host]</code> checks SSH resolution and authentication without mounting</li>
+      <li>Debug logging via the <code>debug</code> config table and <code>:SSHDebug [on|off]</code></li>
+      <li>fuse-t support on macOS</li>
+      <li>Several Neovim instances can share a host; each only unmounts its own connections</li>
+      <li><code>:SSHDisconnectAll</code> and <code>global_paths</code> for mount paths shared by every host</li>
+    </ul>
+  </details>
+
+  <details>
     <summary>🚨 v2.0 Breaking Changes </summary>
     <h3>Config restructure with hooks</h3>
     <ul>
