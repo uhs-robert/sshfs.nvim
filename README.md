@@ -67,7 +67,7 @@ Built for Neovim 0.10+ using the best of both `sshfs` and `ssh` in tandem with y
         <li>Boolean <code>true/false</code> enables/disables options, the value of <code>nil</code> also disables</li>
       </ul>
     </ul>
-    <h3>Commands, API, and keymap renames (aliases will be removed after January 15, 2026)</h3>
+    <h3>Commands, API, and keymap renames (aliases will be removed in v3.0)</h3>
     <ul>
       <li><strong>Commands:</strong> The following have beep deprecated:
         <ul>
