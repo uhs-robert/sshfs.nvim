@@ -117,6 +117,15 @@ local function namespace_id()
   return table.concat({ vim.uv.os_gethostname(), boot_id, pid_ns }, " ")
 end
 
+--- Whether every pid recorded under marker `other` is gone from the point of view of `own`.
+--- Same host and pid namespace with another boot_id means a reboot: no pid survives it. Fields may be
+--- empty (no /proc), hence `%S*`.
+local function is_previous_boot(own, other)
+  local own_host, own_boot, own_ns = own:match("^(%S*) (%S*) (%S*)$")
+  local host, boot, ns = other:match("^(%S*) (%S*) (%S*)$")
+  return own_host ~= nil and host == own_host and ns == own_ns and boot ~= own_boot
+end
+
 --- Delete bin dirs of Neovim processes that no longer exist. Instances cannot clean up after
 --- themselves reliably (an exit autocmd would race plugins still running git), so the next start does.
 --- Only dirs marked with this namespace are judged: an unmarked dir may belong to an instance that
@@ -124,10 +133,13 @@ end
 local function sweep_dead_bin_dirs(root)
   local own_namespace = namespace_id()
   for _, dir in ipairs(vim.fn.glob(root .. "/bin/*", false, true)) do
-    if read_first_line(dir .. "/" .. NAMESPACE_MARKER) == own_namespace then
+    local marker = read_first_line(dir .. "/" .. NAMESPACE_MARKER)
+    if marker == own_namespace then
       local pid = tonumber(vim.fn.fnamemodify(dir, ":t"))
       -- signal 0 only probes existence; uv.kill returns nil plus an error for a missing pid
       if not pid or vim.uv.kill(pid, 0) ~= 0 then vim.fn.delete(dir, "rf") end
+    elseif marker and is_previous_boot(own_namespace, marker) then
+      vim.fn.delete(dir, "rf")
     end
   end
 end
