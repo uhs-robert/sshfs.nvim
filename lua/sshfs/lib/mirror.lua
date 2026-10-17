@@ -1102,19 +1102,33 @@ function Mirror.open(host, remote_path_suffix, root, callback)
   end)
 end
 
+--- What deleting the local copy would lose
+---@param state table
+---@return table details {files = sorted rels not on the server, git = boolean: local commits, branches or stashes}
+function Mirror.local_only_details(state)
+  local root = state.local_path
+  local snapshot = Mirror.snapshot(root, mirror_config().excludes)
+  local files = {}
+  for _, rel in ipairs(Mirror.dirty_files(state.manifest, snapshot, modified_rels(root))) do
+    files[rel] = true
+  end
+  for rel in pairs(state.unsynced) do
+    files[rel] = true
+  end
+  local fingerprint = Mirror.git_fingerprint(root)
+  return {
+    files = vim.fn.sort(vim.tbl_keys(files)),
+    git = fingerprint ~= nil and fingerprint ~= state.git_fingerprint,
+  }
+end
+
 --- Why deleting the local copy would lose work, if it would
 ---@param state table
 ---@return string|nil reason
 function Mirror.local_only_work(state)
-  local root = state.local_path
-  local snapshot = Mirror.snapshot(root, mirror_config().excludes)
-  if #Mirror.dirty_files(state.manifest, snapshot, modified_rels(root)) > 0 or next(state.unsynced) then
-    return "it has local files that are not on the server"
-  end
-  local fingerprint = Mirror.git_fingerprint(root)
-  if fingerprint and fingerprint ~= state.git_fingerprint then
-    return "its .git has local commits, branches or stashes since the last pull"
-  end
+  local details = Mirror.local_only_details(state)
+  if #details.files > 0 then return "it has local files that are not on the server" end
+  if details.git then return "its .git has local commits, branches or stashes since the last pull" end
   return nil
 end
 

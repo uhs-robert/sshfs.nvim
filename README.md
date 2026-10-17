@@ -292,6 +292,7 @@ require("sshfs").setup({
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
     mirror = "<leader>mM",        -- mirrors a remote directory locally
+    mirror_delete = "<leader>mD", -- deletes a local mirror
     mount = "<leader>mm",         -- creates an ssh connection and mounts via sshfs
     unmount = "<leader>mu",       -- disconnects an ssh connection and unmounts via sshfs
     unmount_all = "<leader>mU",   -- disconnects all ssh connections and unmounts via sshfs
@@ -321,6 +322,7 @@ require("sshfs").setup({
 - `:SSHConnect [host]` - Mount a remote host. Accepts an ssh_config alias or a host that is in no config at all, e.g. `:SSHConnect user@example.com:/srv -p 2222`. Without an argument the picker offers "Enter host manually..." for the same thing.
 - `:SSHMirror [host]` - Mirror a remote directory locally instead of mounting it (see [Mirror mode](#-mirror-mode))
 - `:SSHMirrorPull` - Pull the remote tree into the current mirror, keeping locally edited files
+- `:SSHMirrorDelete[!] [host]` - Delete a local mirror and its record, picked from every mirror on disk (or from `host`'s); it refuses one held by another Neovim or holding work not on the server, and with `!` deletes the latter after a confirmation listing what is lost. The server is never touched
 - `:SSHMirrorPush[!]` - Push every file changed locally since the last sync; with `!` also delete server files you removed locally (after a confirmation listing them)
 - `:SSHTest [host]` - Test SSH resolution and authentication without mounting
 - `:SSHDisconnect` - Unmount current host
@@ -347,6 +349,7 @@ Default keybindings under `<leader>m` (fully customizable):
 | ------------ | --------------------------------- |
 | `<leader>mm` | Mount an SSH host                 |
 | `<leader>mM` | Mirror an SSH host locally        |
+| `<leader>mD` | Delete a local mirror             |
 | `<leader>mu` | Unmount an active session         |
 | `<leader>mU` | Unmount all active sessions       |
 | `<leader>me` | Explore SSH mount via native edit |
@@ -388,6 +391,7 @@ Use `:SSHMirror [host]` to mirror, or list hosts in `mirror.hosts` to have `:SSH
 - **`.git` is pulled but never pushed** – Local commits are overwritten by the next pull.
 - **Locally edited files survive a pull** – `:SSHMirrorPull` skips files changed locally (or with unsaved changes) and reports any the server also changed since the last sync. Pulls use `rsync --update`, so a server file replaced by an older-dated copy is not pulled over an unchanged local one; it shows up as a conflict on your next push instead.
 - **Edits outside Neovim** are not pushed on save; `:SSHMirrorPush` catches them. There are no file watchers or timers.
+- **Mirrored files stay on disk** until you delete them with `:SSHMirrorDelete` (or set `on_disconnect = "delete"`).
 - **Large trees** – The first pull copies everything not in `mirror.excludes`.
 - **Exiting** – Neovim waits up to 5 s for pending pushes, without prompting. Anything left over stays unpushed locally and is reported next time.
 - **Connection** – Transfers reuse the ControlMaster socket and never prompt. If the socket has expired (`connections.control_persist`), the host is re-authenticated once, which may open the usual authentication window.

@@ -52,6 +52,23 @@ local function with_mirror(action)
   end)
 end
 
+--- Delete a local mirror (folder and state file), picked from every mirror known locally
+--- @param host_name string|nil Only this host's mirrors
+--- @param force boolean|nil Delete even if it holds work that never reached the server, after a confirmation
+Api.mirror_delete = function(host_name, force)
+  local MirrorDelete = require("sshfs.lib.mirror_delete")
+  local entries = MirrorDelete.entries(host_name)
+  if #entries == 0 then
+    return vim.notify(host_name and ("No mirror of " .. host_name) or "No mirrors found", vim.log.levels.WARN)
+  end
+
+  local function delete(entry)
+    MirrorDelete.run(entry, { force = force })
+  end
+  if host_name and #entries == 1 then return delete(entries[1]) end
+  require("sshfs.ui.select").mirror_delete(entries, delete)
+end
+
 --- Pull the remote tree into the current mirror, keeping locally edited files
 Api.mirror_pull = function()
   with_mirror(function(mirror)
@@ -484,6 +501,25 @@ Api.setup = function()
   vim.api.nvim_create_user_command("SSHMirrorPush", function(opts)
     Api.mirror_push(opts.bang)
   end, { bang = true, desc = "Push locally changed mirror files (! also deletes server files removed locally)" })
+
+  vim.api.nvim_create_user_command("SSHMirrorDelete", function(opts)
+    local host_name = opts.args ~= "" and opts.args or nil
+    Api.mirror_delete(host_name, opts.bang)
+  end, {
+    nargs = "?",
+    bang = true,
+    complete = function()
+      local hosts, seen = {}, {}
+      for _, state in ipairs(require("sshfs.lib.mirror_state").list()) do
+        if not seen[state.host] then
+          seen[state.host] = true
+          table.insert(hosts, state.host)
+        end
+      end
+      return hosts
+    end,
+    desc = "Delete a local mirror and its record (! even with unpushed work, after a confirmation)",
+  })
 
   vim.api.nvim_create_user_command("SSHTest", function(opts)
     if opts.args and opts.args ~= "" then
