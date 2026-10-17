@@ -6,8 +6,10 @@ local OLD = 1000000 -- an mtime long before any test runs
 --- Load the plugin against a scratch state dir and mirror base; returns the scratch dir
 local function with_scratch()
   stub.reload()
+  -- Resolved, because mirrors are listed by their canonical path (temp dirs sit under a symlink on macOS)
   local scratch = vim.fn.tempname()
   vim.fn.mkdir(scratch .. "/mirrors", "p")
+  scratch = vim.uv.fs_realpath(scratch)
 
   local real_stdpath = vim.fn.stdpath
   stub.set("fn.stdpath", function(what)
@@ -65,12 +67,16 @@ local function exists(path)
   return vim.uv.fs_lstat(path) ~= nil
 end
 
---- Answer every vim.ui.select with the item at an index; records the prompts and item lists
-local function answer(index)
+--- Answer every vim.ui.select: a confirmation with the choice starting with `choice`, any other list with its
+--- first item; records the prompts and item lists
+local function answer(choice)
   local asked = {}
   stub.set("ui.select", function(items, opts, callback)
     table.insert(asked, { items = items, prompt = opts.prompt, format_item = opts.format_item })
-    callback(items[index], index)
+    for index, item in ipairs(items) do
+      if type(item) == "string" and vim.startswith(item, choice) then return callback(item, index) end
+    end
+    callback(items[1], 1)
   end)
   return asked
 end
@@ -96,7 +102,7 @@ describe("Mirror delete", function()
   it("deletes the folder and the state file after one confirmation", function()
     local scratch = with_scratch()
     local path = make_mirror(scratch, "box_app")
-    local asked = answer(1)
+    local asked = answer("Delete")
 
     run(path)
     local gone = not exists(path) and not state_exists(path)
@@ -110,7 +116,7 @@ describe("Mirror delete", function()
   it("keeps everything when the confirmation is cancelled", function()
     local scratch = with_scratch()
     local path = make_mirror(scratch, "box_app")
-    answer(2)
+    answer("Cancel")
 
     run(path)
     local kept = exists(path) and state_exists(path)
@@ -123,7 +129,7 @@ describe("Mirror delete", function()
     local scratch = with_scratch()
     local path = make_mirror(scratch, "box_app")
     write_file(path .. "/a.txt", "edited", OLD + 10)
-    local asked = answer(1)
+    local asked = answer("Delete")
     local notes = stub.notifications()
 
     run(path)
@@ -141,7 +147,7 @@ describe("Mirror delete", function()
     local path = make_mirror(scratch, "box_app", { git_fingerprint = "old" })
     vim.fn.mkdir(path .. "/.git/refs/heads", "p")
     write_file(path .. "/.git/refs/heads/feature", "abc\n")
-    answer(1)
+    answer("Delete")
     local notes = stub.notifications()
 
     run(path)
@@ -157,19 +163,22 @@ describe("Mirror delete", function()
     local path = make_mirror(scratch, "box_app")
     write_file(path .. "/a.txt", "edited", OLD + 10)
 
-    answer(2)
+    answer("Cancel")
     run(path, { force = true })
     local kept_when_cancelled = exists(path)
 
-    local asked = answer(1)
+    local asked = answer("Delete")
+    local notes = stub.notifications()
     run(path, { force = true })
     local gone = not exists(path) and not state_exists(path)
     finish(scratch)
 
     expect.truthy(kept_when_cancelled)
     expect.truthy(gone)
-    expect.contains(asked[1].prompt, "This loses")
-    expect.contains(asked[1].prompt, "a.txt")
+    expect.eq(asked[1].items[1], "Cancel")
+    expect.contains(asked[1].items[2], "1 file(s)")
+    expect.contains(messages(notes), "loses")
+    expect.contains(messages(notes), "a.txt")
   end)
 
   it("refuses a mirror another Neovim instance holds", function()
@@ -178,7 +187,7 @@ describe("Mirror delete", function()
     require("sshfs.lib.lockfile").is_in_use_by_others = function()
       return true
     end
-    local asked = answer(1)
+    local asked = answer("Delete")
     local notes = stub.notifications()
 
     run(path, { force = true })
@@ -194,7 +203,7 @@ describe("Mirror delete", function()
     local scratch = with_scratch()
     local path = make_mirror(scratch, "box_app", { connected = true })
     require("sshfs.lib.lockfile").register(path)
-    answer(1)
+    answer("Delete")
     local disconnected_with_folder
     require("sshfs.session").disconnect_from = function(connection)
       disconnected_with_folder = exists(path) and state_exists(path) and connection.local_path == path
@@ -217,7 +226,7 @@ describe("Mirror delete", function()
     local scratch = with_scratch()
     local path = make_mirror(scratch, "box_app", { connected = true })
     require("sshfs.lib.lockfile").register(path)
-    answer(1)
+    answer("Delete")
     require("sshfs.session").disconnect_from = function()
       return false
     end
@@ -234,7 +243,7 @@ describe("Mirror delete", function()
     local path = make_mirror(scratch, "box_app")
     vim.fn.delete(path, "rf")
     write_file(scratch .. "/mirrors/other/keep.txt", "x")
-    local asked = answer(1)
+    local asked = answer("Remove")
 
     local entry = vim.tbl_filter(function(item)
       return item.local_path == path
@@ -252,7 +261,7 @@ describe("Mirror delete", function()
   it("lists a folder without a sync record and deletes it after a confirmation", function()
     local scratch = with_scratch()
     write_file(scratch .. "/mirrors/stray/file.txt", "x")
-    local asked = answer(1)
+    local asked = answer("Delete")
 
     local entries = require("sshfs.lib.mirror_delete").entries()
     run(scratch .. "/mirrors/stray")
@@ -277,7 +286,7 @@ describe("Mirror delete", function()
       unsynced = {},
       connected = false,
     })
-    answer(1)
+    answer("Delete")
     local notes = stub.notifications()
 
     run(outside, { force = true })
@@ -293,7 +302,7 @@ describe("Mirror delete", function()
     local outside = scratch .. "/outside"
     write_file(outside .. "/precious.txt", "x")
     vim.uv.fs_symlink(outside, scratch .. "/mirrors/link")
-    answer(1)
+    answer("Delete")
     local notes = stub.notifications()
 
     run(scratch .. "/mirrors/link")
@@ -377,7 +386,7 @@ describe("Api.mirror_delete", function()
     local scratch = with_scratch()
     make_mirror(scratch, "box_a")
     make_mirror(scratch, "box_b", { host = "other" })
-    local asked = answer(1)
+    local asked = answer("Delete")
 
     require("sshfs.api").mirror_delete()
     finish(scratch)
@@ -393,12 +402,12 @@ describe("Api.mirror_delete", function()
     make_mirror(scratch, "box_a")
     make_mirror(scratch, "other_a", { host = "other" })
 
-    local asked = answer(2)
+    local asked = answer("Cancel")
     require("sshfs.api").mirror_delete("other")
     local direct = #asked
 
     make_mirror(scratch, "box_b")
-    asked = answer(2)
+    asked = answer("Cancel")
     require("sshfs.api").mirror_delete("box")
     finish(scratch)
 
@@ -418,5 +427,307 @@ describe("Api.mirror_delete", function()
     expect.truthy(command)
     expect.truthy(command.bang)
     expect.eq(map.desc, "Delete a local mirror")
+  end)
+end)
+
+describe("Mirror delete re-checks after the confirmation", function()
+  it("refuses when another instance connects while the confirmation is open", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    local Lockfile = require("sshfs.lib.lockfile")
+    local notes = stub.notifications()
+    stub.set("ui.select", function(items, _, callback)
+      Lockfile.is_in_use_by_others = function()
+        return true
+      end
+      Lockfile.has_live_owner = function()
+        return true
+      end
+      require("sshfs.lib.mirror_state").update(path, function(state)
+        state.connected = true
+      end)
+      callback(items[2], 2)
+    end)
+
+    run(path)
+    local kept = exists(path) and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "another Neovim instance")
+  end)
+
+  it("refuses when the disconnect keeps the mirror connected for another instance", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app", { connected = true })
+    local Lockfile = require("sshfs.lib.lockfile")
+    Lockfile.register(path)
+    answer("Delete")
+    local notes = stub.notifications()
+    require("sshfs.session").disconnect_from = function()
+      -- What disconnect_mirror does when another instance still holds the mirror: unregister, report success
+      Lockfile.unregister(path)
+      Lockfile.is_in_use_by_others = function()
+        return true
+      end
+      Lockfile.has_live_owner = function()
+        return true
+      end
+      return true
+    end
+
+    run(path)
+    local kept = exists(path) and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "still in use by another Neovim instance")
+  end)
+
+  it("with force, refuses work that appeared during the confirmation and lists it", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    write_file(path .. "/a.txt", "edited", OLD + 10)
+    local notes = stub.notifications()
+    stub.set("ui.select", function(items, _, callback)
+      write_file(path .. "/new.txt", "precious", OLD + 20)
+      callback(items[2], 2)
+    end)
+
+    run(path, { force = true })
+    local kept = exists(path .. "/new.txt") and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "now has work that was not confirmed")
+    expect.contains(messages(notes), "new.txt")
+  end)
+
+  it("keeps the record of a missing mirror whose folder came back during the confirmation", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    vim.fn.delete(path, "rf")
+    local notes = stub.notifications()
+    stub.set("ui.select", function(items, _, callback)
+      write_file(path .. "/a.txt", "back", OLD + 10)
+      callback(items[2], 2)
+    end)
+
+    run(path)
+    local kept = exists(path .. "/a.txt") and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "exists again")
+  end)
+
+  it("offers Cancel first, so accepting the preselected choice keeps the mirror", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    local asked = {}
+    stub.set("ui.select", function(items, opts, callback)
+      table.insert(asked, { items = items, prompt = opts.prompt })
+      callback(items[1], 1)
+    end)
+
+    run(path)
+    local kept = exists(path) and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.eq(asked[1].items[1], "Cancel")
+    expect.falsy(asked[1].prompt:find("\n"), "the prompt is one line")
+  end)
+
+  it("closes buffers on the deleted mirror's files", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    vim.cmd("edit " .. vim.fn.fnameescape(path .. "/a.txt"))
+    local buf = vim.api.nvim_get_current_buf()
+    answer("Delete")
+
+    run(path)
+    local buffer_left = vim.api.nvim_buf_is_valid(buf)
+    local gone = not exists(path)
+    finish(scratch)
+
+    expect.truthy(gone)
+    expect.falsy(buffer_left)
+  end)
+end)
+
+describe("Mirror delete path spellings", function()
+  it("matches a mirror recorded with a trailing-slash base to its folder", function()
+    local scratch = with_scratch()
+    require("sshfs.config").setup({
+      mounts = { base_dir = scratch .. "/mounts" },
+      connections = { socket_dir = "/s" },
+      mirror = { base_dir = scratch .. "/mirrors/" },
+    })
+    -- How a mirror connected under this config was recorded before paths were canonical
+    local recorded = scratch .. "/mirrors//box_app"
+    write_file(recorded .. "/a.txt", "edited", OLD + 10)
+    require("sshfs.lib.mirror_state").save({
+      host = "box",
+      remote_path = "/srv",
+      local_path = recorded,
+      manifest = { ["a.txt"] = "1 1" },
+      unsynced = {},
+      connected = false,
+    })
+    answer("Delete")
+    local notes = stub.notifications()
+
+    local entries = require("sshfs.lib.mirror_delete").entries()
+    for _, entry in ipairs(entries) do
+      require("sshfs.lib.mirror_delete").run(entry, {})
+    end
+    local kept = exists(scratch .. "/mirrors/box_app/a.txt")
+    finish(scratch)
+
+    expect.eq(#entries, 1)
+    expect.eq(entries[1].kind, "mirror")
+    expect.eq(entries[1].local_path, scratch .. "/mirrors/box_app")
+    expect.truthy(kept)
+    expect.contains(messages(notes), "has work that is not on the server")
+  end)
+
+  it("matches a mirror recorded through a symlinked base to its folder under the real one", function()
+    local scratch = with_scratch()
+    vim.uv.fs_symlink(scratch .. "/mirrors", scratch .. "/link")
+    local path = make_mirror(scratch, "box_app", { local_path = scratch .. "/link/box_app" })
+    write_file(path .. "/a.txt", "edited", OLD + 10)
+    answer("Delete")
+
+    local notes = stub.notifications()
+
+    local entries = require("sshfs.lib.mirror_delete").entries()
+    for _, entry in ipairs(entries) do
+      require("sshfs.lib.mirror_delete").run(entry, {})
+    end
+    local kept = exists(path .. "/a.txt")
+    finish(scratch)
+
+    expect.eq(#entries, 1)
+    expect.eq(entries[1].kind, "mirror")
+    expect.truthy(kept)
+    expect.contains(messages(notes), "has work that is not on the server")
+  end)
+
+  it("records new mirrors under the canonical base whatever its spelling", function()
+    local scratch = with_scratch()
+    vim.uv.fs_symlink(scratch .. "/mirrors", scratch .. "/link")
+    require("sshfs.config").setup({
+      mounts = { base_dir = scratch .. "/mounts" },
+      connections = { socket_dir = "/s" },
+      mirror = { base_dir = scratch .. "/link/" },
+    })
+    local base = require("sshfs.lib.mirror_state").base_dir()
+    local real = vim.uv.fs_realpath(scratch .. "/mirrors")
+    finish(scratch)
+
+    expect.eq(base, real)
+  end)
+end)
+
+describe("Mirror delete never reaches a mount", function()
+  local function mount_table(lines)
+    stub.system(function(cmd)
+      if cmd == "mount" then return table.concat(lines, "\n"), 0 end
+      return "", 0
+    end)
+  end
+
+  it("refuses a folder in the base directory that is an active sshfs mount", function()
+    local scratch = with_scratch()
+    local path = scratch .. "/mirrors/box_srv"
+    write_file(path .. "/remote.txt", "on the server")
+    mount_table({ "me@box:/srv on " .. vim.uv.fs_realpath(path) .. " type fuse.sshfs (rw)" })
+    answer("Delete")
+    local notes = stub.notifications()
+
+    run(path)
+    local kept = exists(path .. "/remote.txt")
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "active mount")
+  end)
+
+  it("refuses a mirror with an sshfs mount inside it", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    write_file(path .. "/nested/remote.txt", "on the server")
+    mount_table({ "me@box:/srv on " .. vim.uv.fs_realpath(path) .. "/nested type fuse.sshfs (rw)" })
+    answer("Delete")
+    local notes = stub.notifications()
+
+    run(path, { force = true })
+    local kept = exists(path .. "/nested/remote.txt")
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "contains the active mount")
+  end)
+
+  it("refuses a folder on another device than the base directory", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    local real_lstat = vim.uv.fs_lstat
+    stub.set("uv.fs_lstat", function(target)
+      local stat = real_lstat(target)
+      if stat and target == path then stat.dev = stat.dev + 1 end
+      return stat
+    end)
+    answer("Delete")
+    local notes = stub.notifications()
+
+    run(path)
+    local kept = exists(path .. "/a.txt")
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "another file system")
+  end)
+
+  it("removes nothing when a directory inside the mirror is on another device", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    write_file(path .. "/deep/inner/remote.txt", "elsewhere")
+    local real_lstat = vim.uv.fs_lstat
+    stub.set("uv.fs_lstat", function(target)
+      local stat = real_lstat(target)
+      if stat and target == path .. "/deep/inner" then stat.dev = stat.dev + 1 end
+      return stat
+    end)
+    answer("Delete")
+    local notes = stub.notifications()
+
+    run(path, { force = true })
+    local kept = exists(path .. "/a.txt") and exists(path .. "/deep/inner/remote.txt") and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "deep/inner is on another file system")
+  end)
+
+  it("refuses every mirror command when the mount and mirror base directories overlap", function()
+    local scratch = with_scratch()
+    local notes = stub.notifications()
+    require("sshfs.config").setup({
+      mounts = { base_dir = scratch .. "/mirrors/mnt" },
+      connections = { socket_dir = "/s" },
+      mirror = { base_dir = scratch .. "/mirrors" },
+    })
+    write_file(scratch .. "/mirrors/stray/x", "x")
+    local asked = answer("Delete")
+
+    require("sshfs.api").mirror_delete()
+    local kept = exists(scratch .. "/mirrors/stray/x")
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.eq(#asked, 0)
+    expect.contains(messages(notes), "overlap")
   end)
 end)

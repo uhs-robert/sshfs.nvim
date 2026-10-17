@@ -29,8 +29,22 @@ local function connect_mirror(host, remote_path_suffix, config)
   local Connections = require("sshfs.lib.connections")
   local MountPoint = require("sshfs.lib.mount_point")
   local Lockfile = require("sshfs.lib.lockfile")
+  local MirrorState = require("sshfs.lib.mirror_state")
 
-  local mirror_dir = get_unique_dir(config.mirror.base_dir, host.name, remote_path_suffix)
+  local unavailable = Config.mirror_unavailable_reason()
+  if unavailable then
+    vim.notify("Mirror mode is unavailable: " .. unavailable, vim.log.levels.ERROR)
+    return
+  end
+
+  -- Recorded in the canonical spelling, so every later lookup and delete agrees on which folder it is;
+  -- a mirror recorded by an earlier build under the configured spelling keeps that one
+  local bases = MirrorState.base_dirs()
+  local mirror_dir = get_unique_dir(bases[1], host.name, remote_path_suffix)
+  if bases[2] and not MirrorState.load(mirror_dir) then
+    local legacy_dir = get_unique_dir(bases[2], host.name, remote_path_suffix)
+    if MirrorState.load(legacy_dir) then mirror_dir = legacy_dir end
+  end
   for _, connection in ipairs(Connections.list_active()) do
     if connection.mount_path == mirror_dir then
       vim.notify("Path " .. remote_path_suffix .. " on " .. host.name .. " is already mirrored.", vim.log.levels.WARN)

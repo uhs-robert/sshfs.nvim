@@ -22,4 +22,25 @@ function Path.map_remote_to_relative(file_path, remote_base_path)
   return normalized
 end
 
+--- A local directory path in its one canonical spelling: absolute, normalized, no trailing slash, symlinks resolved
+--- The path need not exist: its deepest existing ancestor is resolved and the rest appended, so the spelling
+--- stays the same once the missing part is created.
+---@param path string
+---@return string
+function Path.canonical(path)
+  local normalized = vim.fs.normalize(vim.fn.fnamemodify(vim.fs.normalize(path), ":p"))
+  local missing, current = {}, normalized
+  while true do
+    local real = vim.uv.fs_realpath(current)
+    if real then
+      if #missing == 0 then return real end
+      return (real == "/" and "" or real) .. "/" .. table.concat(missing, "/")
+    end
+    local parent = vim.fs.dirname(current)
+    if parent == current then return normalized end
+    table.insert(missing, 1, vim.fs.basename(current))
+    current = parent
+  end
+end
+
 return Path

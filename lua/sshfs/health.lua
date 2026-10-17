@@ -316,16 +316,11 @@ local function check_mirror()
 
   local config = require("sshfs.config").get()
   local mirror_dir = config.mirror.base_dir
-  local mount_dir = config.mounts.base_dir
-  local function contains(outer, inner)
-    outer = outer:gsub("/+$", "")
-    inner = inner:gsub("/+$", "")
-    return inner == outer or inner:sub(1, #outer + 1) == outer .. "/"
-  end
-  if contains(mount_dir, mirror_dir) or contains(mirror_dir, mount_dir) then
-    health.warn(
-      "mirror.base_dir and mounts.base_dir overlap: " .. mirror_dir .. ", " .. mount_dir,
-      "Keep them apart, so mirrors and mounts are never mistaken for each other"
+  local mirror_unavailable = require("sshfs.config").mirror_unavailable_reason()
+  if mirror_unavailable then
+    health.error(
+      "Mirror mode is unavailable: " .. mirror_unavailable,
+      "Point mirror.base_dir and mounts.base_dir at directories that are not inside each other"
     )
   end
   if is_writable(mirror_dir) then

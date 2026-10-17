@@ -66,6 +66,12 @@ local function get_system_mounts()
   return mounts
 end
 
+--- Every sshfs mount on the system, wherever it is, as {mount_path, remote_spec}
+--- @return table[]
+function MountPoint.list_system_mounts()
+  return get_system_mounts()
+end
+
 --- Check if a mount path is actively mounted
 --- @param mount_path string Path to check for active mount
 --- @return boolean True if mount is active
