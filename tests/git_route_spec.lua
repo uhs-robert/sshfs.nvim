@@ -101,8 +101,13 @@ local function run(env, args, opts)
   for key, value in pairs(opts.env or {}) do
     proc_env[key] = value
   end
-  local result =
-    vim.system(cmd, { cwd = opts.cwd or env.mount, env = proc_env, stdin = opts.stdin, text = true }):wait()
+  local result = vim
+    .system(
+      cmd,
+      -- clear_env: a CI runner's own LC_ALL would otherwise be forwarded and change the remote command
+      { cwd = opts.cwd or env.mount, env = proc_env, clear_env = true, stdin = opts.stdin, text = true }
+    )
+    :wait()
 
   local ssh_calls = {}
   local current = {}
@@ -745,6 +750,24 @@ describe("git wrapper per instance", function()
       expect.eq(vim.fn.isdirectory(foreign), 1, "another namespace's pids prove nothing")
       expect.eq(vim.fn.isdirectory(unmarked), 1, "an unmarked dir may be mid-startup")
       expect.eq(vim.fn.isdirectory(own_dead), 0)
+    end)
+  end)
+end)
+
+describe("git wrapper sweep across reboots", function()
+  it("sweeps dirs marked with another boot_id of this host and pid namespace, even for a live pid", function()
+    with_cache(function(Route)
+      local host, _, ns = own_namespace(Route):match("^(%S*) (%S*) (%S*)$")
+      -- pid 1 is alive now, but only in this boot: the marker's pids belong to a boot that ended
+      local rebooted = fake_instance_dir(Route, 1, table.concat({ host, "previous-boot", ns }, " "))
+      local other_host = fake_instance_dir(Route, 999999995, table.concat({ "other-host", "previous-boot", ns }, " "))
+      local other_ns = fake_instance_dir(Route, 999999994, table.concat({ host, "previous-boot", "pid:[1]" }, " "))
+
+      Route.install()
+
+      expect.eq(vim.fn.isdirectory(rebooted), 0)
+      expect.eq(vim.fn.isdirectory(other_host), 1, "another host shares the cache, its pids prove nothing")
+      expect.eq(vim.fn.isdirectory(other_ns), 1, "a different pid namespace proves nothing either")
     end)
   end)
 end)
