@@ -88,17 +88,17 @@ function Stub.executable(available)
 end
 
 --- Build a vim.system replacement
---- The handler receives the command list and returns a result table with code,
---- stdout, and stderr. The stub supports both call styles used in the plugin:
+--- The handler receives the command list and the vim.system options (stdin,
+--- timeout, ...) and returns a result table with code, stdout, and stderr. The stub supports both call styles used in the plugin:
 --- an async callback and a synchronous `:wait()` on the returned object.
 --- @param handler function fun(cmd): table
 --- @return table calls List of command lists the stub received
 function Stub.vim_system(handler)
   local calls = {}
 
-  Stub.set("system", function(cmd, _, callback)
+  Stub.set("system", function(cmd, opts, callback)
     table.insert(calls, cmd)
-    local result = handler(cmd) or {}
+    local result = handler(cmd, opts or {}) or {}
     result.code = result.code or 0
     result.stdout = result.stdout or ""
     result.stderr = result.stderr or ""
