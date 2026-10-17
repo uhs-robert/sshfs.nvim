@@ -92,6 +92,20 @@ function Select.unmount(callback)
   end)
 end
 
+--- Mirror selection for deleting a mirror, connected or not.
+---@param entries table[] From MirrorDelete.entries
+---@param callback function Callback invoked with the selected entry
+function Select.mirror_delete(entries, callback)
+  vim.ui.select(entries, {
+    prompt = "Select mirror to delete:",
+    format_item = function(entry)
+      return entry.label
+    end,
+  }, function(choice)
+    if choice then callback(choice) end
+  end)
+end
+
 --- Prompt for a host that is not in ssh_config, e.g. "user@example.com"
 ---@param callback function Callback invoked with the resolved host object
 function Select.host_input(callback)

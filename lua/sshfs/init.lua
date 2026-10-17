@@ -75,6 +75,7 @@ local Api = require("sshfs.api")
 App.connect = Api.connect
 App.mount = Api.mount
 App.mirror = Api.mirror
+App.mirror_delete = Api.mirror_delete
 App.mirror_pull = Api.mirror_pull
 App.mirror_push = Api.mirror_push
 App.mirror_status = Api.mirror_status
