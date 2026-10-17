@@ -13,6 +13,8 @@ local DEFAULT_KEYMAPS = {
   grep = "g",
   live_find = "F",
   live_grep = "G",
+  mirror = "M",
+  mirror_delete = "D",
   mount = "m",
   reload = "r",
   terminal = "t",
@@ -38,6 +40,10 @@ function Keymaps.setup(opts)
   -- Assign keymaps
   local Api = require("sshfs.api")
   vim.keymap.set("n", keymaps.mount, Api.mount, { desc = "Mount a SSH Server" })
+  vim.keymap.set("n", keymaps.mirror, Api.mirror, { desc = "Mirror a SSH Server locally" })
+  vim.keymap.set("n", keymaps.mirror_delete, function()
+    Api.mirror_delete()
+  end, { desc = "Delete a local mirror" })
   vim.keymap.set("n", keymaps.unmount, Api.unmount, { desc = "Unmount a SSH Server" })
   vim.keymap.set("n", keymaps.unmount_all, Api.unmount_all, { desc = "Unmount all SSH Servers" })
   vim.keymap.set("n", keymaps.explore, Api.explore, { desc = "Explore SSH mount" })
