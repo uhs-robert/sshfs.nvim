@@ -77,6 +77,13 @@ function Session.connect(host)
 
       -- Register in lockfile so other instances know we're using this mount
       Lockfile.register(mount_dir)
+      require("sshfs.lib.git_route").register_mount({
+        mount_path = mount_dir,
+        host = host.name,
+        user = host.user,
+        port = host.port,
+        remote_path = result.resolved_path or remote_path_suffix,
+      })
 
       -- Navigate to remote directory with picker
       vim.notify("Connected to " .. host.name .. " (" .. remote_path_suffix .. ")", vim.log.levels.INFO)

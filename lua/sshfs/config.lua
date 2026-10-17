@@ -70,6 +70,9 @@ local DEFAULT_CONFIG = {
 			clean_mount_folders = true,       -- Unmounts all mounts on nvim exit
 		},
 	},
+	git = {
+		route_over_ssh = true,            -- Run git for mounted paths on the server instead of over FUSE (git wrapper on Neovim's PATH)
+	},
 	ui = {
 		-- Used for mounted file operations
 		local_picker = {
