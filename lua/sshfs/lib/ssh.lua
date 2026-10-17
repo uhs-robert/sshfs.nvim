@@ -153,10 +153,12 @@ end
 
 --- Build the command used to resolve the remote home through an established socket.
 ---@param host table|string Host object or SSH host name
+---@param user string|nil Resolve this account's home (~user) instead of the login user's; letters, digits, . _ -
 ---@return table SSH command array
-function Ssh.build_home_command(host)
+function Ssh.build_home_command(host, user)
   local cmd = build_with_options(host, "socket")
-  table.insert(cmd, "readlink -f $HOME 2>/dev/null || echo $HOME")
+  local home = user and ("~" .. user) or "$HOME"
+  table.insert(cmd, string.format("readlink -f %s 2>/dev/null || echo %s", home, home))
   return cmd
 end
 
@@ -277,8 +279,9 @@ end
 --- Uses existing ControlMaster socket if available for zero authentication overhead
 ---@param host table|string SSH host object or name
 ---@param callback function Callback(home_path: string|nil, error: string|nil)
-function Ssh.get_remote_home(host, callback)
-  local cmd = Ssh.build_home_command(host)
+---@param user string|nil Account whose home to resolve (see build_home_command)
+function Ssh.get_remote_home(host, callback, user)
+  local cmd = Ssh.build_home_command(host, user)
   Logger.debug("Resolving remote home", function()
     return { host = host_label(host), command = table.concat(cmd, " ") }
   end)
