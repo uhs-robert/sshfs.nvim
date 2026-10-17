@@ -11,14 +11,21 @@ local STATUS = {
   elsewhere = "connected in another instance",
   disconnected = "disconnected",
   missing = "folder missing",
+  file = "a file, not a folder",
   unrecorded = "no sync record",
   work = "has unpushed work",
 }
 
-local NO_LOSS = { files = {}, git = false }
+local NO_LOSS = { files = {}, git = false, git_reasons = {} }
 
 local function exists(path)
   return vim.uv.fs_lstat(path) ~= nil
+end
+
+--- Whether a regular file sits where a mirror folder should be
+local function is_file(path)
+  local stat = vim.uv.fs_lstat(path)
+  return stat ~= nil and stat.type == "file"
 end
 
 --- The spelling that tells whether two paths name the same folder: resolved when it exists
@@ -70,7 +77,7 @@ end
 
 --- The first directory under root on another device than root itself, found without following symlinks
 ---@param root string
----@return string|nil path Also an unreadable directory, which cannot be shown to stay on the device
+---@return string|nil path Also an unreadable directory or entry, which cannot be shown to stay on the device
 local function file_system_boundary(root)
   local root_stat = vim.uv.fs_lstat(root)
   if not root_stat then return root end
@@ -79,9 +86,15 @@ local function file_system_boundary(root)
     if not handle then return dir end
     while true do
       local name, kind = vim.uv.fs_scandir_next(handle)
-      if not name then return nil end
+      if not name then return kind and dir or nil end
+      local child = dir .. "/" .. name
+      -- Some file systems leave the type "unknown" in the listing, while the recursive delete still descends
+      if kind == nil or kind == "unknown" then
+        local stat = vim.uv.fs_lstat(child)
+        if not stat then return child end
+        kind = stat.type
+      end
       if kind == "directory" then
-        local child = dir .. "/" .. name
         local stat = vim.uv.fs_lstat(child)
         if not stat or stat.dev ~= root_stat.dev then return child end
         local found = walk(child)
@@ -90,6 +103,23 @@ local function file_system_boundary(root)
     end
   end
   return walk(root)
+end
+
+--- A mount point of any type at or under root, which the device check misses for a bind mount of the same device
+---@param root string
+---@return string|nil reason
+local function contained_mount(root)
+  local mount_paths = require("sshfs.lib.mount_point").list_all_mount_paths()
+  if not mount_paths then return "the system mount table could not be read" end
+  local real = vim.uv.fs_realpath(root) or root
+  for _, mounted in ipairs(mount_paths) do
+    for _, spelling in ipairs({ root, real }) do
+      if mounted == spelling or mounted:sub(1, #spelling + 1) == spelling .. "/" then
+        return root .. " is or contains the mount point " .. mounted
+      end
+    end
+  end
+  return nil
 end
 
 --- Each spelling a lockfile for this entry may have been registered under
@@ -119,6 +149,7 @@ end
 ---@param state table
 ---@return string status
 local function state_status(state)
+  if is_file(state.local_path) then return STATUS.file end
   if vim.fn.isdirectory(state.local_path) ~= 1 then return STATUS.missing end
   local Lockfile = require("sshfs.lib.lockfile")
   if not require("sshfs.lib.connections").is_mirror_live(state) then return STATUS.disconnected end
@@ -194,7 +225,7 @@ function MirrorDelete.entries(host)
         state = state,
         status = state_status(state),
       }
-      if entry.status == STATUS.missing then
+      if entry.status == STATUS.missing or entry.status == STATUS.file then
         entry.kind = "missing"
       else
         local details = Mirror.local_only_details(state)
@@ -243,7 +274,7 @@ local function describe_loss(details)
     end
     if #details.files > 10 then table.insert(lines, string.format("  ... and %d more", #details.files - 10)) end
   end
-  if details.git then table.insert(lines, "local .git commits, branches or stashes") end
+  vim.list_extend(lines, details.git_reasons)
   return table.concat(lines, "\n")
 end
 
@@ -286,6 +317,8 @@ local function remove(entry)
     if not ok then return notify_error(reason) end
     local boundary = file_system_boundary(entry.local_path)
     if boundary then return notify_error(boundary .. " is on another file system or unreadable") end
+    local mount = contained_mount(entry.local_path)
+    if mount then return notify_error(mount) end
     -- Buffers on the files would outlive them; an unsaved one stops the delete
     for _, root in ipairs(vim.fn.uniq({ entry.local_path, entry.state_key or entry.local_path })) do
       if not require("sshfs.lib.mount_point").release_mount(root) then return false end
@@ -301,13 +334,20 @@ local function remove(entry)
 end
 
 --- Remove the record of a mirror whose folder is gone, if it is still gone once the confirmation is answered
+--- A regular file in the folder's place is never the mirror, so only the record goes and the file stays.
 ---@param entry table
 local function run_missing(entry)
   local path = entry.local_path
   if in_use_by_others(entry) then return notify_error(path .. " is in use by another Neovim instance") end
 
-  confirm("Remove the record of the missing mirror " .. path .. "?", "Remove record", function()
-    if exists(path) then return notify_error(path .. " exists again; run the delete again to check it") end
+  local was_file = is_file(path)
+  local prompt = was_file and "Remove the record of the mirror " .. path .. "? The file there is kept."
+    or "Remove the record of the missing mirror " .. path .. "?"
+  confirm(prompt, "Remove record", function()
+    if was_file and not is_file(path) then return notify_error(path .. " changed; run the delete again to check it") end
+    if not was_file and exists(path) then
+      return notify_error(path .. " exists again; run the delete again to check it")
+    end
     if in_use_by_others(entry) then return notify_error(path .. " is in use by another Neovim instance") end
     local fresh = require("sshfs.lib.mirror_state").load(entry.state_key)
     if fresh and require("sshfs.lib.connections").is_mirror_live(fresh) then
