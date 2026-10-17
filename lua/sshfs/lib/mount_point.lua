@@ -5,6 +5,14 @@ local MountPoint = {}
 local Directory = require("sshfs.lib.directory")
 local Config = require("sshfs.config")
 
+--- Output of `mount`, the mount table on every platform without findmnt
+--- @return string|nil output nil when the command failed
+local function mount_command_output()
+  local result = vim.fn.system("mount")
+  if vim.v.shell_error ~= 0 then return nil end
+  return result
+end
+
 --- Get all active SSHFS mount paths and remote info from the system
 --- @return table Array of mount info tables with {mount_path, remote_spec} where remote_spec may be nil when unavailable
 local function get_system_mounts()
@@ -34,8 +42,8 @@ local function get_system_mounts()
   end
 
   -- Fallback to mount command for broader compatibility
-  local result = vim.fn.system("mount")
-  if vim.v.shell_error ~= 0 then return mounts end
+  local result = mount_command_output()
+  if not result then return mounts end
 
   -- Cross-platform patterns for detecting SSHFS mounts with remote spec
   -- Format: "user@host:/remote/path on /mount/path type fuse.sshfs" or "... (macfuse"
@@ -70,6 +78,35 @@ end
 --- @return table[]
 function MountPoint.list_system_mounts()
   return get_system_mounts()
+end
+
+--- Every mount point on the system, of any file system type
+--- @return string[]|nil paths nil when the mount table could not be read
+function MountPoint.list_all_mount_paths()
+  if vim.fn.executable("findmnt") == 1 then
+    -- Raw output escapes spaces and other special characters in a target as \xNN
+    local output = vim.fn.system({ "findmnt", "-r", "-n", "-o", "TARGET" })
+    if vim.v.shell_error == 0 then
+      local paths = {}
+      for line in output:gmatch("[^\r\n]+") do
+        local path = line:gsub("\\x(%x%x)", function(hex)
+          return string.char(tonumber(hex, 16))
+        end)
+        table.insert(paths, path)
+      end
+      return paths
+    end
+  end
+
+  local output = mount_command_output()
+  if not output then return nil end
+  local paths = {}
+  for line in output:gmatch("[^\r\n]+") do
+    -- Linux: "source on /path type fstype (options)"; macOS and BSD: "source on /path (fstype, options)"
+    local path = line:match("^.- on (.+) type %S+ %(.*%)$") or line:match("^.- on (.+) %(.*%)$")
+    if path then table.insert(paths, path) end
+  end
+  return paths
 end
 
 --- Check if a mount path is actively mounted

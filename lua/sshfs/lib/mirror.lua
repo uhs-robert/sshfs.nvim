@@ -241,6 +241,72 @@ function Mirror.git_fingerprint(root)
   return vim.fn.sha256(table.concat(lines, "\n"))
 end
 
+--- The first path under dir that cannot be listed or stat'ed, or is neither a file nor a directory
+---@param dir string
+---@return string|nil path
+local function unreadable_ref(dir)
+  local handle = vim.uv.fs_scandir(dir)
+  if not handle then return dir end
+  while true do
+    local name, kind = vim.uv.fs_scandir_next(handle)
+    -- A second value with no name is a read error, not the end of the listing
+    if not name then return kind and dir or nil end
+    local path = dir .. "/" .. name
+    local stat = vim.uv.fs_stat(path)
+    if not stat then return path end
+    if stat.type == "directory" then
+      local found = unreadable_ref(path)
+      if found then return found end
+    elseif stat.type ~= "file" then
+      return path
+    end
+  end
+end
+
+--- Why git_fingerprint cannot vouch for this .git, if it cannot
+--- The fingerprint reads only HEAD, packed-refs and loose refs, so refs kept anywhere else, or in a directory
+--- it could not list, would change without changing it.
+---@param git_dir string
+---@return string|nil reason
+local function unverifiable_git(git_dir)
+  if vim.uv.fs_lstat(git_dir .. "/reftable") then
+    return ".git uses the reftable format, so its local commits cannot be checked"
+  end
+  if vim.uv.fs_lstat(git_dir .. "/worktrees") then
+    local handle = vim.uv.fs_scandir(git_dir .. "/worktrees")
+    if not handle or vim.uv.fs_scandir_next(handle) then
+      return ".git has linked worktrees, whose local commits cannot be checked"
+    end
+  end
+  if vim.uv.fs_lstat(git_dir .. "/refs") then
+    local unreadable = unreadable_ref(git_dir .. "/refs")
+    if unreadable then
+      return ".git refs cannot be read at " .. unreadable .. ", so its local commits cannot be checked"
+    end
+  end
+  return nil
+end
+
+--- What in a local .git deleting the mirror could lose, compared with the fingerprint recorded at the last sync
+--- Fails closed: anything that keeps the refs from being verified counts as local work.
+---@param root string
+---@param recorded string|nil
+---@return string[] reasons Empty when nothing would be lost
+local function git_loss(root, recorded)
+  local ok, reasons = pcall(function()
+    local git_dir = local_file(root, ".git")
+    if vim.fn.isdirectory(git_dir) ~= 1 then return {} end
+    local unverifiable = unverifiable_git(git_dir)
+    if unverifiable then return { unverifiable } end
+    if Mirror.git_fingerprint(root) ~= recorded then
+      return { ".git has local commits, branches or stashes since the last pull" }
+    end
+    return {}
+  end)
+  if not ok then return { ".git could not be read (" .. tostring(reasons) .. "), so its commits cannot be checked" } end
+  return reasons
+end
+
 -- Local helpers ----------------------------------------------------------------------------------------------
 
 ---@return string[]
@@ -1097,7 +1163,7 @@ end
 
 --- What deleting the local copy would lose
 ---@param state table
----@return table details {files = sorted rels not on the server, git = boolean: local commits, branches or stashes}
+---@return table details {files = sorted rels not on the server, git = boolean, git_reasons = string[] why git counts}
 function Mirror.local_only_details(state)
   local root = state.local_path
   local snapshot = Mirror.snapshot(root, mirror_config().excludes)
@@ -1108,10 +1174,11 @@ function Mirror.local_only_details(state)
   for rel in pairs(state.unsynced) do
     files[rel] = true
   end
-  local fingerprint = Mirror.git_fingerprint(root)
+  local git_reasons = git_loss(root, state.git_fingerprint)
   return {
     files = vim.fn.sort(vim.tbl_keys(files)),
-    git = fingerprint ~= nil and fingerprint ~= state.git_fingerprint,
+    git = #git_reasons > 0,
+    git_reasons = git_reasons,
   }
 end
 
@@ -1121,7 +1188,7 @@ end
 function Mirror.local_only_work(state)
   local details = Mirror.local_only_details(state)
   if #details.files > 0 then return "it has local files that are not on the server" end
-  if details.git then return "its .git has local commits, branches or stashes since the last pull" end
+  if details.git then return "its " .. table.concat(details.git_reasons, "; ") end
   return nil
 end
 

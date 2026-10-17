@@ -731,3 +731,132 @@ describe("Mirror delete never reaches a mount", function()
     expect.contains(messages(notes), "overlap")
   end)
 end)
+
+describe("Mirror delete counts .git refs it cannot verify as local work", function()
+  --- A mirror whose recorded fingerprint is of the .git that `setup_git` builds, before `commit` runs
+  local function mirror_with_git(scratch, setup_git, commit)
+    local path = scratch .. "/mirrors/box_app"
+    write_file(path .. "/.git/HEAD", "ref: refs/heads/main\n", OLD)
+    setup_git(path .. "/.git")
+    make_mirror(scratch, "box_app", { git_fingerprint = require("sshfs.lib.mirror").git_fingerprint(path) })
+    commit(path .. "/.git")
+    return path
+  end
+
+  local function expect_refused(path, scratch, reason)
+    answer("Delete")
+    local notes = stub.notifications()
+
+    run(path)
+    local kept = exists(path .. "/.git") and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), reason)
+  end
+
+  it("refuses a reftable repository, whose commits leave the fingerprint unchanged", function()
+    local scratch = with_scratch()
+    local path = mirror_with_git(scratch, function(git_dir)
+      write_file(git_dir .. "/HEAD", "ref: refs/heads/.invalid\n", OLD)
+      write_file(git_dir .. "/refs/heads", "this repository uses the reftable format\n", OLD)
+      write_file(git_dir .. "/reftable/tables.list", "0x1.ref\n", OLD)
+    end, function(git_dir)
+      write_file(git_dir .. "/reftable/tables.list", "0x1.ref\n0x2.ref\n")
+      write_file(git_dir .. "/reftable/0x2.ref", "commit")
+    end)
+    expect_refused(path, scratch, "reftable")
+  end)
+
+  it("refuses a repository with linked worktrees, which can hold detached commits", function()
+    local scratch = with_scratch()
+    local path = mirror_with_git(scratch, function(git_dir)
+      write_file(git_dir .. "/worktrees/wip/HEAD", "aaaa\n", OLD)
+    end, function(git_dir)
+      write_file(git_dir .. "/worktrees/wip/HEAD", "bbbb\n", OLD)
+    end)
+    expect_refused(path, scratch, "linked worktrees")
+  end)
+
+  it("refuses a repository with a refs directory it cannot list", function()
+    local scratch = with_scratch()
+    local team = scratch .. "/mirrors/box_app/.git/refs/heads/team"
+    local path = mirror_with_git(scratch, function()
+      vim.fn.mkdir(team, "p")
+      vim.uv.fs_chmod(team, tonumber("300", 8))
+    end, function()
+      write_file(team .. "/feature", "aaaa\n")
+    end)
+    -- Checked directly: the delete's own walk refuses an unreadable directory anyway, but
+    -- on_disconnect = "delete" relies on this check alone
+    local details = require("sshfs.lib.mirror").local_only_details(require("sshfs.lib.mirror_state").load(path))
+    vim.uv.fs_chmod(team, tonumber("755", 8))
+    finish(scratch)
+
+    expect.truthy(details.git)
+    expect.contains(table.concat(details.git_reasons, "\n"), "cannot be read at " .. team)
+  end)
+end)
+
+describe("Mirror delete edge cases", function()
+  it("resolves directories the listing types as unknown before walking for other devices", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    write_file(path .. "/nested/remote.txt", "elsewhere")
+    local real_next, real_lstat = vim.uv.fs_scandir_next, vim.uv.fs_lstat
+    stub.set("uv.fs_scandir_next", function(handle)
+      local name, kind = real_next(handle)
+      if name == "nested" then return name, "unknown" end
+      return name, kind
+    end)
+    stub.set("uv.fs_lstat", function(target)
+      local stat = real_lstat(target)
+      if stat and target == path .. "/nested" then stat.dev = stat.dev + 1 end
+      return stat
+    end)
+    answer("Delete")
+    local notes = stub.notifications()
+
+    run(path)
+    local kept = exists(path .. "/nested/remote.txt") and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "nested is on another file system")
+  end)
+
+  it("refuses a mirror holding a mount point of any type, such as a same-device bind mount", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    write_file(path .. "/bound/data.txt", "bind source")
+    stub.system(function(cmd)
+      if cmd == "mount" then return "/dev/sda1 on " .. path .. "/bound type ext4 (rw)", 0 end
+      return "", 0
+    end)
+    answer("Delete")
+    local notes = stub.notifications()
+
+    run(path, { force = true })
+    local kept = exists(path .. "/bound/data.txt") and state_exists(path)
+    finish(scratch)
+
+    expect.truthy(kept)
+    expect.contains(messages(notes), "contains the mount point " .. path .. "/bound")
+  end)
+
+  it("removes only the record when a regular file sits where the mirror folder was", function()
+    local scratch = with_scratch()
+    local path = make_mirror(scratch, "box_app")
+    vim.fn.delete(path, "rf")
+    write_file(path, "not a mirror")
+    local asked = answer("Remove")
+
+    run(path)
+    local record_gone, file_kept = not state_exists(path), vim.uv.fs_lstat(path)
+    finish(scratch)
+
+    expect.contains(asked[1].prompt, "The file there is kept")
+    expect.truthy(record_gone)
+    expect.truthy(file_kept and file_kept.type == "file")
+  end)
+end)
