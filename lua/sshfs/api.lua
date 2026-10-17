@@ -29,6 +29,9 @@ end
 --- Picks the mirror containing the current buffer or directory, else the only one, else asks.
 --- @param action function fun(connection: table)
 local function with_mirror(action)
+  local unavailable = require("sshfs.config").mirror_unavailable_reason()
+  if unavailable then return vim.notify("Mirror mode is unavailable: " .. unavailable, vim.log.levels.ERROR) end
+
   local mirrors = vim.tbl_filter(function(connection)
     return connection.kind == "mirror"
   end, require("sshfs.lib.connections").list_active())
@@ -56,6 +59,9 @@ end
 --- @param host_name string|nil Only this host's mirrors
 --- @param force boolean|nil Delete even if it holds work that never reached the server, after a confirmation
 Api.mirror_delete = function(host_name, force)
+  local unavailable = require("sshfs.config").mirror_unavailable_reason()
+  if unavailable then return vim.notify("Mirror mode is unavailable: " .. unavailable, vim.log.levels.ERROR) end
+
   local MirrorDelete = require("sshfs.lib.mirror_delete")
   local entries = MirrorDelete.entries(host_name)
   if #entries == 0 then

@@ -936,30 +936,23 @@ end
 
 -- Paths and autocommands -------------------------------------------------------------------------------------
 
---- The mirror base directory, plus its symlink-resolved form when that differs
----@return string[] prefixes Each ending in a slash
-local function base_prefixes()
-  local base = vim.fs.normalize(mirror_config().base_dir):gsub("/+$", "")
-  local prefixes = { base .. "/" }
-  local real = vim.uv.fs_realpath(base)
-  if real and real ~= base then table.insert(prefixes, real .. "/") end
-  return prefixes, base
-end
-
 --- Find the mirror whose root contains a path
 ---@param path string Absolute file path
 ---@return table|nil state
 ---@return string|nil rel
 function Mirror.find_for_path(path)
   path = vim.fs.normalize(path)
-  local prefixes, base = base_prefixes()
-  for _, prefix in ipairs(prefixes) do
+  local bases = MirrorState.base_dirs()
+  for _, prefix_base in ipairs(bases) do
+    local prefix = prefix_base .. "/"
     if path:sub(1, #prefix) == prefix then
       local dir_name, rel = path:sub(#prefix + 1):match("^([^/]+)/(.+)$")
       if not dir_name then return nil end
-      -- States are keyed by the configured, unresolved path
-      local state = MirrorState.load(base .. "/" .. dir_name)
-      if state then return state, rel end
+      -- A state is keyed by the spelling it was recorded with, which may be either base
+      for _, base in ipairs(bases) do
+        local state = MirrorState.load(base .. "/" .. dir_name)
+        if state then return state, rel end
+      end
       return nil
     end
   end

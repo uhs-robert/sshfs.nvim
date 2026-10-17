@@ -10,6 +10,22 @@ function MirrorState.dir()
   return vim.fn.stdpath("state") .. "/sshfs/mirrors"
 end
 
+--- mirror.base_dir in its canonical spelling, which every newly recorded mirror's local_path starts with
+---@return string
+function MirrorState.base_dir()
+  return require("sshfs.lib.path").canonical(require("sshfs.config").get().mirror.base_dir)
+end
+
+--- Every spelling of the base a recorded local_path may start with: the canonical one first, then the
+--- configured one (normalized), which states recorded by earlier builds used
+---@return string[]
+function MirrorState.base_dirs()
+  local canonical = MirrorState.base_dir()
+  local configured = vim.fs.normalize(require("sshfs.config").get().mirror.base_dir):gsub("/+$", "")
+  if configured == canonical or configured == "" then return { canonical } end
+  return { canonical, configured }
+end
+
 --- State file path for a mirror, keyed by its local root
 ---@param local_path string
 ---@return string

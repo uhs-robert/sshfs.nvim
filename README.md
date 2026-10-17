@@ -232,7 +232,7 @@ require("sshfs").setup({
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
   },
   mirror = {
-    base_dir = vim.fn.stdpath("data") .. "/sshfs/mirrors", -- where mirrors are pulled to (keep apart from mounts.base_dir)
+    base_dir = vim.fn.stdpath("data") .. "/sshfs/mirrors", -- where mirrors are pulled to (must not overlap mounts.base_dir, or mirror commands refuse)
     hosts = {},                   -- host names or patterns ("prod-*") that :SSHConnect mirrors instead of mounting
     excludes = { "node_modules", ".venv", "__pycache__", "target", "dist" }, -- never pulled or pushed
     pull_git = true,              -- pull .git (it is never pushed)

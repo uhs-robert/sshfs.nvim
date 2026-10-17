@@ -76,6 +76,12 @@ local function get_system_mounts()
   return mounts
 end
 
+--- Every sshfs mount on the system, wherever it is, as {mount_path, remote_spec}
+--- @return table[]
+function MountPoint.list_system_mounts()
+  return get_system_mounts()
+end
+
 --- Check if a mount path is listed in the system mount table.
 --- Only the mount table is read, never the path itself. A stat on an unresponsive
 --- mount fails, or blocks Neovim until the mount recovers.
