@@ -6,12 +6,11 @@ local Config = require("sshfs.config")
 local PRE_MOUNT_DIRS = {} -- Track pre-mount directory for each connection
 
 -- Helper to create a unique local folder name based on host and remote path
+---@param base_dir string Directory the folder lives in (mount or mirror base)
 ---@param host_name string Host name
 ---@param remote_path_suffix string Remote path suffix to be concatenated to the host name
 ---@return string Success A unique concatenation of the host name and the suffix
-local function get_unique_mount_dir(host_name, remote_path_suffix)
-  local config = Config.get()
-
+local function get_unique_dir(base_dir, host_name, remote_path_suffix)
   local sanitized_path = remote_path_suffix
     :gsub("^/", "") -- trim leading slash
     :gsub("/$", "") -- trim trailing slash
@@ -19,16 +18,62 @@ local function get_unique_mount_dir(host_name, remote_path_suffix)
 
   -- If root or empty then use the host name; otherwise append the path
   local suffix = (sanitized_path ~= "") and ("_" .. sanitized_path) or ""
-  return config.mounts.base_dir .. "/" .. host_name .. suffix
+  return base_dir .. "/" .. host_name .. suffix
 end
 
---- Connect to a remote SSH host via SSHFS
+--- Connect to a remote host as a local mirror: pull the directory, then sync saves back
+---@param host table Host object
+---@param remote_path_suffix string Remote path chosen by the user
+---@param config table Plugin configuration
+local function connect_mirror(host, remote_path_suffix, config)
+  local Connections = require("sshfs.lib.connections")
+  local MountPoint = require("sshfs.lib.mount_point")
+  local Lockfile = require("sshfs.lib.lockfile")
+
+  local mirror_dir = get_unique_dir(config.mirror.base_dir, host.name, remote_path_suffix)
+  for _, connection in ipairs(Connections.list_active()) do
+    if connection.mount_path == mirror_dir then
+      vim.notify("Path " .. remote_path_suffix .. " on " .. host.name .. " is already mirrored.", vim.log.levels.WARN)
+      return
+    end
+  end
+
+  PRE_MOUNT_DIRS[mirror_dir] = vim.uv.cwd()
+  local dir_ready, dir_created = MountPoint.get_or_create(mirror_dir)
+  if not dir_ready then
+    PRE_MOUNT_DIRS[mirror_dir] = nil
+    vim.notify("Failed to create mirror directory: " .. mirror_dir, vim.log.levels.ERROR)
+    return
+  end
+
+  require("sshfs.lib.mirror").open(host, remote_path_suffix, mirror_dir, function(result)
+    if not result.success then
+      PRE_MOUNT_DIRS[mirror_dir] = nil
+      if dir_created and require("sshfs.lib.directory").is_empty(mirror_dir) then
+        pcall(vim.fn.delete, mirror_dir, "d")
+      end
+      vim.notify("Connection failed: " .. (result.message or "Unknown error"), vim.log.levels.ERROR)
+      return
+    end
+
+    Lockfile.register(mirror_dir)
+    vim.notify("Mirrored " .. host.name .. " (" .. remote_path_suffix .. ")", vim.log.levels.INFO)
+    require("sshfs.ui.hooks").on_mount(mirror_dir, host.name, result.resolved_path or remote_path_suffix, config)
+  end)
+end
+
+--- Connect to a remote SSH host via SSHFS, or as a local mirror
 ---@param host table Host object with name, user, port, and path fields
+---@param opts table|nil {mode = "mount"|"mirror"}; defaults to mirror for hosts in `mirror.hosts`, else mount
 ---@return boolean|nil Success status (or nil if async callback)
-function Session.connect(host)
+function Session.connect(host, opts)
   local MountPoint = require("sshfs.lib.mount_point")
   local Lockfile = require("sshfs.lib.lockfile")
   local config = Config.get()
+  local mode = opts and opts.mode
+  if not mode then
+    mode = require("sshfs.lib.mirror").matches_hosts(host.name, config.mirror.hosts) and "mirror" or "mount"
+  end
 
   -- Ask the user for the mount path
   local Ask = require("sshfs.ui.ask")
@@ -38,8 +83,10 @@ function Session.connect(host)
       return
     end
 
+    if mode == "mirror" then return connect_mirror(host, remote_path_suffix, config) end
+
     -- Generate unique mount directory based on host + path
-    local mount_dir = get_unique_mount_dir(host.name, remote_path_suffix)
+    local mount_dir = get_unique_dir(config.mounts.base_dir, host.name, remote_path_suffix)
 
     -- Check if unique path is already mounted
     if MountPoint.is_active(mount_dir) then
@@ -123,6 +170,8 @@ function Session.disconnect_from(connection, silent)
     end
   end
 
+  if connection.kind == "mirror" then return Session.disconnect_mirror(connection, silent) end
+
   -- Release buffers and LSPs associated with mount point
   local safe_to_unmount = MountPoint.release_mount(connection.mount_path, silent)
   if not safe_to_unmount then return false end
@@ -160,10 +209,66 @@ function Session.disconnect_from(connection, silent)
   end
 end
 
+--- Disconnect from a mirror: flush pending pushes, release it, and keep or delete the local copy
+--- No unmount is involved; the directory is an ordinary one.
+---@param connection table Mirror connection
+---@param silent boolean|nil Suppress notifications
+---@return boolean Success status
+function Session.disconnect_mirror(connection, silent)
+  local MountPoint = require("sshfs.lib.mount_point")
+  local Lockfile = require("sshfs.lib.lockfile")
+  local Mirror = require("sshfs.lib.mirror")
+  local MirrorState = require("sshfs.lib.mirror_state")
+  local local_path = connection.local_path
+
+  -- Flushed before the buffers are released, so a disconnect that has to stay connected leaves them open
+  if not Mirror.flush(10000, local_path) then
+    vim.notify("Mirror " .. connection.host .. " still has pushes pending, staying connected", vim.log.levels.ERROR)
+    return false
+  end
+
+  if not MountPoint.release_mount(local_path, silent) then return false end
+
+  Lockfile.unregister(local_path)
+  PRE_MOUNT_DIRS[local_path] = nil
+
+  if Lockfile.is_in_use_by_others(local_path) then
+    if not silent then
+      vim.notify(
+        "Mirror " .. connection.host .. " still in use by other instances, keeping connected",
+        vim.log.levels.INFO
+      )
+    end
+    return true
+  end
+
+  local state = MirrorState.load(local_path)
+  local delete_dir = state ~= nil and Config.get().mirror.on_disconnect == "delete"
+  local keep_reason = delete_dir and Mirror.local_only_work(state)
+  if keep_reason then
+    vim.notify("Mirror " .. connection.host .. " kept at " .. local_path .. ": " .. keep_reason, vim.log.levels.WARN)
+    delete_dir = false
+  end
+
+  if delete_dir then
+    MirrorState.delete(local_path)
+    vim.fn.delete(local_path, "rf")
+  elseif state then
+    MirrorState.update(local_path, function(fresh)
+      fresh.connected = false
+    end)
+  end
+
+  if not silent then vim.notify("Disconnected from " .. connection.host, vim.log.levels.INFO) end
+  return true
+end
+
 --- Cleanup all unused mounts on VimLeave
 --- Iterates through all active connections and releases any not being used by other instances
 function Session.cleanup_unused_mounts()
   local Connections = require("sshfs.lib.connections")
+  -- Neovim is exiting: mirror pushes must not prompt or open an authentication window from here on
+  require("sshfs.lib.mirror").begin_exit()
 
   for _, connection in ipairs(Connections.list_active()) do
     Session.disconnect_from(connection, true)

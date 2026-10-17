@@ -288,6 +288,53 @@ local function check_mount_config()
   end
 end
 
+--- Check mirror mode prerequisites (rsync is only needed when mirror mode is used)
+local function check_mirror()
+  health.start("Mirror Mode")
+
+  if command_exists("rsync") then
+    local handle = io.popen("rsync --version 2>&1")
+    local version = handle and handle:read("*l") or nil
+    if handle then handle:close() end
+    health.ok("rsync is installed: " .. (version or "version unknown"))
+    local info = require("sshfs.lib.rsync").detect()
+    if info.kind == "openrsync" or info.remote_args == "shell" then
+      health.warn(
+        "rsync is openrsync or older than 3.0",
+        "Mirror mode escapes remote paths for the remote shell itself, which is untested with openrsync; "
+          .. "'brew install rsync' gives the reference implementation"
+      )
+    elseif info.kind == "unknown" then
+      health.warn("rsync version not recognised", "Mirror mode refuses remote paths with spaces or shell characters")
+    end
+  else
+    health.warn(
+      "rsync is not installed (only needed for mirror mode)",
+      "Install rsync: 'sudo apt install rsync' or 'brew install rsync'"
+    )
+  end
+
+  local config = require("sshfs.config").get()
+  local mirror_dir = config.mirror.base_dir
+  local mount_dir = config.mounts.base_dir
+  local function contains(outer, inner)
+    outer = outer:gsub("/+$", "")
+    inner = inner:gsub("/+$", "")
+    return inner == outer or inner:sub(1, #outer + 1) == outer .. "/"
+  end
+  if contains(mount_dir, mirror_dir) or contains(mirror_dir, mount_dir) then
+    health.warn(
+      "mirror.base_dir and mounts.base_dir overlap: " .. mirror_dir .. ", " .. mount_dir,
+      "Keep them apart, so mirrors and mounts are never mistaken for each other"
+    )
+  end
+  if is_writable(mirror_dir) then
+    health.ok("Mirror base directory is writable: " .. mirror_dir)
+  else
+    health.warn("Mirror base directory is not writable: " .. mirror_dir, "Fix permissions or set mirror.base_dir")
+  end
+end
+
 --- Check file picker integrations
 local function check_integrations()
   health.start("File Picker Integrations")
@@ -442,6 +489,7 @@ function Health.check()
   check_system_dependencies()
   check_ssh_config()
   check_mount_config()
+  check_mirror()
   check_integrations()
   check_configuration()
 
