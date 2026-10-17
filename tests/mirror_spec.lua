@@ -1316,6 +1316,61 @@ describe("Mirror exit", function()
   end)
 end)
 
+-- Disconnect ---------------------------------------------------------------------------------------------------
+
+describe("Mirror disconnect with on_disconnect = delete", function()
+  local function disconnect(root)
+    require("sshfs.session").disconnect_mirror({ host = "box", local_path = root, mount_path = root }, true)
+    return vim.fn.isdirectory(root) == 1
+  end
+
+  it("deletes a clean mirror", function()
+    local scratch = with_scratch({ mirror = { on_disconnect = "delete" } })
+    local root = synced_mirror(scratch, { ["a"] = { mtime = OLD, content = "1" } })
+    stub.notifications()
+
+    local kept = disconnect(root)
+    stub.restore_all()
+
+    expect.falsy(kept)
+    finish(scratch)
+  end)
+
+  it("keeps a mirror with unpushed files", function()
+    local scratch = with_scratch({ mirror = { on_disconnect = "delete" } })
+    local root = synced_mirror(scratch, { ["a"] = { mtime = OLD, content = "1" } })
+    write_file(root .. "/a", "edited", OLD + 1)
+    local notes = stub.notifications()
+
+    local kept = disconnect(root)
+    stub.restore_all()
+
+    expect.truthy(kept)
+    expect.contains(notes[1].message, "not on the server")
+    finish(scratch)
+  end)
+
+  it("keeps a mirror whose .git has local commits since the last pull", function()
+    local scratch = with_scratch({ mirror = { on_disconnect = "delete" } })
+    local root = synced_mirror(scratch, {})
+    write_file(root .. "/.git/HEAD", "ref: refs/heads/main\n", OLD)
+    write_file(root .. "/.git/refs/heads/main", "aaaa\n", OLD)
+    local Mirror = require("sshfs.lib.mirror")
+    require("sshfs.lib.mirror_state").update(root, function(state)
+      state.git_fingerprint = Mirror.git_fingerprint(root)
+    end)
+    write_file(root .. "/.git/refs/heads/main", "bbbb\n", OLD + 1)
+    local notes = stub.notifications()
+
+    local kept = disconnect(root)
+    stub.restore_all()
+
+    expect.truthy(kept)
+    expect.contains(notes[1].message, ".git has local commits")
+    finish(scratch)
+  end)
+end)
+
 -- Paths --------------------------------------------------------------------------------------------------------
 
 describe("Mirror.open remote paths", function()

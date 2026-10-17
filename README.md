@@ -103,6 +103,7 @@ Built for Neovim 0.10+ using the best of both `sshfs` and `ssh` in tandem with y
 - **Real SSH config support** – Honors Include/Match/ProxyJump and all `ssh_config` options via `ssh -G`; optional per-host default paths.
 - **On-mount hooks** – Auto-run find/grep/live find/live grep/terminal or your own function after connecting.
 - **Live remote search** – Stream `rg`/`find` over SSH (snacks, fzf-lua, telescope, mini) while keeping mounts quiet.
+- **Mirror mode** – Pull a directory locally, edit at local speed with every local feature, and sync saves back over the same SSH connection (needs `rsync`).
 - **Multi-mount aware** – Connect to several hosts, clean up on exit, and jump between mounts with keymaps or commands.
 - **Command suite** – `:SSHFiles`, `:SSHGrep`, `:SSHLiveFind/Grep`, `:SSHTerminal`, `:SSHCommand`, `:SSHChangeDir`, `:SSHConfig`, `:SSHReload`.
 - **Host-aware defaults** – Optional global and per-host default paths so you can skip path selection on common servers.
@@ -230,6 +231,15 @@ require("sshfs").setup({
   mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
   },
+  mirror = {
+    base_dir = vim.fn.stdpath("data") .. "/sshfs/mirrors", -- where mirrors are pulled to (keep apart from mounts.base_dir)
+    hosts = {},                   -- host names or patterns ("prod-*") that :SSHConnect mirrors instead of mounting
+    excludes = { "node_modules", ".venv", "__pycache__", "target", "dist" }, -- never pulled or pushed
+    pull_git = true,              -- pull .git (it is never pushed)
+    push_on_save = true,          -- push each saved file to the server
+    on_disconnect = "keep",       -- "keep" or "delete" the local directory
+    rsync_options = {},           -- extra rsync arguments for every transfer
+  },
   global_paths = {
     -- Optionally define default mount paths for ALL hosts
     -- These appear as options when connecting to any host
@@ -281,6 +291,7 @@ require("sshfs").setup({
   },
   lead_prefix = "<leader>m",      -- change keymap prefix (default: <leader>m)
   keymaps = {
+    mirror = "<leader>mM",        -- mirrors a remote directory locally
     mount = "<leader>mm",         -- creates an ssh connection and mounts via sshfs
     unmount = "<leader>mu",       -- disconnects an ssh connection and unmounts via sshfs
     unmount_all = "<leader>mU",   -- disconnects all ssh connections and unmounts via sshfs
@@ -308,6 +319,9 @@ require("sshfs").setup({
 
 - `:checkhealth sshfs` - Verify dependencies and configuration
 - `:SSHConnect [host]` - Mount a remote host. Accepts an ssh_config alias or a host that is in no config at all, e.g. `:SSHConnect user@example.com:/srv -p 2222`. Without an argument the picker offers "Enter host manually..." for the same thing.
+- `:SSHMirror [host]` - Mirror a remote directory locally instead of mounting it (see [Mirror mode](#-mirror-mode))
+- `:SSHMirrorPull` - Pull the remote tree into the current mirror, keeping locally edited files
+- `:SSHMirrorPush[!]` - Push every file changed locally since the last sync; with `!` also delete server files you removed locally (after a confirmation listing them)
 - `:SSHTest [host]` - Test SSH resolution and authentication without mounting
 - `:SSHDisconnect` - Unmount current host
 - `:SSHDisconnectAll` - Unmount all hosts
@@ -332,6 +346,7 @@ Default keybindings under `<leader>m` (fully customizable):
 | Mapping      | Description                       |
 | ------------ | --------------------------------- |
 | `<leader>mm` | Mount an SSH host                 |
+| `<leader>mM` | Mirror an SSH host locally        |
 | `<leader>mu` | Unmount an active session         |
 | `<leader>mU` | Unmount all active sessions       |
 | `<leader>me` | Explore SSH mount via native edit |
@@ -357,6 +372,29 @@ If [which-key.nvim](https://github.com/folke/which-key.nvim) is installed, the `
 3. Disconnect with `:SSHDisconnect` (or let `hooks.on_exit.auto_unmount` handle it).
 
 Auth flow: keys first, then floating terminal for passphrases/passwords/2FA; ControlMaster keeps the session alive across operations.
+
+## 🪞 Mirror mode
+
+Every open and save on an sshfs mount pays network round trips, and LSP indexing and pickers go over FUSE too. Mirror mode pulls the remote directory to a local folder instead, so you edit at local speed with all your local plugins, and syncs saves back over the existing ControlMaster connection.
+
+Use `:SSHMirror [host]` to mirror, or list hosts in `mirror.hosts` to have `:SSHConnect` mirror them by default. Disconnect with `:SSHDisconnect` as usual. Mirror mode needs `rsync` locally and on the server, and only when you use it.
+
+**Trade-offs**
+
+- **Save delay** – A save is local and instant; the push follows in the background. `require("sshfs").mirror_status()` (also `vim.b.sshfs_mirror`) reports `pending`, `pushing`, `synced`, `conflict`, `error` or `disconnected` for a statusline. Only errors and conflicts notify.
+- **Conflicts** – Before each push the server's copy is compared with what the last sync saw. If it changed (or was deleted), you choose to overwrite it, diff against it, or cancel. A cancelled or failed push leaves the file unpushed, and it is listed again when you next connect.
+- **`:SSHMirrorPush`** sends only files changed locally since the last sync, with the same check; it never sends an unchanged local copy over a newer server one. With `!` it also deletes server files you removed locally, after listing them, but only files the mirror pulled and the server still holds unchanged. Empty directories are left on the server.
+- **Server-side deletes are not pulled** – A file removed on the server stays in the mirror.
+- **`.git` is pulled but never pushed** – Local commits are overwritten by the next pull.
+- **Locally edited files survive a pull** – `:SSHMirrorPull` skips files changed locally (or with unsaved changes) and reports any the server also changed since the last sync. Pulls use `rsync --update`, so a server file replaced by an older-dated copy is not pulled over an unchanged local one; it shows up as a conflict on your next push instead.
+- **Edits outside Neovim** are not pushed on save; `:SSHMirrorPush` catches them. There are no file watchers or timers.
+- **Large trees** – The first pull copies everything not in `mirror.excludes`.
+- **Exiting** – Neovim waits up to 5 s for pending pushes, without prompting. Anything left over stays unpushed locally and is reported next time.
+- **Connection** – Transfers reuse the ControlMaster socket and never prompt. If the socket has expired (`connections.control_persist`), the host is re-authenticated once, which may open the usual authentication window.
+- With `on_disconnect = "delete"` the directory is removed on disconnect unless it holds unpushed files or local git commits, branches or stashes. Excluded directories inside it are removed too.
+- **Clock skew** – If the server's clock runs ahead of yours, `--update` can skip a save you made during a pull. Keep both clocks in sync (for example with NTP).
+- **Crashed Neovim** – If a Neovim instance crashes and the OS gives its PID to another process, its mirror can stay listed as connected until that process exits.
+- **macOS openrsync** – Supported for the options mirror mode uses, but remote paths with spaces or shell characters are escaped by the plugin and untested there; `brew install rsync` avoids the question; there pushes may also set the mtime of the server directories above a pushed file.
 
 ## 💡 Tips
 

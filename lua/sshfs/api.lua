@@ -6,16 +6,95 @@ local Config = require("sshfs.config")
 
 --- Connect to SSH host - use picker if no host provided, otherwise connect directly
 --- @param host table|nil SSH host object (optional)
-Api.connect = function(host)
+--- @param opts table|nil {mode = "mount"|"mirror"}; hosts in `mirror.hosts` default to mirror
+Api.connect = function(host, opts)
   local Session = require("sshfs.session")
   if host then
-    Session.connect(host)
+    Session.connect(host, opts)
   else
     local Select = require("sshfs.ui.select")
     Select.host(function(selected_host)
-      if selected_host then Session.connect(selected_host) end
+      if selected_host then Session.connect(selected_host, opts) end
     end)
   end
+end
+
+--- Mirror a remote directory locally instead of mounting it
+--- @param host table|nil SSH host object (optional)
+Api.mirror = function(host)
+  Api.connect(host, { mode = "mirror" })
+end
+
+--- Run an action on the mirror the user is working in
+--- Picks the mirror containing the current buffer or directory, else the only one, else asks.
+--- @param action function fun(connection: table)
+local function with_mirror(action)
+  local mirrors = vim.tbl_filter(function(connection)
+    return connection.kind == "mirror"
+  end, require("sshfs.lib.connections").list_active())
+
+  if #mirrors == 0 then
+    vim.notify("No active mirror", vim.log.levels.WARN)
+    return
+  end
+
+  local here = vim.api.nvim_buf_get_name(0)
+  if here == "" then here = vim.uv.cwd() end
+  for _, mirror in ipairs(mirrors) do
+    if here == mirror.local_path or vim.startswith(here, mirror.local_path .. "/") then return action(mirror) end
+  end
+
+  if #mirrors == 1 then return action(mirrors[1]) end
+
+  local Connections = require("sshfs.lib.connections")
+  vim.ui.select(mirrors, { prompt = "Select mirror:", format_item = Connections.format_label }, function(choice)
+    if choice then action(choice) end
+  end)
+end
+
+--- Pull the remote tree into the current mirror, keeping locally edited files
+Api.mirror_pull = function()
+  with_mirror(function(mirror)
+    local Mirror = require("sshfs.lib.mirror")
+    Mirror.pull(mirror.local_path, function(result)
+      Mirror.notify_pull(mirror.host, result)
+    end)
+  end)
+end
+
+--- Push every file changed locally since the last sync
+--- @param delete boolean|nil Also delete server files removed locally (after a confirmation listing them)
+Api.mirror_push = function(delete)
+  with_mirror(function(mirror)
+    require("sshfs.lib.mirror").push_all(mirror.local_path, { delete = delete }, function(result)
+      if not result.ok then
+        if result.message ~= "cancelled" then
+          vim.notify("Mirror push failed: " .. result.message, vim.log.levels.ERROR)
+        end
+        return
+      end
+      if result.nothing then return vim.notify("Nothing to push to " .. mirror.host, vim.log.levels.INFO) end
+
+      local message = string.format("Pushed %d file(s) to %s", result.pushed, mirror.host)
+      if delete then message = message .. string.format(", deleted %d", result.deleted) end
+      vim.notify(message, vim.log.levels.INFO)
+      if #result.conflicts > 0 then
+        vim.notify(
+          "Not pushed, changed on the server since the last sync:\n" .. table.concat(result.conflicts, "\n"),
+          vim.log.levels.WARN
+        )
+      end
+      if #result.errors > 0 then
+        vim.notify("Not pushed, could not check or send:\n" .. table.concat(result.errors, "\n"), vim.log.levels.ERROR)
+      end
+    end)
+  end)
+end
+
+--- Sync status of the current buffer for statuslines
+--- @return string status "" outside a mirror, else pending, pushing, synced, conflict or error
+Api.mirror_status = function()
+  return vim.b.sshfs_mirror or ""
 end
 
 --- Test an SSH host without mounting - use picker if no host provided.
@@ -383,6 +462,28 @@ Api.setup = function()
       Api.connect()
     end
   end, { nargs = "?", desc = "Remotely connect to host via picker or command as argument." })
+
+  vim.api.nvim_create_user_command("SSHMirror", function(opts)
+    if opts.args and opts.args ~= "" then
+      local SSHConfig = require("sshfs.lib.ssh_config")
+      local host = SSHConfig.resolve_input(opts.args)
+      if not host then
+        vim.notify("Could not read a host from: " .. opts.args, vim.log.levels.ERROR)
+        return
+      end
+      Api.mirror(host)
+    else
+      Api.mirror()
+    end
+  end, { nargs = "?", desc = "Mirror a remote directory locally (edit at local speed, sync on save)." })
+
+  vim.api.nvim_create_user_command("SSHMirrorPull", function()
+    Api.mirror_pull()
+  end, { desc = "Pull the remote tree into the mirror, keeping locally edited files" })
+
+  vim.api.nvim_create_user_command("SSHMirrorPush", function(opts)
+    Api.mirror_push(opts.bang)
+  end, { bang = true, desc = "Push locally changed mirror files (! also deletes server files removed locally)" })
 
   vim.api.nvim_create_user_command("SSHTest", function(opts)
     if opts.args and opts.args ~= "" then

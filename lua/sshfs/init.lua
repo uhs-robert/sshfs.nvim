@@ -51,6 +51,8 @@ function App.setup(user_opts)
     desc = "Register in lockfile when accessing SSHFS mount",
   })
 
+  require("sshfs.lib.mirror").setup_autocommands()
+
   -- Setup exit handler if enabled. VimLeavePre keeps the event loop available while mounts are unmounted.
   local hooks = opts.hooks or {}
   local on_exit = hooks.on_exit or {}
@@ -72,6 +74,10 @@ end
 local Api = require("sshfs.api")
 App.connect = Api.connect
 App.mount = Api.mount
+App.mirror = Api.mirror
+App.mirror_pull = Api.mirror_pull
+App.mirror_push = Api.mirror_push
+App.mirror_status = Api.mirror_status
 App.disconnect = Api.disconnect
 App.unmount = Api.unmount
 App.unmount_all = Api.unmount_all
