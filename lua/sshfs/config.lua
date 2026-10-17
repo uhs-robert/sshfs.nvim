@@ -28,6 +28,15 @@ local DEFAULT_CONFIG = {
 	mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
 	},
+	mirror = {
+    base_dir = vim.fn.stdpath("data") .. "/sshfs/mirrors", -- where mirrors are pulled to; must differ from mounts.base_dir
+    hosts = {},                         -- host names or patterns ("prod-*") that :SSHConnect mirrors instead of mounting
+    excludes = { "node_modules", ".venv", "__pycache__", "target", "dist" }, -- rsync exclude patterns, never pulled or pushed
+    pull_git = true,                    -- pull .git (it is never pushed)
+    push_on_save = true,                -- push each saved file to the server
+    on_disconnect = "keep",             -- "keep" the local directory or "delete" it
+    rsync_options = {},                 -- extra rsync arguments for every transfer
+	},
 	global_paths = {
       -- Optionally define default mount paths for ALL hosts
       -- These appear as options when connecting to any host
