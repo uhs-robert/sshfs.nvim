@@ -42,6 +42,7 @@ end
 --- @param auth_type string|nil Authentication type:
 ---   - "batch": ControlMaster=yes + BatchMode=yes (socket creation, non-interactive)
 ---   - "socket": ControlPath only (reuse existing socket)
+---   - "background": ControlMaster=auto + BatchMode=yes (reuse or quietly re-create the socket, never prompt)
 ---   - nil: ControlMaster=auto (for interactive terminals)
 --- @return table Array of SSH option strings (e.g., {"ControlMaster=auto", "ControlPath=...", "BatchMode=yes"})
 local function get_ssh_options(auth_type)
@@ -50,7 +51,7 @@ local function get_ssh_options(auth_type)
 
   -- A config RemoteCommand cannot coexist with the command these paths append,
   -- and sftp needs a plain session, so it is cleared for everything but a shell.
-  if auth_type == "batch" or auth_type == "socket" then
+  if auth_type == "batch" or auth_type == "socket" or auth_type == "background" then
     table.insert(options, "RemoteCommand=none")
     -- A forced tty closes the sftp channel and puts carriage returns in captured output.
     table.insert(options, "RequestTTY=no")
@@ -78,6 +79,11 @@ local function get_ssh_options(auth_type)
         break
       end
     end
+  elseif auth_type == "background" then
+    -- ControlMaster=auto lets a call that finds the socket expired become the new master, so a key-auth
+    -- host is not re-handshaked on every push; hosts that need a prompt fail instead (BatchMode)
+    vim.list_extend(options, control_opts)
+    table.insert(options, "BatchMode=yes")
   else
     -- Default (nil): use ControlMaster=auto for interactive terminals
     vim.list_extend(options, control_opts)
@@ -152,6 +158,29 @@ function Ssh.build_home_command(host)
   local cmd = build_with_options(host, "socket")
   table.insert(cmd, "readlink -f $HOME 2>/dev/null || echo $HOME")
   return cmd
+end
+
+--- Build a command that runs a shell command on the host through an established socket.
+--- Never prompts: these run in the background, where a prompt would land on Neovim's own terminal.
+---@param host table|string SSH host object or name
+---@param remote_command string Shell command line to run remotely
+---@return table SSH command array
+function Ssh.build_exec_command(host, remote_command)
+  local cmd = build_with_options(host, "background")
+  table.insert(cmd, remote_command)
+  return cmd
+end
+
+--- The ssh program and options, without a host, for tools that take a remote shell (rsync -e).
+---@param port number|string|nil
+---@return string[] args
+function Ssh.build_transport_args(port)
+  local args = { "ssh" }
+  for _, opt in ipairs(get_ssh_options("background")) do
+    vim.list_extend(args, { "-o", opt })
+  end
+  if port then vim.list_extend(args, { "-p", tostring(port) }) end
+  return args
 end
 
 --- Build the interactive authentication command used after batch auth fails.
