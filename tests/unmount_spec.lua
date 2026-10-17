@@ -115,8 +115,9 @@ describe("automatic unmount on exit", function()
     stub.set("api.nvim_create_autocmd", function(event, definition)
       table.insert(events, { event = event, group = definition.group, desc = definition.desc })
     end)
-    stub.set("fn.executable", function()
-      return 1
+    -- findmnt is Linux-only; claiming it exists makes mount detection fail on macOS.
+    stub.set("fn.executable", function(name)
+      return name == "findmnt" and 0 or 1
     end)
     -- setup() sweeps the mount base dir, so keep it off the developer's real one.
     stub.set("system", function()
