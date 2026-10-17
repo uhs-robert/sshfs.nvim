@@ -437,6 +437,58 @@ local function check_configuration()
   health.ok("Plugin configuration is valid")
 end
 
+--- Check the git wrapper that routes git for mounted paths over SSH
+local function check_git_route()
+  health.start("Git over SSH")
+  local GitRoute = require("sshfs.lib.git_route")
+  if not GitRoute.enabled() then
+    health.info("Disabled (git.route_over_ssh = false, or unsupported platform); git runs on the mount")
+    return
+  end
+
+  local paths = GitRoute.paths()
+  if vim.fn.executable(paths.wrapper) == 1 then
+    health.ok("git wrapper generated: " .. paths.wrapper)
+  else
+    health.error("git wrapper missing: " .. paths.wrapper, "Call require('sshfs').setup() or restart Neovim")
+  end
+
+  local on_path = false
+  for _, entry in ipairs(vim.split(vim.env.PATH or "", ":", { plain = true })) do
+    if entry == paths.bin_dir then on_path = true end
+  end
+  if on_path then
+    health.ok("wrapper directory is on Neovim's PATH")
+  else
+    health.warn("wrapper directory is not on Neovim's PATH", "git for mounted paths runs over FUSE")
+  end
+
+  local first_git = vim.fn.exepath("git")
+  if first_git ~= paths.wrapper then
+    health.warn(
+      "git on PATH resolves to " .. first_git .. ", not the wrapper",
+      "Something prepended another git after setup; git for mounted paths runs over FUSE"
+    )
+  end
+
+  local MountPoint = require("sshfs.lib.mount_point")
+  for _, mount in ipairs(MountPoint.list_active()) do
+    if not GitRoute.has_map(mount.mount_path) then
+      health.warn(
+        "No git route for " .. mount.mount_path,
+        "The remote path could not be resolved or git is missing from the remote's non-interactive PATH"
+      )
+    end
+  end
+
+  local real_git = GitRoute.resolve_real_git(paths.root)
+  if real_git then
+    health.ok("real git found: " .. real_git)
+  else
+    health.error("git is not installed", "Install git; the wrapper needs it as the fallback")
+  end
+end
+
 --- Main health check function
 function Health.check()
   check_system_dependencies()
@@ -444,6 +496,7 @@ function Health.check()
   check_mount_config()
   check_integrations()
   check_configuration()
+  check_git_route()
 
   health.start("Summary")
   health.info("Run :SSHConnect to test connection, :SSHFiles to test file browsing")
