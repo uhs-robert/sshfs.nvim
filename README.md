@@ -264,6 +264,9 @@ require("sshfs").setup({
       auto_run = "find",          -- "find" (default), "grep", "live_find", "live_grep", "terminal", "none", or a custom function(ctx)
     },
   },
+  git = {
+    route_over_ssh = true,        -- run git for mounted paths on the server (see "Git over SSH")
+  },
   ui = {
     file_picker = {
       preferred_picker = "auto",  -- one of: "auto", "snacks", "fzf-lua", "mini", "telescope", "oil", "neo-tree", "nvim-tree", "yazi", "lf", "nnn", "ranger", "netrw"
@@ -303,6 +306,34 @@ require("sshfs").setup({
 
 > [!NOTE]
 > ControlMaster sockets are stored at `~/.ssh/sockets/%C` (configurable via `connections.socket_dir`). The directory is created automatically with proper permissions (0700) during the first connection.
+
+## 🌿 Git over SSH
+
+Git inside an sshfs mount walks the tree over FUSE. On one host (13 ms ping) `git status --porcelain` took 1.6 s on the mount against about 180 ms over SSH, and git signs appeared 0.8-2.0 s after opening a file.
+
+sshfs.nvim generates a `git` wrapper in `stdpath("cache")/sshfs/git/bin` and puts it first on Neovim's `PATH`. Only processes started by Neovim (gitsigns, fugitive, terminals) see it. For paths under a mount the wrapper runs git on the server over the mount's existing ControlMaster connection, translating paths between the mount and the remote and back.
+
+Routed: `rev-parse`, `ls-files`, `ls-tree`, `diff`, `show`, `cat-file`, `log`, `blame`, `status`, `check-attr`, `hash-object`, `update-index`, `apply --cached`, `config --get*`, `for-each-ref`, `symbolic-ref`, `merge-base`, `rev-list` and `worktree list`. Paths in `rev-parse` and `worktree list` (including `--porcelain`) output are translated back to the mount; other output is passed through untouched.
+
+The real local git runs instead, unchanged, when:
+
+- the directory is not under a mount, or the command is not in the list above
+- `GIT_DIR`, `GIT_INDEX_FILE` or `GIT_WORK_TREE` is set
+- an argument is a local path outside the mount, or reads a local file (`--no-index`, `-F`, `--file`, `--output`, `--exclude-from`), or climbs out with `..`
+- `config` is not a repository-scoped read (`--global`, `--system`, `-f`)
+- stdout is a terminal (`git` typed in `:terminal` keeps its colour and pager)
+- the mount's ControlMaster socket is gone (checked locally with `ssh -O check` before each call), so a dropped connection degrades to the slow path instead of an error or a fresh handshake
+- `rev-parse` or `worktree list` prints an absolute path the mount cannot express (for example a repo root above a subdirectory mount), which would otherwise hand callers a path that does not exist locally
+
+The remote needs a POSIX shell and `git` on its non-interactive `PATH`; without it no route is set up for that mount and `:checkhealth sshfs` says so. Remote git runs with the remote's own version and configuration, so plugins that gate features on `git --version` (answered locally) see the local version. `update-index` and `apply --cached` are routed too, so staging happens on the remote repository, as it would through the mount.
+
+To opt out:
+
+```lua
+require("sshfs").setup({ git = { route_over_ssh = false } })
+```
+
+`:checkhealth sshfs` reports whether the wrapper is generated, on `PATH`, and which real git it falls back to.
 
 ## 🔧 Commands
 

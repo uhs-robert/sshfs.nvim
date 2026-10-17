@@ -9,7 +9,7 @@ local MOUNT_DIR = BASE_DIR .. "/example_srv_app"
 
 --- Drive Session.connect through a stubbed mount attempt
 --- @param opts table {mount_created, mount_ready, is_active, is_empty, delete_fails, mount_succeeds}
---- @return table outcome {deleted, notifications, registered}
+--- @return table outcome {deleted, notifications, registered, git_routes}
 local function attempt_connection(opts)
   stub.reload()
   require("sshfs.config").setup({ mounts = { base_dir = BASE_DIR } })
@@ -44,6 +44,13 @@ local function attempt_connection(opts)
     end,
   }
 
+  local git_routes = {}
+  package.loaded["sshfs.lib.git_route"] = {
+    register_mount = function(info)
+      table.insert(git_routes, info)
+    end,
+  }
+
   package.loaded["sshfs.ui.hooks"] = {
     on_mount = function() end,
   }
@@ -69,7 +76,14 @@ local function attempt_connection(opts)
   local ok, err = pcall(require("sshfs.session").connect, { name = "example" })
   stub.restore_all()
 
-  return { deleted = deleted, notifications = notifications, registered = registered, ok = ok, err = err }
+  return {
+    deleted = deleted,
+    notifications = notifications,
+    registered = registered,
+    git_routes = git_routes,
+    ok = ok,
+    err = err,
+  }
 end
 
 --- Whether the mount directory was removed
@@ -142,5 +156,19 @@ describe("successful connection", function()
 
     expect.falsy(removed_mount_dir(outcome))
     expect.eq(outcome.registered, { MOUNT_DIR })
+  end)
+
+  it("writes the git route map for the new mount", function()
+    local outcome = attempt_connection({ mount_created = true, mount_succeeds = true })
+
+    expect.eq(#outcome.git_routes, 1)
+    expect.eq(outcome.git_routes[1].mount_path, MOUNT_DIR)
+    expect.eq(outcome.git_routes[1].host, "example")
+    expect.eq(outcome.git_routes[1].remote_path, "/srv/app")
+  end)
+
+  it("writes no git route map for a failed attempt", function()
+    local outcome = attempt_connection({ mount_created = true })
+    expect.eq(outcome.git_routes, {})
   end)
 end)

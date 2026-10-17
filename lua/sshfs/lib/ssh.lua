@@ -154,6 +154,17 @@ function Ssh.build_home_command(host)
   return cmd
 end
 
+--- Options for the git wrapper's ssh calls: reuse the mount's socket, never prompt or force a tty.
+---@return table Array of ssh option strings
+function Ssh.build_git_route_options()
+  local options = get_ssh_options("socket")
+  -- A user's own `ControlMaster auto` must not turn a git call into a new master.
+  table.insert(options, "ControlMaster=no")
+  table.insert(options, "BatchMode=yes")
+  table.insert(options, "ConnectTimeout=5")
+  return options
+end
+
 --- Build the interactive authentication command used after batch auth fails.
 ---@param host table|string Host object or SSH host name
 ---@return table SSH command array
@@ -211,6 +222,19 @@ local function build_cd_command(remote_path)
   else
     return "cd " .. escape_single_quotes(remote_path)
   end
+end
+
+--- Build the command that reports the logical and physical absolute form of a remote path.
+--- Both are needed because git prints physical paths while a user may have mounted a symlink.
+---@param host table|string Host object or SSH host name
+---@param remote_path string Remote path as mounted (absolute, relative to home, or empty for home)
+---@return table SSH command array
+function Ssh.build_pwd_command(host, remote_path)
+  local cmd = build_with_options(host, "socket", { "BatchMode=yes" })
+  local cd_command = (remote_path == nil or remote_path == "") and "cd" or build_cd_command(remote_path)
+  -- Routing needs git on the non-interactive PATH; without it no map is written.
+  table.insert(cmd, cd_command .. " && command -v git >/dev/null && pwd && pwd -P")
+  return cmd
 end
 
 --- Build SSH command with optional remote path and ControlMaster options
