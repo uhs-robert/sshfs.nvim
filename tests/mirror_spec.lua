@@ -137,6 +137,154 @@ describe("Connections.list_active", function()
   end)
 end)
 
+-- Builders -----------------------------------------------------------------------------------------------------
+
+local SSH = "ssh -o RemoteCommand=none -o RequestTTY=no -o ControlMaster=auto -o ControlPath=/s/%C "
+  .. "-o ControlPersist=10m -o BatchMode=yes -p 2222"
+
+local CONN = { host = "box", user = "me", port = 2222, remote_path = "/srv/app", local_path = "/m/box_srv_app" }
+
+--- Builder setup with a given `rsync --version` answer
+local function with_rsync(version, opts)
+  local scratch = with_scratch(opts)
+  stub.vim_system(function(cmd)
+    if cmd[2] == "--version" then return { stdout = version } end
+    return {}
+  end)
+  return scratch
+end
+
+local function with_conn(fields)
+  return vim.tbl_extend("force", CONN, fields)
+end
+
+describe("Rsync builders", function()
+  it("builds a pull over the ControlMaster socket that never prompts", function()
+    finish(with_rsync("rsync  version 3.2.7  protocol version 31"))
+    local command = require("sshfs.lib.rsync").pull(CONN, { "node_modules", "dist" }, "/tmp/skip.txt")
+    stub.restore_all()
+
+    expect.eq(command, {
+      "rsync",
+      "-rlptz",
+      "--update",
+      "--exclude=node_modules",
+      "--exclude=dist",
+      "--exclude-from=/tmp/skip.txt",
+      "-e",
+      SSH,
+      "me@box:/srv/app/",
+      "/m/box_srv_app/",
+    })
+  end)
+
+  it("pushes only the files in an include list, never .git", function()
+    finish(with_rsync("rsync  version 3.2.7  protocol version 31"))
+    local command = require("sshfs.lib.rsync").push_files(CONN, "/tmp/include.txt")
+    stub.restore_all()
+
+    expect.eq(command, {
+      "rsync",
+      "-rltz",
+      "--omit-dir-times",
+      "--exclude=.git",
+      "--include-from=/tmp/include.txt",
+      "--exclude=*",
+      "-e",
+      SSH,
+      "/m/box_srv_app/",
+      "me@box:/srv/app/",
+    })
+  end)
+
+  it("leaves out --omit-dir-times for openrsync, which may not accept it", function()
+    finish(with_rsync("openrsync: protocol version 29"))
+    local command = require("sshfs.lib.rsync").push_files(CONN, "/tmp/include.txt")
+    stub.restore_all()
+
+    expect.eq(command[2], "-rltz")
+    expect.falsy(vim.tbl_contains(command, "--omit-dir-times"))
+  end)
+
+  it("appends configured rsync_options after the core flags", function()
+    finish(with_rsync("rsync  version 3.2.7  protocol version 31", { mirror = { rsync_options = { "--chmod=u+rw" } } }))
+    local command = require("sshfs.lib.rsync").push_files(CONN, "/tmp/i")
+    stub.restore_all()
+
+    expect.eq(vim.list_slice(command, 1, 3), { "rsync", "-rltz", "--chmod=u+rw" })
+  end)
+
+  it("quotes a ControlPath with spaces inside -e", function()
+    finish(with_rsync("rsync  version 3.2.7", { socket_dir = "/Users/me/Library/Application Support/s" }))
+    local command = require("sshfs.lib.rsync").pull(CONN, {})
+    stub.restore_all()
+
+    expect.contains(command[#command - 2], " -o 'ControlPath=/Users/me/Library/Application Support/s/%C' -o ")
+  end)
+
+  it("leaves a spaced remote path to rsync 3.2.4+, which escapes it itself", function()
+    finish(with_rsync("rsync  version 3.2.4  protocol version 31"))
+    local command = require("sshfs.lib.rsync").pull(with_conn({ remote_path = "/srv/my app's" }), {})
+    stub.restore_all()
+
+    expect.eq(command[#command - 1], "me@box:/srv/my app's/")
+    expect.falsy(vim.tbl_contains(command, "-s"))
+  end)
+
+  it("protects remote paths with -s on rsync 3.0 to 3.2.3", function()
+    finish(with_rsync("rsync  version 3.2.3  protocol version 31"))
+    local command = require("sshfs.lib.rsync").pull(with_conn({ remote_path = "/srv/my app" }), {})
+    stub.restore_all()
+
+    expect.eq(command[3], "-s")
+    expect.eq(command[#command - 1], "me@box:/srv/my app/")
+  end)
+
+  it("escapes remote paths for the remote shell on openrsync, without -s", function()
+    finish(with_rsync("openrsync: protocol version 29\nrsync version 2.6.9 compatible"))
+    local command = require("sshfs.lib.rsync").pull(with_conn({ remote_path = "/srv/my app's $x" }), {})
+    stub.restore_all()
+
+    expect.falsy(vim.tbl_contains(command, "-s"))
+    expect.eq(command[#command - 1], "me@box:/srv/my\\ app\\'s\\ \\$x/")
+  end)
+
+  it("refuses a remote path that needs escaping when the rsync is not recognised", function()
+    finish(with_rsync("something else"))
+    local Rsync = require("sshfs.lib.rsync")
+    local ok_plain = Rsync.check_supported(CONN)
+    local ok_spaced, err = Rsync.check_supported(with_conn({ remote_path = "/srv/a b" }))
+    stub.restore_all()
+
+    expect.truthy(ok_plain)
+    expect.falsy(ok_spaced)
+    expect.contains(err, "unrecognised rsync")
+  end)
+
+  it("keeps a relative remote path starting with a dash from reading as an option", function()
+    finish(with_rsync("rsync  version 3.2.7  protocol version 31"))
+    local command = require("sshfs.lib.rsync").pull(with_conn({ remote_path = "-rf" }), {})
+    stub.restore_all()
+
+    expect.eq(command[#command - 1], "me@box:./-rf/")
+  end)
+
+  it("writes literal, anchored filter patterns for awkward names", function()
+    local Rsync = require("sshfs.lib.rsync")
+    expect.eq(Rsync.literal_pattern("-rf"), "/-rf")
+    expect.eq(Rsync.literal_pattern("a b'c\"d"), "/a b'c\"d")
+    expect.eq(Rsync.literal_pattern("x*y"), "/x\\*y")
+    -- No wildcard, so rsync matches the backslash literally and it must not be doubled
+    expect.eq(Rsync.literal_pattern("a\\b"), "/a\\b")
+    expect.eq(Rsync.literal_pattern("a\\b[1]"), "/a\\\\b\\[1]")
+  end)
+
+  it("includes every parent directory of a pushed file once", function()
+    local list = require("sshfs.lib.rsync").include_list({ "src/a/x.lua", "src/a/y.lua", "top" })
+    expect.eq(list, "/src/\n/src/a/\n/src/a/x.lua\n/src/a/y.lua\n/top\n")
+  end)
+end)
+
 describe("MirrorState.apply", function()
   it("merges per entry with what another instance wrote meanwhile", function()
     local scratch = with_scratch()

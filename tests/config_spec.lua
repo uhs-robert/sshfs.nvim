@@ -26,6 +26,25 @@ describe("Config.setup", function()
     expect.eq(options.compression, "yes", "sibling defaults survive the merge")
   end)
 
+  it("defaults mirror mode to keep, push on save, and a base dir apart from mounts", function()
+    local mirror = load_config(nil).get().mirror
+
+    expect.eq(mirror.hosts, {})
+    expect.eq(mirror.excludes, { "node_modules", ".venv", "__pycache__", "target", "dist" })
+    expect.eq(mirror.pull_git, true)
+    expect.eq(mirror.push_on_save, true)
+    expect.eq(mirror.on_disconnect, "keep")
+    expect.eq(mirror.rsync_options, {})
+    expect.eq(mirror.base_dir, vim.fn.stdpath("data") .. "/sshfs/mirrors")
+  end)
+
+  it("lets mirror settings be overridden one at a time", function()
+    local mirror = load_config({ mirror = { push_on_save = false } }).get().mirror
+
+    expect.eq(mirror.push_on_save, false)
+    expect.eq(mirror.on_disconnect, "keep")
+  end)
+
   it("accepts no user configuration at all", function()
     local Config = load_config(nil)
     expect.truthy(Config.get().mounts.base_dir)
