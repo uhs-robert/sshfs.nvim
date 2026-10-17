@@ -90,8 +90,8 @@ end
 --- Disconnect from the currently active SSH mount
 ---@return boolean Success status
 function Session.disconnect()
-  local MountPoint = require("sshfs.lib.mount_point")
-  local active_connection = MountPoint.get_active()
+  local Connections = require("sshfs.lib.connections")
+  local active_connection = Connections.get_active()
   if not active_connection or not active_connection.mount_path then
     vim.notify("No active connection to disconnect", vim.log.levels.WARN)
     return false
@@ -161,12 +161,11 @@ function Session.disconnect_from(connection, silent)
 end
 
 --- Cleanup all unused mounts on VimLeave
---- Iterates through all active SSHFS mounts and unmounts any not being used by other instances
+--- Iterates through all active connections and releases any not being used by other instances
 function Session.cleanup_unused_mounts()
-  local MountPoint = require("sshfs.lib.mount_point")
-  local all_mounts = MountPoint.list_active()
+  local Connections = require("sshfs.lib.connections")
 
-  for _, connection in ipairs(all_mounts) do
+  for _, connection in ipairs(Connections.list_active()) do
     Session.disconnect_from(connection, true)
   end
 end

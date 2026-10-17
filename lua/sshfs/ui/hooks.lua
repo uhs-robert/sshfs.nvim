@@ -34,8 +34,8 @@ end
 --- @param mount_dir string
 --- @return table|nil connection
 local function find_connection_by_mount(mount_dir)
-  local MountPoint = require("sshfs.lib.mount_point")
-  for _, conn in ipairs(MountPoint.list_active()) do
+  local Connections = require("sshfs.lib.connections")
+  for _, conn in ipairs(Connections.list_active()) do
     if conn.mount_path == mount_dir then return conn end
   end
   return nil

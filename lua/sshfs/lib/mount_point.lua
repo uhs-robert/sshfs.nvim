@@ -283,8 +283,10 @@ function MountPoint.cleanup_stale()
 
   for _, file in ipairs(files) do
     if vim.fn.isdirectory(file) == 1 then
-      -- Only remove if directory is empty AND not actively mounted
-      if Directory.is_empty(file) and not MountPoint.is_active(file) then
+      -- Only remove if directory is empty AND not actively mounted, and not a mirror (mirror.base_dir may
+      -- be set to the mount base, and a mirror of an empty remote directory is empty too)
+      local is_mirror = require("sshfs.lib.mirror_state").load(file) ~= nil
+      if not is_mirror and Directory.is_empty(file) and not MountPoint.is_active(file) then
         -- Plain rmdir first; only a mount the table did not report needs unmounting.
         local ok, result = pcall(vim.fn.delete, file, "d")
         if not (ok and result == 0) then
@@ -304,7 +306,8 @@ end
 --- Prompts user to select a mount if multiple connections are active
 --- @param command string|nil Command to run on mount path (e.g., "edit", "tcd", "Oil"). If nil, prompts user for input.
 function MountPoint.run_command(command)
-  local active_connections = MountPoint.list_active()
+  local Connections = require("sshfs.lib.connections")
+  local active_connections = Connections.list_active()
 
   if #active_connections == 0 then
     vim.notify("No active SSH connections", vim.log.levels.WARN)
@@ -327,7 +330,7 @@ function MountPoint.run_command(command)
 
   local items = {}
   for _, conn in ipairs(active_connections) do
-    table.insert(items, MountPoint.format_label(conn))
+    table.insert(items, Connections.format_label(conn))
   end
 
   vim.ui.select(items, {
