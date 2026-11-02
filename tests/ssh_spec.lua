@@ -75,14 +75,14 @@ end)
 describe("Ssh.cleanup_control_master", function()
   it("sends an exit control command for the host", function()
     local Ssh = load_ssh()
-    local received = nil
-    stub.system(function(cmd)
-      received = cmd
-      return ""
+    local calls = stub.vim_system(function()
+      return { code = 0 }
     end)
 
     Ssh.cleanup_control_master("example.com")
     stub.restore_all()
+
+    local received = calls[1]
 
     expect.eq(received[1], "ssh")
     expect.eq(received[#received], "example.com")
