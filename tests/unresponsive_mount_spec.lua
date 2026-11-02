@@ -46,6 +46,7 @@ local function connect_over_existing_mount(opts)
   }
 
   package.loaded["sshfs.lib.lockfile"] = { register = function() end }
+  package.loaded["sshfs.lib.git_route"] = { register_mount = function() end }
   package.loaded["sshfs.ui.hooks"] = { on_mount = function() end }
 
   local mount_attempts = {}
