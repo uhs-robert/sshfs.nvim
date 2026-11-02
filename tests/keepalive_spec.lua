@@ -34,6 +34,12 @@ describe("master keepalives", function()
     expect.contains(joined, "ServerAliveInterval=30")
   end)
 
+  it("accepts option names in any case", function()
+    local joined = table.concat(load_ssh({ serveraliveinterval = 30 }).build_batch_command("example.com"), " ")
+
+    expect.contains(joined, "serveraliveinterval=30")
+  end)
+
   it("omits a keepalive the user disabled", function()
     local joined = table.concat(load_ssh({ ServerAliveInterval = false }).build_batch_command("example.com"), " ")
 
