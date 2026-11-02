@@ -172,6 +172,22 @@ function Config.get_control_master_options()
   }
 end
 
+--- Get the keepalive options for an SSH process that can become the ControlMaster.
+--- sshfs mounts through the master socket, and a multiplexed client ignores
+--- ServerAlive*, so the configured values only take effect on the master. Without
+--- them a master can hang for hours after a network drop and block reconnect.
+---@return table Array of keepalive options (e.g., {"ServerAliveInterval=15", "ServerAliveCountMax=3"})
+function Config.get_keepalive_options()
+  local connections = Config.options.connections or {}
+  local sshfs_options = connections.sshfs_options or {}
+  local options = {}
+  for _, key in ipairs({ "ServerAliveInterval", "ServerAliveCountMax" }) do
+    local value = sshfs_options[key]
+    if value ~= nil and value ~= false then table.insert(options, key .. "=" .. tostring(value)) end
+  end
+  return options
+end
+
 --- Get SSH socket directory path
 ---@return string socket_dir The socket directory path
 function Config.get_socket_dir()
