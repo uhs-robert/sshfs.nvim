@@ -6,6 +6,13 @@ local Directory = require("sshfs.lib.directory")
 local Config = require("sshfs.config")
 
 local RESPONSIVE_TIMEOUT_MS = 3000
+local TIMEOUT_EXIT_CODE = 124 -- vim.system's wait() result after it kills a timed-out process
+-- strerror texts (C locale) that mean the mount lost its connection to the server
+local DISCONNECTED_ERRORS = {
+  "Transport endpoint is not connected",
+  "Input/output error",
+  "Software caused connection abort",
+}
 
 --- Get all active SSHFS mount paths and remote info from the system
 --- @return table Array of mount info tables with {mount_path, remote_spec} where remote_spec may be nil when unavailable
@@ -82,16 +89,28 @@ function MountPoint.is_active(mount_path)
   return false
 end
 
---- Check if a mounted path still answers file operations.
---- After a network drop the mount table still lists the mount, but its reads fail
---- or hang. A hung FUSE read blocks Neovim, so the read runs in a child process.
+--- Check if a mounted path still reaches its server.
+--- After a network drop the mount table still lists the mount, but its requests
+--- fail or hang. The probe looks up a random name, which sshfs cannot answer from
+--- its listing cache, so only the server can answer. A missing file or a denied
+--- permission is still an answer. Only a disconnect error or a timeout counts as
+--- dead, so an unclear result never leads to an unmount.
+--- A hung FUSE request blocks Neovim, so the lookup runs in a child process.
 --- @param mount_path string Path of an active mount
---- @return boolean True if the directory was listed within the timeout
+--- @return boolean False only when the mount is known to be disconnected
 function MountPoint.is_responsive(mount_path)
-  local ok, process = pcall(vim.system, { "ls", "-A", "--", mount_path }, { text = true })
-  if not ok then return false end
+  local probe_path = string.format("%s/.sshfs-probe-%d-%d", mount_path, vim.fn.getpid(), vim.uv.hrtime())
+  local ok, process = pcall(vim.system, { "stat", "--", probe_path }, { text = true, env = { LC_ALL = "C" } })
+  if not ok then return true end
   local wait_ok, result = pcall(process.wait, process, RESPONSIVE_TIMEOUT_MS)
-  return wait_ok and result ~= nil and result.code == 0
+  if not wait_ok or not result then return true end
+  if result.code == TIMEOUT_EXIT_CODE then return false end
+
+  local stderr = result.stderr or ""
+  for _, error_text in ipairs(DISCONNECTED_ERRORS) do
+    if stderr:find(error_text, 1, true) then return false end
+  end
+  return true
 end
 
 --- List all active sshfs mounts
