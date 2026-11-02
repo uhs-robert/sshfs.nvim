@@ -76,6 +76,16 @@ local function get_system_mounts()
   return mounts
 end
 
+--- Set of every active sshfs mount path, from a single mount-table read
+--- @return table<string, boolean>
+function MountPoint.active_mount_paths()
+  local paths = {}
+  for _, mount in ipairs(get_system_mounts()) do
+    paths[mount.mount_path] = true
+  end
+  return paths
+end
+
 --- Check if a mount path is listed in the system mount table.
 --- Only the mount table is read, never the path itself. A stat on an unresponsive
 --- mount fails, or blocks Neovim until the mount recovers.
@@ -136,10 +146,12 @@ function MountPoint.list_active()
       -- "host:" mounts the remote home, which every consumer spells "."
       if remote_path == "" then remote_path = "." end
       local host = remote_spec and (remote_spec:match("@([^:]+):") or remote_spec:match("^([^:]+):")) or nil
+      local user = remote_spec and remote_spec:match("^([^@:]+)@") or nil
       local remote_metadata_available = host ~= nil and remote_path ~= nil
 
       table.insert(mounts, {
         host = host or mount_name,
+        user = user,
         mount_path = mount_info.mount_path,
         remote_path = remote_path,
         remote_metadata_available = remote_metadata_available,
@@ -281,6 +293,7 @@ function MountPoint.unmount(mount_path)
     if vim.fn.executable(command) == 1 then
       local result = vim.system(vim.list_extend({ command }, args), { text = true }):wait(5000)
       if result.code == 0 then
+        require("sshfs.lib.git_route").remove_map(mount_path)
         vim.fn.delete(mount_path, "d")
         return true
       end
@@ -307,6 +320,8 @@ end
 --- This is useful after unclean unmounts (crashes, force-kills, etc.) that leave empty mount points.
 --- @return number Count of directories removed
 function MountPoint.cleanup_stale()
+  require("sshfs.lib.git_route").sweep_stale()
+
   local base_mount_dir = Config.get_base_dir()
   local stat = vim.uv.fs_stat(base_mount_dir)
   if not stat or stat.type ~= "directory" then return 0 end

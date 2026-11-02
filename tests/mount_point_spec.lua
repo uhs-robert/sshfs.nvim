@@ -30,6 +30,7 @@ describe("MountPoint.list_active", function()
     expect.eq(MountPoint.list_active(), {
       {
         host = "example.com",
+        user = "deploy",
         mount_path = BASE_DIR .. "/example",
         remote_path = "/srv/app",
         remote_metadata_available = true,

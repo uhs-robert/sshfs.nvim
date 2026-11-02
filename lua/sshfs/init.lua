@@ -17,6 +17,7 @@ function App.setup(user_opts)
   local MountPoint = require("sshfs.lib.mount_point")
   MountPoint.get_or_create()
   MountPoint.cleanup_stale()
+  require("sshfs.lib.git_route").install()
   require("sshfs.ui.keymaps").setup(opts)
 
   -- Register in lockfile when opening files from a mount (for instances that didn't create the mount)
@@ -45,6 +46,7 @@ function App.setup(user_opts)
       if MountPoint.is_active(mount_path) then
         local Lockfile = require("sshfs.lib.lockfile")
         Lockfile.register(mount_path)
+        require("sshfs.lib.git_route").register_existing_mount(mount_path)
         registered_mounts[mount_path] = true
       end
     end,
