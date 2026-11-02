@@ -27,12 +27,16 @@ local function run_preflight(opts)
   local commands = {}
   local pids = vim.deepcopy(opts.pids or {})
 
-  -- ssh -O check / -O exit go through vim.fn.system
-  stub.system(function(cmd)
-    local operation = nil
+  local function control_operation(cmd)
     for index, argument in ipairs(cmd) do
-      if argument == "-O" then operation = cmd[index + 1] end
+      if argument == "-O" then return cmd[index + 1] end
     end
+    return nil
+  end
+
+  -- ssh -O check goes through vim.fn.system, ssh -O exit through vim.system
+  stub.system(function(cmd)
+    local operation = control_operation(cmd)
     table.insert(control, operation)
 
     if operation == "check" then
@@ -51,7 +55,10 @@ local function run_preflight(opts)
     table.insert(commands, cmd)
 
     local result = { code = 0, stdout = "", stderr = "" }
-    if vim.tbl_contains(cmd, "-G") then
+    local operation = control_operation(cmd)
+    if operation then
+      table.insert(control, operation)
+    elseif vim.tbl_contains(cmd, "-G") then
       result.stdout = SSH_G_OUTPUT
     elseif cmd[#cmd] == "exit" then
       result.code = opts.auth_code or 0

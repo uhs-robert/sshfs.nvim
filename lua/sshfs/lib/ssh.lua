@@ -4,6 +4,8 @@
 local Ssh = {}
 local Logger = require("sshfs.lib.logger")
 
+local CONTROL_EXIT_TIMEOUT_MS = 5000
+
 --- Return the first non-empty process output after trimming whitespace.
 --- @param ... string|nil Process output values in priority order
 --- @return string|nil output First non-empty output, or nil
@@ -291,11 +293,13 @@ function Ssh.cleanup_control_master(host)
   Logger.debug("Closing SSH ControlMaster", function()
     return { host = host_label(host), command = table.concat(cmd, " ") }
   end)
-  local output = vim.fn.system(cmd)
+  -- Bounded because a stopped or wedged master never answers the exit request.
+  local ok, process = pcall(vim.system, cmd, { text = true })
+  local result = ok and process:wait(CONTROL_EXIT_TIMEOUT_MS) or {}
   Logger.debug("SSH ControlMaster cleanup completed", {
     host = host_label(host),
-    exit_code = vim.v.shell_error,
-    output = vim.trim(output or ""),
+    exit_code = result.code,
+    output = vim.trim((result.stderr or "") .. (result.stdout or "")),
   })
   -- Ignore exit code - socket may already be closed/expired
   return true
