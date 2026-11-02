@@ -180,11 +180,21 @@ end
 function Config.get_keepalive_options()
   local connections = Config.options.connections or {}
   local sshfs_options = connections.sshfs_options or {}
-  local options = {}
+  -- ssh option names are case-insensitive, so "serveraliveinterval" counts too.
+  -- A user key in another spelling sits beside the default key after the merge,
+  -- and ssh uses the first value it reads, so the user's spelling must win.
+  local chosen = {}
   for key, value in pairs(sshfs_options) do
-    -- ssh option names are case-insensitive, so "serveraliveinterval" counts too.
-    local is_keepalive = type(key) == "string" and key:lower():match("^serveralive") ~= nil
-    if is_keepalive and value ~= false then table.insert(options, key .. "=" .. tostring(value)) end
+    local name = type(key) == "string" and key:lower() or nil
+    if name and name:match("^serveralive") then
+      local is_default_spelling = DEFAULT_CONFIG.connections.sshfs_options[key] ~= nil
+      if not chosen[name] or not is_default_spelling then chosen[name] = { key = key, value = value } end
+    end
+  end
+
+  local options = {}
+  for _, option in pairs(chosen) do
+    if option.value ~= false then table.insert(options, option.key .. "=" .. tostring(option.value)) end
   end
   table.sort(options)
   return options
