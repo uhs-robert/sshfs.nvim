@@ -5,6 +5,8 @@ local MountPoint = {}
 local Directory = require("sshfs.lib.directory")
 local Config = require("sshfs.config")
 
+local RESPONSIVE_TIMEOUT_MS = 3000
+
 --- Get all active SSHFS mount paths and remote info from the system
 --- @return table Array of mount info tables with {mount_path, remote_spec} where remote_spec may be nil when unavailable
 local function get_system_mounts()
@@ -66,19 +68,30 @@ local function get_system_mounts()
   return mounts
 end
 
---- Check if a mount path is actively mounted
+--- Check if a mount path is listed in the system mount table.
+--- Only the mount table is read, never the path itself. A stat on an unresponsive
+--- mount fails, or blocks Neovim until the mount recovers.
 --- @param mount_path string Path to check for active mount
 --- @return boolean True if mount is active
 function MountPoint.is_active(mount_path)
-  local stat = vim.uv.fs_stat(mount_path)
-  if not stat or stat.type ~= "directory" then return false end
-
   local mounts = get_system_mounts()
   for _, mount in ipairs(mounts) do
     if mount.mount_path == mount_path then return true end
   end
 
   return false
+end
+
+--- Check if a mounted path still answers file operations.
+--- After a network drop the mount table still lists the mount, but its reads fail
+--- or hang. A hung FUSE read blocks Neovim, so the read runs in a child process.
+--- @param mount_path string Path of an active mount
+--- @return boolean True if the directory was listed within the timeout
+function MountPoint.is_responsive(mount_path)
+  local ok, process = pcall(vim.system, { "ls", "-A", "--", mount_path }, { text = true })
+  if not ok then return false end
+  local wait_ok, result = pcall(process.wait, process, RESPONSIVE_TIMEOUT_MS)
+  return wait_ok and result ~= nil and result.code == 0
 end
 
 --- List all active sshfs mounts

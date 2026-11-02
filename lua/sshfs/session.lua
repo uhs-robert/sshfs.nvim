@@ -22,6 +22,23 @@ local function get_unique_mount_dir(host_name, remote_path_suffix)
   return config.mounts.base_dir .. "/" .. host_name .. suffix
 end
 
+--- Unmount an unresponsive mount and close its master socket so it can be mounted again.
+--- After a network drop the mount stays in the mount table until unmounted. If its
+--- master socket hangs too, a new mount through that socket also hangs.
+---@param mount_dir string Mount point that failed MountPoint.is_responsive
+---@param host table Host object of the mount
+---@return boolean True if the mount point is free for a new mount
+local function replace_unresponsive_mount(mount_dir, host)
+  local MountPoint = require("sshfs.lib.mount_point")
+  vim.notify("Mount at " .. mount_dir .. " is not responding, remounting.", vim.log.levels.WARN)
+  if not MountPoint.unmount(mount_dir) then
+    vim.notify("Failed to unmount unresponsive mount at " .. mount_dir, vim.log.levels.ERROR)
+    return false
+  end
+  require("sshfs.lib.ssh").cleanup_control_master(host)
+  return true
+end
+
 --- Connect to a remote SSH host via SSHFS
 ---@param host table Host object with name, user, port, and path fields
 ---@return boolean|nil Success status (or nil if async callback)
@@ -41,10 +58,12 @@ function Session.connect(host)
     -- Generate unique mount directory based on host + path
     local mount_dir = get_unique_mount_dir(host.name, remote_path_suffix)
 
-    -- Check if unique path is already mounted
     if MountPoint.is_active(mount_dir) then
-      vim.notify("Path " .. remote_path_suffix .. " on " .. host.name .. " is already mounted.", vim.log.levels.WARN)
-      return
+      if MountPoint.is_responsive(mount_dir) then
+        vim.notify("Path " .. remote_path_suffix .. " on " .. host.name .. " is already mounted.", vim.log.levels.WARN)
+        return
+      end
+      if not replace_unresponsive_mount(mount_dir, host) then return end
     end
 
     -- Capture current directory before mounting
