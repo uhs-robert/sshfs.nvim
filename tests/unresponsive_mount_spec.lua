@@ -106,18 +106,33 @@ describe("MountPoint.is_responsive", function()
     return responsive, calls
   end
 
-  it("reports a mount that lists as responsive", function()
-    local responsive, calls = probe({ code = 0 })
+  it("looks up a random name so the sshfs cache cannot answer", function()
+    local _, calls = probe({ code = 1, stderr = "No such file or directory" })
+    local _, second_calls = probe({ code = 1, stderr = "No such file or directory" })
 
-    expect.truthy(responsive)
-    expect.eq(calls[1][#calls[1]], MOUNT_DIR)
+    local probe_path = calls[1][#calls[1]]
+    expect.eq(probe_path:sub(1, #MOUNT_DIR + 1), MOUNT_DIR .. "/")
+    expect.truthy(probe_path ~= second_calls[1][#second_calls[1]], "each probe must use a new name")
   end)
 
-  it("reports a failed listing as unresponsive", function()
-    expect.falsy((probe({ code = 2, stderr = "Transport endpoint is not connected" })))
+  it("counts a missing file as an answer from the server", function()
+    expect.truthy((probe({ code = 1, stderr = "stat: cannot statx 'x': No such file or directory" })))
   end)
 
-  it("reports a timed-out listing as unresponsive", function()
+  it("counts a denied permission as an answer from the server", function()
+    expect.truthy((probe({ code = 1, stderr = "stat: cannot statx 'x': Permission denied" })))
+  end)
+
+  it("reports a disconnected mount as unresponsive", function()
+    expect.falsy((probe({ code = 1, stderr = "stat: cannot statx 'x': Transport endpoint is not connected" })))
+    expect.falsy((probe({ code = 1, stderr = "stat: cannot statx 'x': Input/output error" })))
+  end)
+
+  it("reports a timed-out lookup as unresponsive", function()
     expect.falsy((probe({ code = 124 })))
+  end)
+
+  it("keeps a mount whose probe failed for an unknown reason", function()
+    expect.truthy((probe({ code = 1, stderr = "stat: something unexpected" })), "an unclear result must not unmount")
   end)
 end)
