@@ -145,3 +145,34 @@ describe("MountPoint.get_or_create", function()
     vim.fn.delete(vim.fn.fnamemodify(temp_dir, ":h:h"), "rf")
   end)
 end)
+
+describe("MountPoint.is_active", function()
+  local MOUNT_DIR = BASE_DIR .. "/example"
+
+  --- Load MountPoint with a stat that fails like a dead FUSE mount
+  local function with_dead_mount_stat(findmnt_output)
+    local MountPoint = with_mounts({ findmnt_available = true, findmnt_output = findmnt_output })
+    stub.set("uv.fs_stat", function()
+      error("is_active must not stat the mount: a hung mount blocks Neovim")
+    end)
+    return MountPoint
+  end
+
+  it("finds a listed mount without touching the mount itself", function()
+    local MountPoint = with_dead_mount_stat("deploy@example.com:/srv/app fuse.sshfs " .. MOUNT_DIR .. "\n")
+
+    local ok, active = pcall(MountPoint.is_active, MOUNT_DIR)
+    stub.restore_all()
+    expect.truthy(ok, active)
+    expect.truthy(active)
+  end)
+
+  it("reports a path missing from the mount table as inactive", function()
+    local MountPoint = with_dead_mount_stat("")
+
+    local ok, active = pcall(MountPoint.is_active, MOUNT_DIR)
+    stub.restore_all()
+    expect.truthy(ok, active)
+    expect.falsy(active)
+  end)
+end)

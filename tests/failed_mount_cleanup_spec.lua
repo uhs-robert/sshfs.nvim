@@ -24,6 +24,9 @@ local function attempt_connection(opts)
     is_active = function()
       return opts.is_active or false
     end,
+    is_responsive = function()
+      return true
+    end,
     get_or_create = function()
       if opts.mount_ready == false then return false, false end
       return true, opts.mount_created ~= false
