@@ -12,6 +12,7 @@ local DISCONNECTED_ERRORS = {
   "Transport endpoint is not connected",
   "Input/output error",
   "Software caused connection abort",
+  "Device not configured", -- macFUSE reports a dead mount as ENXIO
 }
 
 --- Get all active SSHFS mount paths and remote info from the system
@@ -103,8 +104,9 @@ function MountPoint.is_responsive(mount_path)
   local ok, process = pcall(vim.system, { "stat", "--", probe_path }, { text = true, env = { LC_ALL = "C" } })
   if not ok then return true end
   local wait_ok, result = pcall(process.wait, process, RESPONSIVE_TIMEOUT_MS)
-  if not wait_ok or not result then return true end
-  if result.code == TIMEOUT_EXIT_CODE then return false end
+  if not wait_ok then return true end
+  -- wait() returns nil when the probe survives even the kill after the timeout.
+  if not result or result.code == TIMEOUT_EXIT_CODE then return false end
 
   local stderr = result.stderr or ""
   for _, error_text in ipairs(DISCONNECTED_ERRORS) do

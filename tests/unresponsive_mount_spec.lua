@@ -132,6 +132,26 @@ describe("MountPoint.is_responsive", function()
     expect.falsy((probe({ code = 124 })))
   end)
 
+  it("reports a macFUSE dead mount as unresponsive", function()
+    expect.falsy((probe({ code = 1, stderr = "stat: x: stat: Device not configured" })))
+  end)
+
+  it("reports a probe that survives the kill as unresponsive", function()
+    stub.reload()
+    require("sshfs.config").setup({ mounts = { base_dir = BASE_DIR } })
+    stub.set("system", function()
+      return {
+        wait = function()
+          return nil
+        end,
+      }
+    end)
+    local responsive = require("sshfs.lib.mount_point").is_responsive(MOUNT_DIR)
+    stub.restore_all()
+
+    expect.falsy(responsive)
+  end)
+
   it("keeps a mount whose probe failed for an unknown reason", function()
     expect.truthy((probe({ code = 1, stderr = "stat: something unexpected" })), "an unclear result must not unmount")
   end)
