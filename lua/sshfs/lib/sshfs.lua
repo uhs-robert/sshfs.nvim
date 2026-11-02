@@ -239,27 +239,20 @@ local function mount_via_socket(host, mount_point, remote_path_suffix, callback)
   mount_with_path(host, mount_point, remote_path_suffix, callback)
 end
 
---- Authenticate and mount using SSH-first (async)
+--- Authenticate over SSH, leaving an established ControlMaster socket (async)
+--- Tries non-interactive authentication first, then an interactive terminal.
 --- @param host table Host object with name, user, port, and path fields
---- @param mount_point string Local mount point directory
---- @param remote_path_suffix string|nil Remote path to mount
---- @param callback function Callback function(result: table) - result has fields: success, message, resolved_path
-function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, callback)
+--- @param callback function Callback function(result: table) - result has fields: success, message (on failure also stage, exit_code)
+function Sshfs.authenticate(host, callback)
   local Ssh = require("sshfs.lib.ssh")
-  Logger.debug("Starting SSH authentication and mount", {
-    host = host.name,
-    user = host.user,
-    port = host.port,
-    remote_path = remote_path_suffix,
-    mount_point = mount_point,
-  })
+  Logger.debug("Starting SSH authentication", { host = host.name, user = host.user, port = host.port })
   vim.notify("Connecting to " .. host.name .. "...", vim.log.levels.INFO)
 
   -- Try batch connection (non-interactive)
   Ssh.try_batch_connect(host, function(success, exit_code, error)
     if success then
-      Logger.debug("Batch authentication succeeded; mounting via socket", { host = host.name })
-      mount_via_socket(host, mount_point, remote_path_suffix, callback)
+      Logger.debug("Batch authentication succeeded", { host = host.name })
+      callback({ success = true })
       return
     end
 
@@ -287,8 +280,8 @@ function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, cal
 
     Ssh.open_auth_terminal(host, function(term_success, term_exit_code)
       if term_success then
-        Logger.debug("Interactive authentication succeeded; mounting via socket", { host = host.name })
-        mount_via_socket(host, mount_point, remote_path_suffix, callback)
+        Logger.debug("Interactive authentication succeeded", { host = host.name })
+        callback({ success = true })
         return
       end
 
@@ -315,6 +308,26 @@ function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, cal
         message = message,
       })
     end)
+  end)
+end
+
+--- Authenticate and mount using SSH-first (async)
+--- @param host table Host object with name, user, port, and path fields
+--- @param mount_point string Local mount point directory
+--- @param remote_path_suffix string|nil Remote path to mount
+--- @param callback function Callback function(result: table) - result has fields: success, message, resolved_path
+function Sshfs.authenticate_and_mount(host, mount_point, remote_path_suffix, callback)
+  Logger.debug("Starting SSH authentication and mount", {
+    host = host.name,
+    user = host.user,
+    port = host.port,
+    remote_path = remote_path_suffix,
+    mount_point = mount_point,
+  })
+
+  Sshfs.authenticate(host, function(result)
+    if not result.success then return callback(result) end
+    mount_via_socket(host, mount_point, remote_path_suffix, callback)
   end)
 end
 

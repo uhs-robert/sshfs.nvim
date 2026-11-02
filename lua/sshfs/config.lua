@@ -28,6 +28,15 @@ local DEFAULT_CONFIG = {
 	mounts = {
     base_dir = vim.fn.expand("$HOME") .. "/mnt", -- where remote mounts are created
 	},
+	mirror = {
+    base_dir = vim.fn.stdpath("data") .. "/sshfs/mirrors", -- where mirrors are pulled to; must differ from mounts.base_dir
+    hosts = {},                         -- host names or patterns ("prod-*") that :SSHConnect mirrors instead of mounting
+    excludes = { "node_modules", ".venv", "__pycache__", "target", "dist" }, -- rsync exclude patterns, never pulled or pushed
+    pull_git = true,                    -- pull .git (it is never pushed)
+    push_on_save = true,                -- push each saved file to the server
+    on_disconnect = "keep",             -- "keep" the local directory or "delete" it
+    rsync_options = {},                 -- extra rsync arguments for every transfer
+	},
 	global_paths = {
       -- Optionally define default mount paths for ALL hosts
       -- These appear as options when connecting to any host
@@ -142,6 +151,28 @@ function Config.setup(user_config)
   user_config = apply_deprecations(user_config)
   -- TODO: To here...
   Config.options = vim.tbl_deep_extend("force", DEFAULT_CONFIG, user_config)
+
+  local mirror_unavailable = Config.mirror_unavailable_reason()
+  if mirror_unavailable then
+    vim.notify("sshfs.nvim: mirror mode is unavailable: " .. mirror_unavailable, vim.log.levels.ERROR)
+  end
+end
+
+--- Why mirror commands must refuse to run with the current configuration, or nil when they can
+--- With mounts.base_dir and mirror.base_dir nested either way, a live sshfs mount would sit where mirrors are
+--- listed and deleted, and a recursive mirror delete would remove server files through it.
+---@return string|nil reason
+function Config.mirror_unavailable_reason()
+  local Path = require("sshfs.lib.path")
+  local mirror_dir = Path.canonical(Config.options.mirror.base_dir)
+  local mount_dir = Path.canonical(Config.options.mounts.base_dir)
+  local function contains(outer, inner)
+    return inner == outer or inner:sub(1, #outer + 1) == (outer == "/" and "/" or outer .. "/")
+  end
+  if contains(mount_dir, mirror_dir) or contains(mirror_dir, mount_dir) then
+    return "mirror.base_dir (" .. mirror_dir .. ") and mounts.base_dir (" .. mount_dir .. ") overlap; keep them apart"
+  end
+  return nil
 end
 
 --- Get current configuration

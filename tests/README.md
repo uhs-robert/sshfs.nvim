@@ -47,7 +47,7 @@ end)
 
 ### Stubs
 
-`stub.system(handler)` replaces `vim.fn.system` and the `v:shell_error` it reports; the handler returns `output, code`. `stub.vim_system(handler)` replaces `vim.system`, supporting both the async-callback and `:wait()` call styles, and returns the list of commands it received. `stub.executable(names)` controls `vim.fn.executable`. `stub.notifications()` captures `vim.notify` calls instead of printing them. `stub.set(path, value)` replaces any other field under `vim`.
+`stub.system(handler)` replaces `vim.fn.system` and the `v:shell_error` it reports; the handler returns `output, code`. `stub.vim_system(handler)` replaces `vim.system` (the handler gets the command and its options), supporting both the async-callback and `:wait()` call styles, and returns the list of commands it received. `stub.executable(names)` controls `vim.fn.executable`. `stub.notifications()` captures `vim.notify` calls instead of printing them. `stub.set(path, value)` replaces any other field under `vim`.
 
 Two rules matter:
 

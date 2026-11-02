@@ -141,6 +141,23 @@ function Lockfile.is_in_use_by_others(mount_path)
   return has_others
 end
 
+--- Whether any live Neovim instance, this one included, holds the path
+---@param mount_path string The mount or mirror path
+---@return boolean
+function Lockfile.has_live_owner(mount_path)
+  for _, pid in ipairs(read_pids(get_lock_path(mount_path))) do
+    if is_pid_alive(pid) then return true end
+  end
+  return false
+end
+
+--- Whether this Neovim instance is registered for the path
+---@param mount_path string The mount or mirror path
+---@return boolean
+function Lockfile.is_held_by_this_instance(mount_path)
+  return vim.tbl_contains(read_pids(get_lock_path(mount_path)), tostring(vim.fn.getpid()))
+end
+
 --- Unregister current instance from all mounts
 ---@return number Count of mounts unregistered from
 function Lockfile.unregister_all()

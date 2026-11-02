@@ -15,6 +15,14 @@ local DISCONNECTED_ERRORS = {
   "Device not configured", -- macFUSE reports a dead mount as ENXIO
 }
 
+--- Output of `mount`, the mount table on every platform without findmnt
+--- @return string|nil output nil when the command failed
+local function mount_command_output()
+  local result = vim.fn.system("mount")
+  if vim.v.shell_error ~= 0 then return nil end
+  return result
+end
+
 --- Get all active SSHFS mount paths and remote info from the system
 --- @return table Array of mount info tables with {mount_path, remote_spec} where remote_spec may be nil when unavailable
 local function get_system_mounts()
@@ -44,8 +52,8 @@ local function get_system_mounts()
   end
 
   -- Fallback to mount command for broader compatibility
-  local result = vim.fn.system("mount")
-  if vim.v.shell_error ~= 0 then return mounts end
+  local result = mount_command_output()
+  if not result then return mounts end
 
   -- Cross-platform patterns for detecting SSHFS mounts with remote spec
   -- Format: "user@host:/remote/path on /mount/path type fuse.sshfs" or "... (macfuse"
@@ -74,6 +82,41 @@ local function get_system_mounts()
   end
 
   return mounts
+end
+
+--- Every sshfs mount on the system, wherever it is, as {mount_path, remote_spec}
+--- @return table[]
+function MountPoint.list_system_mounts()
+  return get_system_mounts()
+end
+
+--- Every mount point on the system, of any file system type
+--- @return string[]|nil paths nil when the mount table could not be read
+function MountPoint.list_all_mount_paths()
+  if vim.fn.executable("findmnt") == 1 then
+    -- Raw output escapes spaces and other special characters in a target as \xNN
+    local output = vim.fn.system({ "findmnt", "-r", "-n", "-o", "TARGET" })
+    if vim.v.shell_error == 0 then
+      local paths = {}
+      for line in output:gmatch("[^\r\n]+") do
+        local path = line:gsub("\\x(%x%x)", function(hex)
+          return string.char(tonumber(hex, 16))
+        end)
+        table.insert(paths, path)
+      end
+      return paths
+    end
+  end
+
+  local output = mount_command_output()
+  if not output then return nil end
+  local paths = {}
+  for line in output:gmatch("[^\r\n]+") do
+    -- Linux: "source on /path type fstype (options)"; macOS and BSD: "source on /path (fstype, options)"
+    local path = line:match("^.- on (.+) type %S+ %(.*%)$") or line:match("^.- on (.+) %(.*%)$")
+    if path then table.insert(paths, path) end
+  end
+  return paths
 end
 
 --- Check if a mount path is listed in the system mount table.
@@ -317,8 +360,10 @@ function MountPoint.cleanup_stale()
 
   for _, file in ipairs(files) do
     if vim.fn.isdirectory(file) == 1 then
-      -- Only remove if directory is empty AND not actively mounted
-      if Directory.is_empty(file) and not MountPoint.is_active(file) then
+      -- Only remove if directory is empty AND not actively mounted, and not a mirror (mirror.base_dir may
+      -- be set to the mount base, and a mirror of an empty remote directory is empty too)
+      local is_mirror = require("sshfs.lib.mirror_state").load(file) ~= nil
+      if not is_mirror and Directory.is_empty(file) and not MountPoint.is_active(file) then
         -- Plain rmdir first; only a mount the table did not report needs unmounting.
         local ok, result = pcall(vim.fn.delete, file, "d")
         if not (ok and result == 0) then
@@ -338,7 +383,8 @@ end
 --- Prompts user to select a mount if multiple connections are active
 --- @param command string|nil Command to run on mount path (e.g., "edit", "tcd", "Oil"). If nil, prompts user for input.
 function MountPoint.run_command(command)
-  local active_connections = MountPoint.list_active()
+  local Connections = require("sshfs.lib.connections")
+  local active_connections = Connections.list_active()
 
   if #active_connections == 0 then
     vim.notify("No active SSH connections", vim.log.levels.WARN)
@@ -361,7 +407,7 @@ function MountPoint.run_command(command)
 
   local items = {}
   for _, conn in ipairs(active_connections) do
-    table.insert(items, MountPoint.format_label(conn))
+    table.insert(items, Connections.format_label(conn))
   end
 
   vim.ui.select(items, {

@@ -66,6 +66,11 @@ describe("Ssh.build_home_command", function()
     expect.eq(cmd[#cmd], "readlink -f $HOME 2>/dev/null || echo $HOME")
   end)
 
+  it("resolves another account's home when asked for one", function()
+    local cmd = load_ssh().build_home_command("example.com", "deploy")
+    expect.eq(cmd[#cmd], "readlink -f ~deploy 2>/dev/null || echo ~deploy")
+  end)
+
   it("propagates an explicit user and port", function()
     local cmd = load_ssh().build_home_command({ name = "example.com", user = "deploy", port = 2222 })
 
