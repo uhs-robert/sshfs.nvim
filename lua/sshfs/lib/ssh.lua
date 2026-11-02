@@ -69,6 +69,7 @@ local function get_ssh_options(auth_type)
       end
     end
     vim.list_extend(options, modified_opts)
+    vim.list_extend(options, Config.get_keepalive_options())
     table.insert(options, "BatchMode=yes")
   elseif auth_type == "socket" then
     -- For socket reuse: only add ControlPath (no ControlMaster/ControlPersist)
@@ -81,6 +82,7 @@ local function get_ssh_options(auth_type)
   else
     -- Default (nil): use ControlMaster=auto for interactive terminals
     vim.list_extend(options, control_opts)
+    vim.list_extend(options, Config.get_keepalive_options())
   end
 
   return options
