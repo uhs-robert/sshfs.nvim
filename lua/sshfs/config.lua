@@ -181,10 +181,12 @@ function Config.get_keepalive_options()
   local connections = Config.options.connections or {}
   local sshfs_options = connections.sshfs_options or {}
   local options = {}
-  for _, key in ipairs({ "ServerAliveInterval", "ServerAliveCountMax" }) do
-    local value = sshfs_options[key]
-    if value ~= nil and value ~= false then table.insert(options, key .. "=" .. tostring(value)) end
+  for key, value in pairs(sshfs_options) do
+    -- ssh option names are case-insensitive, so "serveraliveinterval" counts too.
+    local is_keepalive = type(key) == "string" and key:lower():match("^serveralive") ~= nil
+    if is_keepalive and value ~= false then table.insert(options, key .. "=" .. tostring(value)) end
   end
+  table.sort(options)
   return options
 end
 
