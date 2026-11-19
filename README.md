@@ -374,3 +374,9 @@ make test
 ```
 
 Tests run in headless Neovim with no external dependencies and never contact a real SSH server or mount table. See [`tests/README.md`](tests/README.md) for the harness, the available stubs, and how to add coverage. CI runs the suite and `stylua --check` on every pull request.
+
+## 💖 Sponsor
+
+sshfs.nvim is free and stays free. I build it in my spare time. If it saves you time, [sponsor me on GitHub](https://github.com/sponsors/uhs-robert). Teams that edit remote servers every day can buy priority work through the company tier.
+
+<a href="https://github.com/sponsors/uhs-robert"><img alt="Sponsor on GitHub Sponsors" src="https://img.shields.io/badge/GitHub%20Sponsors-Sponsor-6DDFA0?style=for-the-badge&labelColor=192330&logo=githubsponsors&logoColor=white" /></a>
